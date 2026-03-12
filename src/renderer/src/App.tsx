@@ -1,35 +1,56 @@
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
+import { ThemeProvider } from './design/Theme'
+import { SplitPane } from './design/components/SplitPane'
+import { colors } from './design/tokens'
 
-function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
+function SidebarPlaceholder() {
+  return <div className="h-full p-4 text-[#8B8B8E]">Sidebar</div>
+}
 
+function ContentPlaceholder() {
+  return <div className="h-full p-4 text-[#8B8B8E]">Content</div>
+}
+
+function TerminalPlaceholder() {
+  return <div className="h-full p-4 text-[#8B8B8E]">Terminal</div>
+}
+
+function StatusBar() {
   return (
-    <>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <Versions></Versions>
-    </>
+    <div
+      className="h-6 flex items-center px-3 text-[11px] text-[#5A5A5E] border-t border-[#2A2A2E]"
+      style={{ backgroundColor: colors.bg.surface }}
+    >
+      Thought Engine
+    </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <ThemeProvider>
+      <div
+        className="h-screen w-screen flex flex-col"
+        style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
+      >
+        <div className="flex-1 overflow-hidden">
+          <SplitPane
+            left={<SidebarPlaceholder />}
+            right={
+              <SplitPane
+                left={<ContentPlaceholder />}
+                right={<TerminalPlaceholder />}
+                initialLeftWidth={600}
+                minLeftWidth={300}
+                minRightWidth={320}
+              />
+            }
+            initialLeftWidth={260}
+            minLeftWidth={0}
+            minRightWidth={500}
+          />
+        </div>
+        <StatusBar />
+      </div>
+    </ThemeProvider>
+  )
+}
