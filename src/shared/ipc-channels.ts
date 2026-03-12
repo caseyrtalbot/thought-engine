@@ -18,6 +18,8 @@ export interface IpcChannels {
   'terminal:resize': { request: { sessionId: string; cols: number; rows: number }; response: void }
   'terminal:kill': { request: { sessionId: string }; response: void }
 
+  'vault:git-branch': { request: { vaultPath: string }; response: string | null }
+
   'vault:watch-start': { request: { vaultPath: string }; response: void }
   'vault:watch-stop': { request: void; response: void }
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { ThemeProvider } from './design/Theme'
 import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
@@ -16,7 +16,16 @@ import { colors } from './design/tokens'
 
 function StatusBar() {
   const { vaultPath, files } = useVaultStore()
+  const [gitBranch, setGitBranch] = useState<string | null>(null)
   const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
+
+  useEffect(() => {
+    if (!vaultPath) return
+    window.electron.ipcRenderer
+      .invoke('vault:git-branch', { vaultPath })
+      .then(setGitBranch)
+      .catch(() => setGitBranch(null))
+  }, [vaultPath])
 
   return (
     <div
@@ -26,6 +35,12 @@ function StatusBar() {
       <span>{vaultName}</span>
       <span className="mx-2">&middot;</span>
       <span>{files.length} notes</span>
+      {gitBranch && (
+        <>
+          <span className="mx-2">&middot;</span>
+          <span>{gitBranch}</span>
+        </>
+      )}
     </div>
   )
 }
@@ -90,7 +105,7 @@ function ConnectedSidebar() {
     title: f.title,
     modified: f.modified,
     isDirectory: false as const,
-    depth: 0,
+    depth: 0
   }))
 
   return (
@@ -112,7 +127,12 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   { id: 'cmd:toggle-view', label: 'Toggle Graph/Editor', category: 'command', shortcut: '\u2318G' },
   { id: 'cmd:toggle-sidebar', label: 'Toggle Sidebar', category: 'command', shortcut: '\u2318B' },
   { id: 'cmd:toggle-terminal', label: 'Toggle Terminal', category: 'command', shortcut: '\u2318`' },
-  { id: 'cmd:toggle-mode', label: 'Toggle Source/Rich Mode', category: 'command', shortcut: '\u2318/' },
+  {
+    id: 'cmd:toggle-mode',
+    label: 'Toggle Source/Rich Mode',
+    category: 'command',
+    shortcut: '\u2318/'
+  }
 ]
 
 function WorkspaceShell() {
@@ -134,14 +154,14 @@ function WorkspaceShell() {
     onCommandPalette: () => setPaletteOpen(true),
     onToggleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
-    onEscape: () => setPaletteOpen(false),
+    onEscape: () => setPaletteOpen(false)
   })
 
   const paletteItems = useMemo<CommandItem[]>(() => {
     const noteItems: CommandItem[] = files.map((f) => ({
       id: `note:${f.path}`,
       label: f.title,
-      category: 'note',
+      category: 'note'
     }))
     return [...noteItems, ...BUILT_IN_COMMANDS]
   }, [files])
@@ -206,11 +226,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      {vaultPath ? (
-        <WorkspaceShell />
-      ) : (
-        <WelcomeScreen onVaultSelected={handleVaultSelected} />
-      )}
+      {vaultPath ? <WorkspaceShell /> : <WelcomeScreen onVaultSelected={handleVaultSelected} />}
     </ThemeProvider>
   )
 }
