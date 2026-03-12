@@ -1,0 +1,230 @@
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { colors, typography } from '../tokens'
+
+export interface CommandItem {
+  id: string
+  label: string
+  category: 'note' | 'command'
+  shortcut?: string
+}
+
+interface CommandPaletteProps {
+  isOpen: boolean
+  onClose: () => void
+  items: ReadonlyArray<CommandItem>
+  onSelect: (item: CommandItem) => void
+}
+
+const CATEGORY_LABELS: Record<CommandItem['category'], string> = {
+  note: 'Notes',
+  command: 'Commands',
+}
+
+function filterItems(
+  items: ReadonlyArray<CommandItem>,
+  query: string
+): ReadonlyArray<CommandItem> {
+  if (query === '') return items
+
+  const lower = query.toLowerCase()
+  return items.filter((item) => item.label.toLowerCase().includes(lower))
+}
+
+function groupByCategory(
+  items: ReadonlyArray<CommandItem>
+): ReadonlyArray<{ category: CommandItem['category']; items: ReadonlyArray<CommandItem> }> {
+  const groups = new Map<CommandItem['category'], CommandItem[]>()
+
+  for (const item of items) {
+    const existing = groups.get(item.category)
+    if (existing) {
+      existing.push(item)
+    } else {
+      groups.set(item.category, [item])
+    }
+  }
+
+  return Array.from(groups.entries()).map(([category, categoryItems]) => ({
+    category,
+    items: categoryItems,
+  }))
+}
+
+export function CommandPalette({ isOpen, onClose, items, onSelect }: CommandPaletteProps) {
+  const [query, setQuery] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const filtered = useMemo(() => filterItems(items, query), [items, query])
+  const groups = useMemo(() => groupByCategory(filtered), [filtered])
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuery('')
+      setSelectedIndex(0)
+      requestAnimationFrame(() => inputRef.current?.focus())
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [query])
+
+  const handleSelect = useCallback(
+    (item: CommandItem) => {
+      onSelect(item)
+      onClose()
+    },
+    [onSelect, onClose]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev + 1) % filtered.length || 0)
+        return
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length || 0)
+        return
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const item = filtered[selectedIndex]
+        if (item) {
+          handleSelect(item)
+        }
+        return
+      }
+    },
+    [filtered, selectedIndex, handleSelect, onClose]
+  )
+
+  useEffect(() => {
+    const selectedEl = listRef.current?.querySelector('[data-selected="true"]')
+    selectedEl?.scrollIntoView({ block: 'nearest' })
+  }, [selectedIndex])
+
+  if (!isOpen) return null
+
+  let flatIndex = 0
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden"
+        style={{
+          backgroundColor: colors.bg.elevated,
+          borderColor: colors.border.default,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        <div
+          className="px-4 py-3 border-b"
+          style={{ borderColor: colors.border.default }}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search notes and commands..."
+            className="w-full bg-transparent outline-none text-sm"
+            style={{
+              color: colors.text.primary,
+              fontFamily: typography.fontFamily.body,
+              backgroundColor: colors.bg.surface,
+              padding: '8px 12px',
+              borderRadius: '8px',
+            }}
+          />
+        </div>
+
+        <div
+          ref={listRef}
+          className="max-h-80 overflow-y-auto py-2"
+        >
+          {filtered.length === 0 && (
+            <div
+              className="px-4 py-6 text-center text-sm"
+              style={{ color: colors.text.muted }}
+            >
+              No results found
+            </div>
+          )}
+
+          {groups.map((group) => {
+            const categoryLabel = CATEGORY_LABELS[group.category]
+
+            return (
+              <div key={group.category}>
+                <div
+                  className="px-4 py-1.5 text-[11px] tracking-wider uppercase select-none"
+                  style={{
+                    color: colors.text.muted,
+                    fontFamily: typography.fontFamily.body,
+                    letterSpacing: typography.metadata.letterSpacing,
+                  }}
+                >
+                  {categoryLabel}
+                </div>
+
+                {group.items.map((item) => {
+                  const currentIndex = flatIndex
+                  flatIndex += 1
+                  const isSelected = currentIndex === selectedIndex
+
+                  return (
+                    <button
+                      key={item.id}
+                      data-selected={isSelected}
+                      className="w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors"
+                      style={{
+                        color: colors.text.primary,
+                        backgroundColor: isSelected ? colors.accent.muted : 'transparent',
+                        fontFamily: typography.fontFamily.body,
+                      }}
+                      onClick={() => handleSelect(item)}
+                      onMouseEnter={() => setSelectedIndex(currentIndex)}
+                    >
+                      <span>{item.label}</span>
+
+                      {item.shortcut && (
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded"
+                          style={{
+                            color: colors.text.muted,
+                            fontFamily: typography.fontFamily.mono,
+                            backgroundColor: colors.bg.surface,
+                          }}
+                        >
+                          {item.shortcut}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

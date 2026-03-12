@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { ThemeProvider } from './design/Theme'
 import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
@@ -6,6 +6,9 @@ import { EditorPanel } from './panels/editor/EditorPanel'
 import { GraphPanel } from './panels/graph/GraphPanel'
 import { GraphControls } from './panels/graph/GraphControls'
 import { TerminalPanel } from './panels/terminal/TerminalPanel'
+import { WelcomeScreen } from './panels/onboarding/WelcomeScreen'
+import { CommandPalette, type CommandItem } from './design/components/CommandPalette'
+import { useKeyboard } from './hooks/useKeyboard'
 import { useVaultStore } from './store/vault-store'
 import { useEditorStore } from './store/editor-store'
 import { useGraphStore } from './store/graph-store'
@@ -21,7 +24,7 @@ function StatusBar() {
       style={{ backgroundColor: colors.bg.surface }}
     >
       <span>{vaultName}</span>
-      <span className="mx-2">·</span>
+      <span className="mx-2">&middot;</span>
       <span>{files.length} notes</span>
     </div>
   )
@@ -87,7 +90,7 @@ function ConnectedSidebar() {
     title: f.title,
     modified: f.modified,
     isDirectory: false as const,
-    depth: 0
+    depth: 0,
   }))
 
   return (
@@ -104,32 +107,110 @@ function ConnectedSidebar() {
   )
 }
 
+const BUILT_IN_COMMANDS: CommandItem[] = [
+  { id: 'cmd:new-note', label: 'New Note', category: 'command', shortcut: '\u2318N' },
+  { id: 'cmd:toggle-view', label: 'Toggle Graph/Editor', category: 'command', shortcut: '\u2318G' },
+  { id: 'cmd:toggle-sidebar', label: 'Toggle Sidebar', category: 'command', shortcut: '\u2318B' },
+  { id: 'cmd:toggle-terminal', label: 'Toggle Terminal', category: 'command', shortcut: '\u2318`' },
+  { id: 'cmd:toggle-mode', label: 'Toggle Source/Rich Mode', category: 'command', shortcut: '\u2318/' },
+]
+
+function WorkspaceShell() {
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const { files } = useVaultStore()
+  const { setActiveNote } = useEditorStore()
+  const { contentView, setContentView } = useGraphStore()
+  const { mode, setMode } = useEditorStore()
+
+  const toggleView = useCallback(() => {
+    setContentView(contentView === 'editor' ? 'graph' : 'editor')
+  }, [contentView, setContentView])
+
+  const toggleSourceMode = useCallback(() => {
+    setMode(mode === 'rich' ? 'source' : 'rich')
+  }, [mode, setMode])
+
+  useKeyboard({
+    onCommandPalette: () => setPaletteOpen(true),
+    onToggleView: toggleView,
+    onToggleSourceMode: toggleSourceMode,
+    onEscape: () => setPaletteOpen(false),
+  })
+
+  const paletteItems = useMemo<CommandItem[]>(() => {
+    const noteItems: CommandItem[] = files.map((f) => ({
+      id: `note:${f.path}`,
+      label: f.title,
+      category: 'note',
+    }))
+    return [...noteItems, ...BUILT_IN_COMMANDS]
+  }, [files])
+
+  const handlePaletteSelect = useCallback(
+    (item: CommandItem) => {
+      if (item.id.startsWith('note:')) {
+        const path = item.id.slice(5)
+        setActiveNote(path, path)
+        setContentView('editor')
+      } else if (item.id === 'cmd:toggle-view') {
+        toggleView()
+      } else if (item.id === 'cmd:toggle-mode') {
+        toggleSourceMode()
+      }
+    },
+    [setActiveNote, setContentView, toggleView, toggleSourceMode]
+  )
+
+  return (
+    <div
+      className="h-screen w-screen flex flex-col"
+      style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
+    >
+      <div className="flex-1 overflow-hidden">
+        <SplitPane
+          left={<ConnectedSidebar />}
+          right={
+            <SplitPane
+              left={<ContentArea />}
+              right={<TerminalPanel />}
+              initialLeftWidth={600}
+              minLeftWidth={300}
+              minRightWidth={320}
+            />
+          }
+          initialLeftWidth={260}
+          minLeftWidth={0}
+          minRightWidth={500}
+        />
+      </div>
+      <StatusBar />
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        items={paletteItems}
+        onSelect={handlePaletteSelect}
+      />
+    </div>
+  )
+}
+
 export default function App() {
+  const { vaultPath, setVaultPath } = useVaultStore()
+
+  const handleVaultSelected = useCallback(
+    (path: string) => {
+      setVaultPath(path)
+    },
+    [setVaultPath]
+  )
+
   return (
     <ThemeProvider>
-      <div
-        className="h-screen w-screen flex flex-col"
-        style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
-      >
-        <div className="flex-1 overflow-hidden">
-          <SplitPane
-            left={<ConnectedSidebar />}
-            right={
-              <SplitPane
-                left={<ContentArea />}
-                right={<TerminalPanel />}
-                initialLeftWidth={600}
-                minLeftWidth={300}
-                minRightWidth={320}
-              />
-            }
-            initialLeftWidth={260}
-            minLeftWidth={0}
-            minRightWidth={500}
-          />
-        </div>
-        <StatusBar />
-      </div>
+      {vaultPath ? (
+        <WorkspaceShell />
+      ) : (
+        <WelcomeScreen onVaultSelected={handleVaultSelected} />
+      )}
     </ThemeProvider>
   )
 }
