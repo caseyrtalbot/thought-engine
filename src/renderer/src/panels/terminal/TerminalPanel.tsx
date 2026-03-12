@@ -140,11 +140,12 @@ export function TerminalPanel() {
     return () => observer.disconnect()
   }, [activeSessionId])
 
-  // Create initial terminal session on mount
+  // Create initial terminal session on mount (ref guards against Strict Mode double-fire)
+  const didInit = useRef(false)
   useEffect(() => {
-    if (sessions.length === 0) {
-      createTerminalInstance()
-    }
+    if (didInit.current) return
+    didInit.current = true
+    createTerminalInstance()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup all terminals on unmount

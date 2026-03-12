@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, type ReactNode } from 'react'
+import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 
 interface SplitPaneProps {
   left: ReactNode
@@ -20,6 +20,20 @@ export function SplitPane({
   const [leftWidth, setLeftWidth] = useState(initialLeftWidth)
   const containerRef = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
+
+  // Clamp initial width once the container has measured
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const totalWidth = el.clientWidth
+    const dividerWidth = 4
+    const maxLeft = totalWidth - dividerWidth - minRightWidth
+    if (leftWidth > maxLeft) {
+      const clamped = Math.max(minLeftWidth, maxLeft)
+      setLeftWidth(clamped)
+      onResize?.(clamped)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMouseDown = useCallback(() => {
     dragging.current = true

@@ -193,7 +193,7 @@ function WorkspaceShell() {
             <SplitPane
               left={<ContentArea />}
               right={<TerminalPanel />}
-              initialLeftWidth={600}
+              initialLeftWidth={580}
               minLeftWidth={300}
               minRightWidth={320}
             />
@@ -215,13 +215,13 @@ function WorkspaceShell() {
 }
 
 export default function App() {
-  const { vaultPath, setVaultPath } = useVaultStore()
+  const { vaultPath, loadVault } = useVaultStore()
 
   const handleVaultSelected = useCallback(
     (path: string) => {
-      setVaultPath(path)
+      loadVault(path)
     },
-    [setVaultPath]
+    [loadVault]
   )
 
   return (
