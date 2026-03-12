@@ -1,0 +1,51 @@
+import { ipcMain, dialog } from 'electron'
+import { FileService } from '../services/file-service'
+import { teConfigPath, teStatePath } from '../utils/paths'
+import type { VaultConfig, VaultState } from '../../shared/types'
+
+const fileService = new FileService()
+
+export function registerFilesystemIpc(): void {
+  ipcMain.handle('fs:read-file', async (_e, args: { path: string }) => {
+    return fileService.readFile(args.path)
+  })
+
+  ipcMain.handle('fs:write-file', async (_e, args: { path: string; content: string }) => {
+    await fileService.writeFile(args.path, args.content)
+  })
+
+  ipcMain.handle('fs:delete-file', async (_e, args: { path: string }) => {
+    await fileService.deleteFile(args.path)
+  })
+
+  ipcMain.handle('fs:list-files', async (_e, args: { dir: string; pattern?: string }) => {
+    return fileService.listFiles(args.dir, args.pattern)
+  })
+
+  ipcMain.handle('fs:select-vault', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('vault:init', async (_e, args: { vaultPath: string }) => {
+    await fileService.initVault(args.vaultPath)
+  })
+
+  ipcMain.handle('vault:read-config', async (_e, args: { vaultPath: string }) => {
+    const content = await fileService.readFile(teConfigPath(args.vaultPath))
+    return JSON.parse(content) as VaultConfig
+  })
+
+  ipcMain.handle('vault:write-config', async (_e, args: { vaultPath: string; config: VaultConfig }) => {
+    await fileService.writeFile(teConfigPath(args.vaultPath), JSON.stringify(args.config, null, 2))
+  })
+
+  ipcMain.handle('vault:read-state', async (_e, args: { vaultPath: string }) => {
+    const content = await fileService.readFile(teStatePath(args.vaultPath))
+    return JSON.parse(content) as VaultState
+  })
+
+  ipcMain.handle('vault:write-state', async (_e, args: { vaultPath: string; state: VaultState }) => {
+    await fileService.writeFile(teStatePath(args.vaultPath), JSON.stringify(args.state, null, 2))
+  })
+}
