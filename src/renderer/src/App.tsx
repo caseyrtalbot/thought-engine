@@ -145,7 +145,10 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     label: 'Toggle Source/Rich Mode',
     category: 'command',
     shortcut: '\u2318/'
-  }
+  },
+  { id: 'cmd:open-settings', label: 'Open Settings', category: 'command' },
+  { id: 'cmd:reindex-vault', label: 'Re-index Vault', category: 'command' },
+  { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' }
 ]
 
 function WorkspaceShell() {
@@ -179,7 +182,8 @@ function WorkspaceShell() {
     const noteItems: CommandItem[] = files.map((f) => ({
       id: `note:${f.path}`,
       label: f.title,
-      category: 'note'
+      category: 'note',
+      folderPath: f.path.split('/').slice(0, -1).join('/')
     }))
     return [...noteItems, ...BUILT_IN_COMMANDS]
   }, [files])
@@ -194,9 +198,15 @@ function WorkspaceShell() {
         toggleView()
       } else if (item.id === 'cmd:toggle-mode') {
         toggleSourceMode()
+      } else if (item.id === 'cmd:open-settings') {
+        setSettingsOpen(true)
+      } else if (item.id === 'cmd:reindex-vault') {
+        // TODO: trigger vault re-index
+      } else if (item.id === 'cmd:zoom-to-fit') {
+        // TODO: trigger graph zoom-to-fit
       }
     },
-    [setActiveNote, setContentView, toggleView, toggleSourceMode]
+    [setActiveNote, setContentView, toggleView, toggleSourceMode, setSettingsOpen]
   )
 
   return (
