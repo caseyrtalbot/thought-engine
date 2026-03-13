@@ -1,6 +1,9 @@
 import { ipcMain } from 'electron'
-import Store from 'electron-store'
+import StoreModule from 'electron-store'
 
+// electron-store v11+ is ESM-only; when bundled as CJS the default
+// export lands on .default.  Handle both cases for safety.
+const Store = (StoreModule as any).default ?? StoreModule
 const appStore = new Store({ name: 'thought-engine-settings' })
 
 export function registerConfigIpc(): void {
