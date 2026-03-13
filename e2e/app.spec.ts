@@ -112,10 +112,11 @@ test.describe('Workspace with Test Vault', () => {
     await app.evaluate(async ({ BrowserWindow }, vaultPath) => {
       const win = BrowserWindow.getAllWindows()[0]
       if (win) {
+        const escapedPath = JSON.stringify(vaultPath)
         win.webContents.executeJavaScript(`
             (async () => {
               // Set lastVaultPath so the app loads our test vault
-              await window.api.config.write('app', 'lastVaultPath', '${vaultPath}')
+              await window.api.config.write('app', 'lastVaultPath', ${escapedPath})
               // Reload to pick up the vault
               location.reload()
             })()
@@ -334,9 +335,10 @@ test.describe('Aesthetic Diagnostics', () => {
     await app.evaluate(async ({ BrowserWindow }, vaultPath) => {
       const win = BrowserWindow.getAllWindows()[0]
       if (win) {
+        const escapedPath = JSON.stringify(vaultPath)
         win.webContents.executeJavaScript(`
             (async () => {
-              await window.api.config.write('app', 'lastVaultPath', '${vaultPath}')
+              await window.api.config.write('app', 'lastVaultPath', ${escapedPath})
               location.reload()
             })()
           `)
