@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -6,6 +6,7 @@ import { SearchAddon } from '@xterm/addon-search'
 import { useTerminalStore } from '../../store/terminal-store'
 import { useVaultStore } from '../../store/vault-store'
 import { TerminalTabs } from './TerminalTabs'
+import { generateClaudeMd } from '../../engine/claude-md-template'
 import { colors } from '../../design/tokens'
 import 'xterm/css/xterm.css'
 
@@ -54,7 +55,7 @@ export function TerminalPanel() {
       fontFamily: '"JetBrains Mono", monospace',
       fontSize: termFontSize,
       theme: {
-        background: colors.bg.base,
+        background: colors.bg.surface,
         foreground: colors.text.primary,
         cursor: colors.accent.default,
         selectionBackground: colors.accent.muted
@@ -85,6 +86,41 @@ export function TerminalPanel() {
   const handleNewTab = useCallback(() => {
     createTerminalInstance()
   }, [createTerminalInstance])
+
+  const claudeSessionActive = useMemo(
+    () => sessions.some((s) => s.title.toLowerCase().includes('claude')),
+    [sessions]
+  )
+
+  const handleActivateClaude = useCallback(async () => {
+    if (!vaultPath) return
+
+    // If Claude session already exists, just switch to it
+    const existing = sessions.find((s) => s.title.toLowerCase().includes('claude'))
+    if (existing) {
+      useTerminalStore.getState().setActiveSession(existing.id)
+      return
+    }
+
+    // Ensure CLAUDE.md exists in the vault
+    const claudeMdPath = `${vaultPath}/CLAUDE.md`
+    const exists = await window.api.fs.fileExists(claudeMdPath)
+    if (!exists) {
+      const vaultName = vaultPath.split('/').pop() ?? 'Vault'
+      await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
+    }
+
+    // Create a new terminal and launch Claude
+    const sessionId = await createTerminalInstance()
+    if (!sessionId) return
+
+    useTerminalStore.getState().renameSession(sessionId, 'Claude')
+
+    // Wait briefly for shell init, then launch Claude CLI
+    setTimeout(() => {
+      window.api.terminal.write(sessionId, 'claude\n')
+    }, 50)
+  }, [vaultPath, sessions, createTerminalInstance])
 
   // Mount/unmount terminal DOM when active session changes
   useEffect(() => {
@@ -234,12 +270,14 @@ export function TerminalPanel() {
   }, [])
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full flex flex-col"
-      style={{ backgroundColor: colors.bg.base }}
-    >
-      <TerminalTabs onNewTab={handleNewTab} onCloseTab={handleCloseTab} />
+    <div ref={containerRef} className="h-full flex flex-col">
+      <TerminalTabs
+        onNewTab={handleNewTab}
+        onCloseTab={handleCloseTab}
+        onActivateClaude={handleActivateClaude}
+        claudeSessionActive={claudeSessionActive}
+        vaultPath={vaultPath}
+      />
 
       {/* Search bar */}
       {searchOpen && (

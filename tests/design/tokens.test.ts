@@ -5,24 +5,26 @@ import {
   typeScale,
   borderRadius,
   transitions,
-  animations
+  animations,
+  visualLanguage
 } from '../../src/renderer/src/design/tokens'
 
 describe('design tokens', () => {
   it('has all background layers', () => {
-    expect(colors.bg.base).toBe('#0A0A0B')
-    expect(colors.bg.surface).toBe('#111113')
-    expect(colors.bg.elevated).toBe('#1A1A1D')
-    expect(colors.border.default).toBe('#2A2A2E')
+    expect(colors.bg.base).toBe('#0c0e14')
+    expect(colors.bg.surface).toBe('#141620')
+    expect(colors.bg.elevated).toBe('#1c1f2e')
+    expect(colors.border.default).toBe('#252a3a')
+    expect(colors.border.subtle).toBe('rgba(255, 255, 255, 0.08)')
   })
 
   it('has artifact type colors for all types', () => {
-    expect(ARTIFACT_COLORS.gene).toBe('#6C63FF')
-    expect(ARTIFACT_COLORS.constraint).toBe('#EF4444')
-    expect(ARTIFACT_COLORS.research).toBe('#2DD4BF')
-    expect(ARTIFACT_COLORS.output).toBe('#EC4899')
-    expect(ARTIFACT_COLORS.note).toBe('#8B8B8E')
-    expect(ARTIFACT_COLORS.index).toBe('#38BDF8')
+    expect(ARTIFACT_COLORS.gene).toBe('#22d3ee')
+    expect(ARTIFACT_COLORS.constraint).toBe('#ef4444')
+    expect(ARTIFACT_COLORS.research).toBe('#a78bfa')
+    expect(ARTIFACT_COLORS.output).toBe('#f472b6')
+    expect(ARTIFACT_COLORS.note).toBe('#64748b')
+    expect(ARTIFACT_COLORS.index).toBe('#38bdf8')
   })
 
   it('has no color collisions between artifact types and semantic colors', () => {
@@ -52,7 +54,14 @@ describe('extended design tokens', () => {
   it('has border-radius constants', () => {
     expect(borderRadius.container).toBe(6)
     expect(borderRadius.inline).toBe(4)
+    expect(borderRadius.card).toBe(8)
     expect(borderRadius.round).toBe('50%')
+  })
+
+  it('has visual language tokens', () => {
+    expect(visualLanguage.panelGap).toBe(4)
+    expect(visualLanguage.cardRadius).toBe(8)
+    expect(visualLanguage.borderSubtle).toBe('rgba(255, 255, 255, 0.08)')
   })
 
   it('has transition timing constants', () => {

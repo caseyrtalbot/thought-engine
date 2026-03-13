@@ -36,16 +36,22 @@ body {
   --transition-settings-slide: 250ms ease-out;
   --transition-modal-fade: 200ms ease-in;
   --transition-command-palette: 150ms ease-out;
-  --color-bg-base: #0A0A0B;
-  --color-bg-surface: #111113;
-  --color-bg-elevated: #1A1A1D;
-  --color-border-default: #2A2A2E;
-  --color-text-primary: #EDEDEF;
-  --color-text-secondary: #8B8B8E;
-  --color-text-muted: #5A5A5E;
-  --color-accent-default: #6C63FF;
-  --color-accent-hover: #7B73FF;
-  --color-accent-muted: rgba(108, 99, 255, 0.12);
+  --color-bg-base: #0c0e14;
+  --color-bg-surface: #141620;
+  --color-bg-elevated: #1c1f2e;
+  --color-border-default: #252a3a;
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #3b4563;
+  --color-accent-default: #00e5bf;
+  --color-accent-hover: #33eece;
+  --color-accent-muted: rgba(0, 229, 191, 0.10);
+
+  /* ── Visual Language ── */
+  --panel-gap: 4px;
+  --card-radius: 8px;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --neon-glow: 0 0 8px rgba(0, 229, 191, 0.12);
 }
 
 @media (resolution < 2dppx) {
@@ -67,9 +73,15 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--color-bg-elevated); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-border-default); }
 
-.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.3); }
+.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(0, 229, 191, 0.3); }
 .interactive-hover { transition: background-color var(--transition-hover); }
 .interactive-hover:hover { background-color: var(--color-bg-elevated); }
+
+.panel-card {
+  background: var(--color-bg-surface);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
 
 .panel-separator-h {
   width: 1px;
@@ -329,7 +341,7 @@ body {
 }
 
 .ProseMirror a[href^="wikilink:"]:hover {
-  background-color: rgba(108, 99, 255, 0.2);
+  background-color: rgba(0, 229, 191, 0.15);
   text-decoration: none;
 }
 

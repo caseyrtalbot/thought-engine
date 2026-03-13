@@ -44,7 +44,7 @@ function ContentArea() {
   )
 
   return (
-    <div className="h-full relative">
+    <div className="h-full relative panel-card">
       <GraphControls />
       {contentView === 'graph' && <GraphPanel onNodeClick={handleNodeClick} />}
       {contentView === 'editor' && <EditorPanel onNavigate={handleNavigate} />}
@@ -257,7 +257,8 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   },
   { id: 'cmd:open-settings', label: 'Open Settings', category: 'command' },
   { id: 'cmd:reindex-vault', label: 'Re-index Vault', category: 'command' },
-  { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' }
+  { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' },
+  { id: 'cmd:activate-claude', label: 'Activate Claude', category: 'command' }
 ]
 
 function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
@@ -340,12 +341,14 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
     >
       <Titlebar vaultName={vaultName} onOpenSettings={() => setSettingsOpen(true)} />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{ padding: 'var(--panel-gap)' }}>
         <SplitPane
           left={
-            <PanelErrorBoundary name="Sidebar">
-              <ConnectedSidebar />
-            </PanelErrorBoundary>
+            <div className="panel-card h-full">
+              <PanelErrorBoundary name="Sidebar">
+                <ConnectedSidebar />
+              </PanelErrorBoundary>
+            </div>
           }
           right={
             <SplitPane
@@ -355,9 +358,11 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
                 </PanelErrorBoundary>
               }
               right={
-                <PanelErrorBoundary name="Terminal">
-                  <TerminalPanel />
-                </PanelErrorBoundary>
+                <div className="panel-card h-full">
+                  <PanelErrorBoundary name="Terminal">
+                    <TerminalPanel />
+                  </PanelErrorBoundary>
+                </div>
               }
               initialLeftWidth={580}
               minLeftWidth={300}

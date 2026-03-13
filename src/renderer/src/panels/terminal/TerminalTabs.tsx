@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTerminalStore } from '../../store/terminal-store'
 import { colors } from '../../design/tokens'
+import { ClaudeActivateButton } from './ClaudeActivateButton'
 
 const STATUS_DOT_SHELL = colors.semantic.cluster
-const STATUS_DOT_AGENT = '#A78BFA'
+const STATUS_DOT_AGENT = '#00e5bf'
 
 function sessionDotColor(title: string): string {
   return title.toLowerCase().includes('claude') ? STATUS_DOT_AGENT : STATUS_DOT_SHELL
@@ -12,9 +13,18 @@ function sessionDotColor(title: string): string {
 interface TerminalTabsProps {
   onNewTab: () => void
   onCloseTab: (sessionId: string) => void
+  onActivateClaude: () => void
+  claudeSessionActive: boolean
+  vaultPath: string | null
 }
 
-export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
+export function TerminalTabs({
+  onNewTab,
+  onCloseTab,
+  onActivateClaude,
+  claudeSessionActive,
+  vaultPath
+}: TerminalTabsProps) {
   const { sessions, activeSessionId, setActiveSession, renameSession } = useTerminalStore()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -50,8 +60,12 @@ export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
 
   return (
     <div
-      className="flex items-center h-8 border-b overflow-x-auto"
-      style={{ backgroundColor: colors.bg.surface, borderColor: colors.border.default }}
+      className="flex items-center overflow-x-auto gap-1"
+      style={{
+        height: 40,
+        padding: '4px 8px 4px',
+        borderBottom: `1px solid ${colors.border.subtle}`
+      }}
     >
       {sessions.map((session) => {
         const isActive = session.id === activeSessionId
@@ -61,11 +75,18 @@ export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
           <div
             key={session.id}
             onClick={() => setActiveSession(session.id)}
-            className="flex items-center gap-1 px-3 py-1 text-xs cursor-pointer border-r transition-colors"
+            className="flex items-center gap-1.5 cursor-pointer group"
             style={{
-              borderColor: colors.border.default,
-              backgroundColor: isActive ? colors.bg.elevated : 'transparent',
-              color: isActive ? colors.text.primary : colors.text.secondary
+              padding: '4px 12px',
+              fontSize: 12,
+              borderRadius: 6,
+              border: isActive
+                ? '1px solid rgba(0, 229, 191, 0.3)'
+                : '1px solid rgba(255, 255, 255, 0.06)',
+              backgroundColor: isActive ? 'rgba(0, 229, 191, 0.06)' : 'transparent',
+              boxShadow: isActive ? '0 0 8px rgba(0, 229, 191, 0.08)' : 'none',
+              color: isActive ? colors.text.primary : colors.text.secondary,
+              transition: '150ms ease-out'
             }}
           >
             {/* Status dot */}
@@ -104,17 +125,21 @@ export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
               </span>
             )}
 
-            {/* Close button: hidden when only one tab */}
+            {/* Close button: visible on hover only */}
             {sessions.length > 1 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   onCloseTab(session.id)
                 }}
-                className="ml-1 hover:text-white"
-                style={{ color: colors.text.muted }}
+                className="opacity-0 group-hover:opacity-100"
+                style={{
+                  color: colors.text.muted,
+                  fontSize: 11,
+                  transition: '150ms ease-out'
+                }}
               >
-                x
+                ×
               </button>
             )}
           </div>
@@ -127,6 +152,14 @@ export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
       >
         +
       </button>
+      <div className="flex-1" />
+      <div className="px-2">
+        <ClaudeActivateButton
+          onClick={onActivateClaude}
+          isActive={claudeSessionActive}
+          disabled={!vaultPath}
+        />
+      </div>
     </div>
   )
 }

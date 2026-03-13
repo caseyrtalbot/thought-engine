@@ -70,9 +70,9 @@ export function StatusBar() {
     <div
       className="h-6 flex items-center px-3 text-[11px] border-t flex-shrink-0"
       style={{
-        backgroundColor: colors.bg.surface,
+        backgroundColor: colors.bg.base,
         color: colors.text.muted,
-        borderColor: colors.border.default
+        borderColor: colors.border.subtle
       }}
     >
       <div className="flex items-center flex-1">

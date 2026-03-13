@@ -205,10 +205,7 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   // Empty state - only show when no file is selected
   if (!activeNotePath) {
     return (
-      <div
-        className="h-full flex items-center justify-center"
-        style={{ backgroundColor: colors.bg.base, color: colors.text.muted }}
-      >
+      <div className="h-full flex items-center justify-center" style={{ color: colors.text.muted }}>
         <div className="text-center">
           <p className="text-lg mb-2">No note selected</p>
           <p className="text-sm">Select a note from the sidebar or press Cmd+N to create one</p>
@@ -221,13 +218,8 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   const resolvedVaultPath = vaultPath ?? ''
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.base }}>
-      <TabBar
-        tabs={openTabs}
-        activePath={activeNotePath}
-        onSwitch={switchTab}
-        onClose={closeTab}
-      />
+    <div className="h-full flex flex-col">
+      <TabBar tabs={openTabs} activePath={activeNotePath} onSwitch={switchTab} onClose={closeTab} />
 
       <EditorBreadcrumb
         filePath={filePath}

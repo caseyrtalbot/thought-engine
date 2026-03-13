@@ -11,8 +11,8 @@ export function Titlebar({ vaultName, onOpenSettings }: TitlebarProps) {
       className="h-[38px] flex items-center px-3 select-none flex-shrink-0"
       style={
         {
-          backgroundColor: colors.bg.surface,
-          borderBottom: `1px solid ${colors.border.default}`,
+          backgroundColor: colors.bg.base,
+          borderBottom: `1px solid ${colors.border.subtle}`,
           WebkitAppRegion: 'drag'
         } as React.CSSProperties
       }

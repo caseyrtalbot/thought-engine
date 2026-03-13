@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import type { SimNode, SimEdge } from './GraphRenderer'
-import { ARTIFACT_COLORS, colors } from '../../design/tokens'
+import { getArtifactColor, colors } from '../../design/tokens'
 
 interface GraphMinimapProps {
   nodes: readonly SimNode[]
@@ -15,9 +15,9 @@ const MINIMAP_WIDTH = 120
 const MINIMAP_HEIGHT = 80
 const MINIMAP_PADDING = 8
 const NODE_DOT_SIZE = 2
-const VIEWPORT_RECT_COLOR = 'rgba(108, 99, 255, 0.5)'
-const VIEWPORT_RECT_BORDER = 'rgba(108, 99, 255, 0.8)'
-const MINIMAP_BG = 'rgba(17, 17, 19, 0.85)'
+const VIEWPORT_RECT_COLOR = 'rgba(0, 229, 191, 0.25)'
+const VIEWPORT_RECT_BORDER = 'rgba(0, 229, 191, 0.5)'
+const MINIMAP_BG = 'rgba(12, 14, 20, 0.85)'
 
 interface GraphBounds {
   minX: number
@@ -136,7 +136,7 @@ export function GraphMinimap({
 
       const mx = toMinimapX(node.x)
       const my = toMinimapY(node.y)
-      const color = ARTIFACT_COLORS[node.type] ?? ARTIFACT_COLORS.note
+      const color = getArtifactColor(node.type)
 
       ctx.fillStyle = color
       ctx.fillRect(mx - NODE_DOT_SIZE / 2, my - NODE_DOT_SIZE / 2, NODE_DOT_SIZE, NODE_DOT_SIZE)

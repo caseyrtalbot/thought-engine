@@ -7,7 +7,7 @@ import {
   type Simulation
 } from 'd3-force'
 import type { GraphNode, RelationshipKind } from '@shared/types'
-import { ARTIFACT_COLORS, colors, animations } from '../../design/tokens'
+import { getArtifactColor, colors, animations } from '../../design/tokens'
 import { SIGNAL_OPACITY } from '@shared/types'
 import { GlowSpriteCache, drawGlowSprite } from './glowSprites'
 import type { HighlightState } from './useGraphHighlight'
@@ -275,7 +275,7 @@ export function renderGraph(
   // Stage 1: Clear + background
   const t0 = performance.now()
   ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = colors.bg.base
+  ctx.fillStyle = colors.bg.surface
   ctx.fillRect(0, 0, width, height)
 
   // Stage 2: Compute highlight context
@@ -366,7 +366,7 @@ export function renderGraph(
     if (!isNodeInView(node, cullBounds)) continue
 
     const r = computeNodeRadius(node, sizeConfig)
-    const color = ARTIFACT_COLORS[node.type] ?? ARTIFACT_COLORS.note
+    const color = getArtifactColor(node.type)
     const opacity = SIGNAL_OPACITY[node.signal] ?? 0.4
     const isSelected = node.id === selectedId
     const isHovered = node.id === hoveredId

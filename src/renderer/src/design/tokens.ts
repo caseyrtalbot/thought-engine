@@ -1,23 +1,24 @@
-import type { ArtifactType } from '@shared/types'
+import type { BuiltInArtifactType } from '@shared/types'
 
 export const colors = {
   bg: {
-    base: '#0A0A0B',
-    surface: '#111113',
-    elevated: '#1A1A1D'
+    base: '#0c0e14',
+    surface: '#141620',
+    elevated: '#1c1f2e'
   },
   border: {
-    default: '#2A2A2E'
+    default: '#252a3a',
+    subtle: 'rgba(255, 255, 255, 0.08)'
   },
   text: {
-    primary: '#EDEDEF',
-    secondary: '#8B8B8E',
-    muted: '#5A5A5E'
+    primary: '#e2e8f0',
+    secondary: '#64748b',
+    muted: '#3b4563'
   },
   accent: {
-    default: '#6C63FF',
-    hover: '#7B73FF',
-    muted: 'rgba(108, 99, 255, 0.12)'
+    default: '#00e5bf',
+    hover: '#33eece',
+    muted: 'rgba(0, 229, 191, 0.10)'
   },
   semantic: {
     cluster: '#34D399',
@@ -25,18 +26,24 @@ export const colors = {
   }
 } as const
 
-export const ARTIFACT_COLORS: Record<ArtifactType, string> = {
-  gene: '#6C63FF',
-  constraint: '#EF4444',
-  research: '#2DD4BF',
-  output: '#EC4899',
-  note: '#8B8B8E',
-  index: '#38BDF8'
+export const ARTIFACT_COLORS: Record<BuiltInArtifactType, string> = {
+  gene: '#22d3ee',
+  constraint: '#ef4444',
+  research: '#a78bfa',
+  output: '#f472b6',
+  note: '#64748b',
+  index: '#38bdf8'
+}
+
+export const DEFAULT_ARTIFACT_COLOR = '#64748b'
+
+export function getArtifactColor(type: string): string {
+  return (ARTIFACT_COLORS as Record<string, string>)[type] ?? DEFAULT_ARTIFACT_COLOR
 }
 
 export const spacing = {
   unit: 4,
-  panelGap: 1,
+  panelGap: 4,
   contentPadX: 32,
   contentPadY: 24,
   sidebarWidth: 260,
@@ -84,7 +91,21 @@ export const typeScale = {
   minSize: '12px'
 } as const
 
-export const borderRadius = { container: 6, inline: 4, round: '50%' } as const
+export const borderRadius = { container: 6, inline: 4, card: 8, round: '50%' } as const
+
+/* ── Visual Language ──────────────────────────────────────────────────────
+ * Named tokens for the floating-card panel aesthetic.
+ * Use these in CSS via var(--panel-gap), var(--card-radius), var(--border-subtle).
+ *
+ * Panels render as cards inset from the app chrome and each other by --panel-gap.
+ * Depth comes from background-contrast (surface on base), not drop shadows.
+ * Tab bars use --border-subtle for their 1px bottom separator.
+ */
+export const visualLanguage = {
+  panelGap: 4,
+  cardRadius: 8,
+  borderSubtle: 'rgba(255, 255, 255, 0.08)'
+} as const
 
 export const animations = {
   graphNodeHoverGlow: '200ms ease-out',
