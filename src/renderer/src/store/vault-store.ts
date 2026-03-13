@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
-import { VaultIndex } from '../engine/indexer'
+
+interface ParseError { filename: string; error: string }
 
 interface VaultFile {
   path: string
@@ -14,7 +15,10 @@ interface VaultStore {
   config: VaultConfig | null
   state: VaultState | null
   files: VaultFile[]
-  index: VaultIndex
+  artifacts: Artifact[]
+  graph: KnowledgeGraph
+  parseErrors: ParseError[]
+  fileToId: Record<string, string>
   activeWorkspace: string | null
   isLoading: boolean
 
@@ -24,17 +28,18 @@ interface VaultStore {
   setFiles: (files: VaultFile[]) => void
   setActiveWorkspace: (workspace: string | null) => void
   loadVault: (vaultPath: string) => Promise<void>
-  getGraph: () => KnowledgeGraph
-  getArtifact: (id: string) => Artifact | undefined
-  search: (query: string) => Artifact[]
+  setWorkerResult: (result: { artifacts: Artifact[]; graph: KnowledgeGraph; errors: ParseError[]; fileToId: Record<string, string> }) => void
 }
 
-export const useVaultStore = create<VaultStore>((set, get) => ({
+export const useVaultStore = create<VaultStore>((set) => ({
   vaultPath: null,
   config: null,
   state: null,
   files: [],
-  index: new VaultIndex(),
+  artifacts: [],
+  graph: { nodes: [], edges: [] },
+  parseErrors: [],
+  fileToId: {},
   activeWorkspace: null,
   isLoading: false,
 
@@ -46,42 +51,30 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
   loadVault: async (vaultPath: string) => {
     set({ isLoading: true })
-    const index = new VaultIndex()
-
     try {
-      // Read config
       const config = await window.api.vault.readConfig(vaultPath)
       const state = await window.api.vault.readState(vaultPath)
-
-      // List all .md files recursively
       const filePaths = await window.api.fs.listFilesRecursive(vaultPath)
-
-      // Read and parse each file
-      const files: VaultFile[] = []
-      for (const filePath of filePaths) {
-        const content = await window.api.fs.readFile(filePath)
+      const files: VaultFile[] = filePaths.map((filePath) => {
         const filename = filePath.split('/').pop() ?? filePath
-        index.addFile(filePath, content)
-
-        const id = index.getIdForFile(filePath)
-        const artifact = id ? index.getArtifact(id) : undefined
-
-        files.push({
+        return {
           path: filePath,
           filename,
-          title: artifact?.title ?? filename.replace(/\.md$/, ''),
-          modified: artifact?.modified ?? new Date().toISOString().split('T')[0]
-        })
-      }
-
-      set({ vaultPath, config, state, files, index, isLoading: false })
+          title: filename.replace(/\.md$/, ''),
+          modified: new Date().toISOString().split('T')[0],
+        }
+      })
+      set({ vaultPath, config, state, files, isLoading: false })
     } catch (err) {
       console.error('Failed to load vault:', err)
       set({ vaultPath, isLoading: false })
     }
   },
 
-  getGraph: () => get().index.getGraph(),
-  getArtifact: (id) => get().index.getArtifact(id),
-  search: (query) => get().index.search(query)
+  setWorkerResult: (result) => set({
+    artifacts: result.artifacts,
+    graph: result.graph,
+    parseErrors: result.errors,
+    fileToId: result.fileToId,
+  }),
 }))

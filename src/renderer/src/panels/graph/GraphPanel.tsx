@@ -23,7 +23,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
   const edgesRef = useRef<SimEdge[]>([])
   const transformRef = useRef({ x: 0, y: 0, k: 1 })
 
-  const { getGraph } = useVaultStore()
+  const graph = useVaultStore((s) => s.graph)
   const { selectedNodeId, hoveredNodeId, setSelectedNode, setHoveredNode } = useGraphStore()
 
   const render = useCallback(() => {
@@ -53,7 +53,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const graph = getGraph()
     const nodes: SimNode[] = graph.nodes.map((n) => ({
       ...n,
       x: Math.random() * canvas.width,
@@ -86,7 +85,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       sim?.stop()
       selection.on('.zoom', null)
     }
-  }, [getGraph, render])
+  }, [graph, render])
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -136,7 +135,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     return () => observer.disconnect()
   }, [render])
 
-  const graph = getGraph()
   const isEmpty = graph.nodes.length === 0
 
   return (

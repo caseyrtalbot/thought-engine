@@ -10,10 +10,15 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ onNavigate }: EditorPanelProps) {
-  const { activeNoteId, mode, content, setMode, setContent } = useEditorStore()
-  const { getArtifact } = useVaultStore()
+  const activeNoteId = useEditorStore((s) => s.activeNoteId)
+  const mode = useEditorStore((s) => s.mode)
+  const content = useEditorStore((s) => s.content)
+  const setMode = useEditorStore((s) => s.setMode)
+  const setContent = useEditorStore((s) => s.setContent)
 
-  const artifact = activeNoteId ? getArtifact(activeNoteId) : null
+  const artifact = useVaultStore((s) =>
+    activeNoteId ? s.artifacts.find((a) => a.id === activeNoteId) : null
+  )
 
   if (!artifact) {
     return (
