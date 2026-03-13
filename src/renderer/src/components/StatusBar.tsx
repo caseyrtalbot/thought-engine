@@ -34,9 +34,13 @@ interface GraphStatusProps {
 function GraphStatus({ nodeCount, edgeCount, selectedNodeName }: GraphStatusProps) {
   return (
     <>
-      <span>{nodeCount} nodes</span>
+      <span>
+        {nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}
+      </span>
       <span className="mx-2">&middot;</span>
-      <span>{edgeCount} edges</span>
+      <span>
+        {edgeCount} {edgeCount === 1 ? 'edge' : 'edges'}
+      </span>
       {selectedNodeName && (
         <>
           <span className="mx-2">&middot;</span>
@@ -78,7 +82,9 @@ export function StatusBar() {
       <div className="flex items-center flex-1">
         <span>{vaultName}</span>
         <span className="mx-2">&middot;</span>
-        <span>{fileCount} notes</span>
+        <span>
+          {fileCount} {fileCount === 1 ? 'note' : 'notes'}
+        </span>
       </div>
       <div className="flex items-center">
         {contentView === 'editor' && (
