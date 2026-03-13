@@ -1,7 +1,7 @@
 # Thought Engine UI Redesign: Design Specification
 
 **Date**: 2026-03-12
-**Status**: V3 (incorporates deep architectural review)
+**Status**: V4 (incorporates code-level review and architecture fixes)
 **Project**: `/Users/caseytalbot/Projects/thought-engine/`
 
 ## Product Vision
@@ -175,6 +175,8 @@ Four existing stores (`vault-store`, `editor-store`, `graph-store`, `terminal-st
 2. **Selector granularity**: always select the narrowest slice needed. `useGraphStore(s => s.contentView)` not `useGraphStore()`. This prevents re-renders when unrelated state changes.
 3. **Derived data in components or hooks, not stores.** The adjacency list for hover highlighting lives in `useGraphHighlight.ts` (a hook), not in `graph-store`. Stores hold raw state; hooks and components compute derived state.
 4. **Actions that span stores go through event handlers in components**, not through store-to-store coupling. Example: double-clicking a graph node updates `graph-store.contentView` to `'editor'` AND `editor-store.activeFile` to the clicked file. The `GraphPanel` click handler calls both actions, not a single action that reaches into both stores.
+5. **No class instances in store state.** Stores hold plain serializable data (primitives, arrays, plain objects). The current `index: VaultIndex` in vault-store violates this and is fixed in Phase 1 (see Pre-Existing Code Issues #6). After the fix, vault-store holds `artifacts: Artifact[]` and `graph: KnowledgeGraph` as plain data.
+6. **No method-style getters on stores.** The current `getGraph()` and `getArtifact()` on vault-store force full-store subscriptions. After Phase 1, these become selectable state fields: `useVaultStore(s => s.graph)` and `useVaultStore(s => s.artifacts.find(a => a.id === id))`.
 
 ### Testing Strategy
 
@@ -228,6 +230,76 @@ When the terminal agent writes to a file the user has open in the editor:
    - "Keep my changes" dismisses the notification; the user's version wins until they save (at which point their version overwrites the agent's)
 
 This is the minimum viable conflict resolution. No merge, no diff view. The notification is the key, so the user knows something changed.
+
+### Pre-Existing Code Issues
+
+Bugs in the current V1 codebase that must be fixed during the redesign. These are not new features; they are correctness fixes that would cause data loss or subtle breakage if carried forward.
+
+**1. RichEditor destroys markdown on save** (`src/renderer/src/panels/editor/RichEditor.tsx:16`):
+`onChange(editor.getText())` returns plain text, stripping all formatting. Every save from rich mode silently converts the file to unformatted text. Fix: install `@tiptap/pm` markdown serializer (or `tiptap-markdown` extension) and serialize to markdown instead of calling `getText()`. This is a Phase 1 fix because the editor is useless without it.
+
+**2. SourceEditor stale closure** (`src/renderer/src/panels/editor/SourceEditor.tsx:19-52`):
+The `useEffect` with empty deps `[]` captures the initial `onChange` callback in the `EditorView.updateListener.of` closure. If `onChange` identity changes (which it does when Zustand re-renders), the editor calls the stale version. Fix: store `onChange` in a `useRef` and read from the ref in the listener, or use CodeMirror's `compartment` API to reconfigure the listener.
+
+**3. SplitPane mouse handler leak** (`src/renderer/src/design/components/SplitPane.tsx:38-63`):
+If the component unmounts mid-drag (e.g., hot reload, error boundary catch), the `mousemove` and `mouseup` listeners on `document` are never removed. Fix: track the handlers in refs and clean up in the component's `useEffect` return.
+
+**4. Terminal tab close doesn't kill the PTY**:
+`TerminalPanel.tsx` stores terminal instances in a `Map<string, TerminalInstance>` (not a single ref). Terminals are disposed on `terminal:exit` events, but closing a tab via the UI only calls `removeSession` on the store. The PTY process continues running. Fix: when closing a tab, call `terminal:kill` for that session and `terminal.dispose()` on the xterm instance.
+
+**5. VaultIndex blocks the UI thread**:
+The knowledge engine (`src/renderer/src/engine/`) runs gray-matter parsing in the renderer process. On large vaults (500+ files), this blocks the UI during initial load and during watcher-triggered re-parses. Phase 1 fix: move `VaultIndex`, `parser.ts`, and `graph-builder.ts` to a Web Worker. The worker receives file content, parses it, builds the graph, and posts the result back. The vault-store receives the built `KnowledgeGraph` and `Artifact[]` as plain data (no class instance in the store). This also fixes issue #6 below.
+
+**6. VaultIndex mutable class in Zustand state** (`src/renderer/src/store/vault-store.ts:39`):
+`index: new VaultIndex()` stores a mutable class instance in Zustand. Internal `Map` mutations don't trigger re-renders because the object reference doesn't change. The current code works around this by creating a new `VaultIndex()` on every `loadVault`, but incremental updates from the watcher would silently fail. Fix: with the Web Worker migration (issue #5), the store holds plain serializable data (`artifacts: Artifact[]`, `graph: KnowledgeGraph`) instead of a class instance. Zustand detects changes normally via referential equality on the data arrays.
+
+**7. getGraph()/getArtifact() are methods, not selectors** (`src/renderer/src/store/vault-store.ts:88-90`):
+`getGraph: () => get().index.getGraph()` and `getArtifact: (id) => get().index.getArtifact(id)` are store methods. Any component calling `useVaultStore().getGraph()` (without a selector) subscribes to the entire store and re-renders on every state change. Fix: with the Web Worker migration, `graph` becomes a plain state field. Components select it directly: `useVaultStore(s => s.graph)`.
+
+### Vault Loading Orchestration
+
+The critical startup path is currently implicit. Phase 1 makes it explicit:
+
+1. App mounts, renders loading skeleton
+2. Check for saved vault path in app-level settings (electron-store)
+3. If no vault path: show welcome screen (vault selector)
+4. If vault path exists: begin load sequence:
+   a. `vault:init` (ensure `.thought-engine/` directory exists)
+   b. `vault:read-config` and `vault:read-state` (hydrate config and session state)
+   c. `vault:watch-start` (start chokidar watcher)
+   d. `fs:list-files-recursive` (get all .md file paths)
+   e. Post file paths + contents to Web Worker for parsing
+   f. Worker returns: `Artifact[]`, `KnowledgeGraph`, parse errors
+   g. Hydrate vault-store with artifacts, graph, files
+   h. Hydrate remaining stores from session state (panel sizes, content view, selected node)
+   i. Render app with restored state
+5. Watcher begins delivering incremental `file-changed` events
+
+This sequence must be a single orchestration function (e.g., `loadVault()` in vault-store or a top-level `useVaultLoader` hook), not spread across multiple uncoordinated `useEffect` calls.
+
+### Autosave
+
+The editor tracks `isDirty` in editor-store but nothing flushes dirty content back to disk. Phase 2 (after the editor toolbar lands) implements autosave:
+
+- Debounced write-back: 1500ms after the last keystroke (not 500ms, which would hammer disk during fast typing)
+- Writes via `fs:write-file` IPC
+- On successful write: clear `isDirty`, update `modified` timestamp in vault-store
+- On failed write: keep `isDirty` true, log error, show subtle status bar indicator
+- Manual save: `Cmd+S` triggers immediate flush (skips debounce)
+- Save before close: if `isDirty` when switching files or closing editor, flush immediately
+
+### Integration Tests
+
+Extend the Testing Strategy with integration-level tests for the critical seams:
+
+| Seam | Test | Why |
+|---|---|---|
+| IPC round-trip | Main process handler receives correct args and returns expected shape | The typed allowlist means nothing if the handler signatures don't match |
+| Watcher → store → graph | Write a file to disk, verify watcher fires, vault-store updates, graph gains a node | This is the core reactive pipeline. If it breaks, the graph is dead. |
+| Editor → save → watcher → re-index | Edit content in editor, trigger save, verify watcher detects change, index updates | Autosave + watcher + re-index is a cycle. Must not infinite-loop or drop changes. |
+| File conflict resolution | External write to active dirty file triggers notification bar | The conflict path is hard to trigger manually. Needs an automated test. |
+
+These run against Electron's test utilities (`@electron/remote` or `electron-playwright`) or via mocked IPC in vitest.
 
 ## Phase 1: Foundation
 
@@ -297,7 +369,31 @@ The existing `SplitPane` component handles resizable dividers. The viewport is n
 
 **What stays the same**: all panel internals, all four Zustand stores (internal logic unchanged, persistence adapter swapped), all IPC handlers, existing tests.
 
-### 1E: Command Palette
+### 1E: Pre-Existing Bug Fixes
+
+Fix the confirmed bugs from the V1 codebase (see Pre-Existing Code Issues). These are Phase 1 because they affect data integrity:
+
+1. **RichEditor markdown serialization**: Replace `editor.getText()` with proper markdown serializer. Install `tiptap-markdown` extension. Without this, rich mode destroys formatting on every save.
+2. **SourceEditor stale closure**: Store `onChange` in a `useRef`, read from ref in the `EditorView.updateListener.of` callback.
+3. **SplitPane handler leak**: Track `mousemove`/`mouseup` handlers in refs, clean up in `useEffect` return.
+4. **Terminal tab close**: When closing a tab, call `terminal:kill` and `terminal.dispose()`. Don't leave orphaned PTY processes.
+
+### 1F: VaultIndex Web Worker Migration
+
+Move the knowledge engine (`parser.ts`, `graph-builder.ts`, `indexer.ts`) out of the renderer thread into a Web Worker. This fixes the UI-blocking parse, the mutable class-in-Zustand problem, and the method-style getter problem simultaneously.
+
+**Architecture**:
+- Create `src/renderer/src/engine/vault-worker.ts` (the Worker script)
+- Worker receives messages: `{ type: 'load', files: Array<{path, content}> }`, `{ type: 'update', path, content }`, `{ type: 'remove', path }`
+- Worker responds: `{ type: 'loaded', artifacts: Artifact[], graph: KnowledgeGraph, errors: ParseError[] }` or `{ type: 'updated', ... }` (same shape, incremental)
+- Create `src/renderer/src/engine/useVaultWorker.ts` hook that manages the Worker lifecycle and posts/receives messages
+- `vault-store` changes: remove `index: VaultIndex`, `getGraph()`, `getArtifact()`. Add `artifacts: Artifact[]`, `graph: KnowledgeGraph`, `parseErrors: ParseError[]` as plain state fields. Components select with `useVaultStore(s => s.graph)`.
+
+### 1G: Vault Loading Orchestration
+
+Implement the explicit startup sequence described in the Vault Loading Orchestration cross-cutting section. This is the critical path that wires everything together: vault selection, config/state hydration, watcher start, file parsing via Worker, and store hydration.
+
+### 1H: Command Palette
 
 Promoted from Phase 2 because it becomes the primary navigation tool. Users need fast file/command access from day one, not after the filesystem tree lands.
 
@@ -314,21 +410,28 @@ Promoted from Phase 2 because it becomes the primary navigation tool. Users need
 - Arrow keys to navigate, Enter to select
 - Palette dismisses on selection
 
-### 1F: Files (Phase 1 Total)
+### 1I: Files (Phase 1 Total)
 
 | Action | File |
 |--------|------|
 | Modify | `src/preload/index.ts` (typed channel allowlist) |
 | Create | `src/preload/api.d.ts` (TypeScript declarations for `window.api`) |
+| Modify | `src/shared/ipc-channels.ts` (add window:*, config:*, terminal:process-name channel types) |
 | Create | `src/renderer/src/components/Titlebar.tsx` |
 | Create | `src/renderer/src/components/SettingsModal.tsx` (stub) |
 | Create | `src/renderer/src/components/PanelErrorBoundary.tsx` |
 | Create | `src/renderer/src/lib/config-storage.ts` (IPC-backed Zustand storage adapter, with version migration support) |
 | Create | `src/main/ipc/config.ts` (config:read, config:write handlers) |
-| Modify | `src/shared/ipc-channels.ts` (add window:*, config:*, terminal:process-name channel types) |
+| Create | `src/renderer/src/engine/vault-worker.ts` (Web Worker for parsing) |
+| Create | `src/renderer/src/engine/useVaultWorker.ts` (Worker lifecycle hook) |
+| Modify | `src/renderer/src/store/vault-store.ts` (remove VaultIndex class, add plain state fields, Worker integration) |
+| Modify | `src/renderer/src/panels/editor/RichEditor.tsx` (markdown serialization fix) |
+| Modify | `src/renderer/src/panels/editor/SourceEditor.tsx` (stale closure fix) |
+| Modify | `src/renderer/src/design/components/SplitPane.tsx` (handler leak fix) |
+| Modify | `src/renderer/src/panels/terminal/TerminalPanel.tsx` (tab close kills PTY) |
 | Modify | `src/main/index.ts` (BrowserWindow config, register config IPC, workspace restore) |
 | Modify | `src/main/services/vault-watcher.ts` (configurable ignores) |
-| Modify | `src/renderer/src/App.tsx` (titlebar, error boundaries, layout, session hydration) |
+| Modify | `src/renderer/src/App.tsx` (titlebar, error boundaries, layout, vault loading orchestration) |
 | Modify | `src/renderer/src/design/components/CommandPalette.tsx` (fuzzy search, recent files, command prefix routing) |
 | Modify | All renderer IPC call sites (migrate to `window.api.*`) |
 
@@ -848,7 +951,7 @@ tension: '#F59E0B'
 
 ### File Inventory
 
-**New files (23)**:
+**New files (25)**:
 - `src/preload/api.d.ts` (TypeScript declarations for `window.api`)
 - `src/renderer/src/components/Titlebar.tsx`
 - `src/renderer/src/components/SettingsModal.tsx`
@@ -856,6 +959,8 @@ tension: '#F59E0B'
 - `src/renderer/src/components/PanelErrorBoundary.tsx`
 - `src/renderer/src/lib/config-storage.ts` (IPC-backed Zustand storage adapter with version migration)
 - `src/main/ipc/config.ts`
+- `src/renderer/src/engine/vault-worker.ts` (Web Worker for parsing/indexing)
+- `src/renderer/src/engine/useVaultWorker.ts` (Worker lifecycle hook)
 - `src/renderer/src/panels/sidebar/buildFileTree.ts`
 - `src/renderer/src/panels/graph/GraphSettingsPanel.tsx`
 - `src/renderer/src/panels/skills/SkillsPanel.tsx`
@@ -873,27 +978,31 @@ tension: '#F59E0B'
 - `src/renderer/src/store/graph-settings-store.ts`
 - `src/renderer/src/store/settings-store.ts`
 
-**Modified files (20)**:
+**Modified files (24)**:
 - `src/preload/index.ts` (typed IPC channel allowlist, remove blanket electronAPI)
 - `src/shared/ipc-channels.ts` (add window:*, config:*, terminal:process-name channel types)
 - `src/main/index.ts` (BrowserWindow config, config IPC registration, workspace restore)
 - `src/main/ipc/shell.ts` (expose PTY process name via terminal:process-name)
 - `src/main/services/vault-watcher.ts` (configurable ignores, expanded defaults)
-- `src/renderer/src/App.tsx` (titlebar, error boundaries, layout, session hydration, command palette wiring, migrate IPC calls in StatusBar)
-- `src/renderer/src/store/vault-store.ts` (migrate `window.electron.ipcRenderer` to `window.api.*`)
+- `src/renderer/src/App.tsx` (titlebar, error boundaries, layout, vault loading orchestration, command palette wiring)
+- `src/renderer/src/store/vault-store.ts` (remove VaultIndex class, add plain state fields, Worker integration, IPC migration)
+- `src/renderer/src/panels/editor/RichEditor.tsx` (markdown serialization: getText() → tiptap-markdown)
+- `src/renderer/src/panels/editor/SourceEditor.tsx` (fix stale closure in onChange callback)
+- `src/renderer/src/design/components/SplitPane.tsx` (fix mouse handler leak on unmount)
+- `src/renderer/src/panels/terminal/TerminalPanel.tsx` (tab close kills PTY, tab styling, rename, search, font zoom, IPC migration)
 - `src/renderer/src/panels/sidebar/FileTree.tsx` (hierarchy, folders, counts, inline rename, delete)
 - `src/renderer/src/panels/sidebar/Sidebar.tsx` (action bar, sort dropdown)
 - `src/renderer/src/panels/graph/GraphPanel.tsx` (settings, sizing, highlights, animation, minimap, loading state, keyboard, right-click, spatial transition)
 - `src/renderer/src/panels/graph/GraphRenderer.ts` (Canvas2D glow sprites, dimming, edge brightening, viewport culling, LOD, renderer interface)
 - `src/renderer/src/panels/graph/GraphControls.tsx` (Graph/Skills toggle, remove Editor button)
-- `src/renderer/src/panels/terminal/TerminalPanel.tsx` (tab styling, close guard, rename, search addon, font zoom, migrate IPC calls)
-- `src/renderer/src/panels/editor/EditorPanel.tsx` (toolbar, breadcrumb, frontmatter, backlinks, conflict notification bar)
+- `src/renderer/src/panels/editor/EditorPanel.tsx` (toolbar, breadcrumb, frontmatter, backlinks, conflict notification bar, autosave)
 - `src/renderer/src/design/components/CommandPalette.tsx` (fuzzy search, recent files, command routing)
 - `src/renderer/src/store/graph-store.ts` ('skills' in contentView)
 - `src/renderer/src/hooks/useKeyboard.ts` (updated Cmd+G cycle)
 - `src/renderer/src/design/tokens.ts` (type scale, animation constants)
 - `src/renderer/src/assets/index.css` (CSS custom properties, prefers-reduced-motion)
-- `src/renderer/src/engine/indexer.ts` (add `getBacklinks(id)` method)
+- `src/renderer/src/engine/indexer.ts` (add `getBacklinks(id)` method, used by Worker)
+- `src/shared/types.ts` (extend VaultState with session persistence fields)
 
 ## Constraints
 
