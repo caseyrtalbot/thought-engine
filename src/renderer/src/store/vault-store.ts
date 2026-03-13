@@ -2,8 +2,6 @@ import { create } from 'zustand'
 import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
 import { VaultIndex } from '../engine/indexer'
 
-const ipcRenderer = window.electron.ipcRenderer
-
 interface VaultFile {
   path: string
   filename: string
@@ -52,18 +50,16 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
     try {
       // Read config
-      const config: VaultConfig = await ipcRenderer.invoke('vault:read-config', { vaultPath })
-      const state: VaultState = await ipcRenderer.invoke('vault:read-state', { vaultPath })
+      const config = await window.api.vault.readConfig(vaultPath)
+      const state = await window.api.vault.readState(vaultPath)
 
       // List all .md files recursively
-      const filePaths: string[] = await ipcRenderer.invoke('fs:list-files-recursive', {
-        dir: vaultPath
-      })
+      const filePaths = await window.api.fs.listFilesRecursive(vaultPath)
 
       // Read and parse each file
       const files: VaultFile[] = []
       for (const filePath of filePaths) {
-        const content: string = await ipcRenderer.invoke('fs:read-file', { path: filePath })
+        const content = await window.api.fs.readFile(filePath)
         const filename = filePath.split('/').pop() ?? filePath
         index.addFile(filePath, content)
 
