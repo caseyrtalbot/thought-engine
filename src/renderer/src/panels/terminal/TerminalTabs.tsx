@@ -3,10 +3,11 @@ import { colors } from '../../design/tokens'
 
 interface TerminalTabsProps {
   onNewTab: () => void
+  onCloseTab: (sessionId: string) => void
 }
 
-export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
-  const { sessions, activeSessionId, setActiveSession, removeSession } = useTerminalStore()
+export function TerminalTabs({ onNewTab, onCloseTab }: TerminalTabsProps) {
+  const { sessions, activeSessionId, setActiveSession } = useTerminalStore()
 
   return (
     <div
@@ -28,7 +29,7 @@ export function TerminalTabs({ onNewTab }: TerminalTabsProps) {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              removeSession(session.id)
+              onCloseTab(session.id)
             }}
             className="ml-1 hover:text-white"
             style={{ color: colors.text.muted }}

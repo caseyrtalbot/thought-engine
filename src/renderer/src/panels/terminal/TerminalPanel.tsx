@@ -132,6 +132,20 @@ export function TerminalPanel() {
     return () => observer.disconnect()
   }, [activeSessionId])
 
+  const handleCloseTab = useCallback(
+    (sessionId: string) => {
+      if (sessions.length <= 1) return
+      window.api.terminal.kill(sessionId)
+      const instance = instancesRef.current.get(sessionId)
+      if (instance) {
+        instance.terminal.dispose()
+        instancesRef.current.delete(sessionId)
+      }
+      removeSession(sessionId)
+    },
+    [sessions.length, removeSession]
+  )
+
   // Create initial terminal session on mount (ref guards against Strict Mode double-fire)
   const didInit = useRef(false)
   useEffect(() => {
@@ -161,7 +175,7 @@ export function TerminalPanel() {
       className="h-full flex flex-col"
       style={{ backgroundColor: colors.bg.base }}
     >
-      <TerminalTabs onNewTab={handleNewTab} />
+      <TerminalTabs onNewTab={handleNewTab} onCloseTab={handleCloseTab} />
       {error ? (
         <div
           className="flex-1 flex items-center justify-center p-4"
