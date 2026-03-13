@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
 
-interface ParseError { filename: string; error: string }
+interface ParseError {
+  filename: string
+  error: string
+}
 
 interface VaultFile {
   path: string
@@ -28,10 +31,16 @@ interface VaultStore {
   setFiles: (files: VaultFile[]) => void
   setActiveWorkspace: (workspace: string | null) => void
   loadVault: (vaultPath: string) => Promise<void>
-  setWorkerResult: (result: { artifacts: Artifact[]; graph: KnowledgeGraph; errors: ParseError[]; fileToId: Record<string, string> }) => void
+  setWorkerResult: (result: {
+    artifacts: Artifact[]
+    graph: KnowledgeGraph
+    errors: ParseError[]
+    fileToId: Record<string, string>
+  }) => void
+  getBacklinks: (targetId: string) => Artifact[]
 }
 
-export const useVaultStore = create<VaultStore>((set) => ({
+export const useVaultStore = create<VaultStore>((set, get) => ({
   vaultPath: null,
   config: null,
   state: null,
@@ -61,7 +70,7 @@ export const useVaultStore = create<VaultStore>((set) => ({
           path: filePath,
           filename,
           title: filename.replace(/\.md$/, ''),
-          modified: new Date().toISOString().split('T')[0],
+          modified: new Date().toISOString().split('T')[0]
         }
       })
       set({ vaultPath, config, state, files, isLoading: false })
@@ -71,10 +80,25 @@ export const useVaultStore = create<VaultStore>((set) => ({
     }
   },
 
-  setWorkerResult: (result) => set({
-    artifacts: result.artifacts,
-    graph: result.graph,
-    parseErrors: result.errors,
-    fileToId: result.fileToId,
-  }),
+  setWorkerResult: (result) =>
+    set({
+      artifacts: result.artifacts,
+      graph: result.graph,
+      parseErrors: result.errors,
+      fileToId: result.fileToId
+    }),
+
+  getBacklinks: (targetId: string): Artifact[] => {
+    const { graph, artifacts } = get()
+    const sourceIds = new Set<string>()
+    for (const edge of graph.edges) {
+      if (edge.target === targetId && edge.source !== targetId) {
+        sourceIds.add(edge.source)
+      }
+      if (edge.source === targetId && edge.target !== targetId && edge.kind !== 'appears_in') {
+        sourceIds.add(edge.target)
+      }
+    }
+    return artifacts.filter((a) => sourceIds.has(a.id))
+  }
 }))
