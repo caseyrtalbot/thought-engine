@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "fonts": {
+    "display": "Inter",
+    "body": "Inter",
+    "mono": "JetBrains Mono"
+  },
+  "workspaces": [],
+  "createdAt": "2026-03-13"
+}
