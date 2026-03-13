@@ -28,6 +28,7 @@ interface EditorStore {
   setContent: (content: string) => void
   loadContent: (content: string) => void
   setDirty: (dirty: boolean) => void
+  markSaved: () => void
   setCursorPosition: (line: number, col: number) => void
 
   openTab: (path: string, title?: string) => void
@@ -93,6 +94,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setContent: (content) => set({ content, isDirty: true }),
   loadContent: (content) => set({ content, isDirty: false }),
   setDirty: (dirty) => set({ isDirty: dirty }),
+  markSaved: () => set({ isDirty: false }),
   setCursorPosition: (line, col) => set({ cursorLine: line, cursorCol: col }),
 
   openTab: (path, title) => {
