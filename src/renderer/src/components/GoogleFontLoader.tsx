@@ -2,15 +2,32 @@ import { useEffect } from 'react'
 import { useSettingsStore } from '../store/settings-store'
 import { GOOGLE_FONTS, buildGoogleFontUrl, buildFontFamilyValue } from '../design/google-fonts'
 
+const MONO_FONT = GOOGLE_FONTS.find((f) => f.name === 'JetBrains Mono')!
+const MONO_FONT_URL = buildGoogleFontUrl(MONO_FONT)!
+
 /**
- * Injects a Google Fonts <link> into <head> when the selected font changes,
- * and applies the font-family to <body>.
+ * Injects Google Fonts <link> tags into <head>:
+ * - Always loads JetBrains Mono (terminal, source editor, code blocks)
+ * - Loads the user's selected display font reactively from settings-store
  *
- * Mount this once at the app root. It reads from settings-store reactively.
+ * Mount this once at the app root.
  */
 export function GoogleFontLoader() {
   const fontFamily = useSettingsStore((s) => s.fontFamily)
 
+  // Always load JetBrains Mono for monospace contexts
+  useEffect(() => {
+    const existing = document.getElementById('te-mono-font')
+    if (existing) return
+
+    const link = document.createElement('link')
+    link.id = 'te-mono-font'
+    link.rel = 'stylesheet'
+    link.href = MONO_FONT_URL
+    document.head.appendChild(link)
+  }, [])
+
+  // Load the user's selected display font
   useEffect(() => {
     const entry = GOOGLE_FONTS.find((f) => f.name === fontFamily)
     const url = entry ? buildGoogleFontUrl(entry) : null
