@@ -198,6 +198,27 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
     }
   }, [content, editor, activeNotePath])
 
+  // Autosave: debounce writes by 1 second
+  useEffect(() => {
+    if (!activeNotePath) return
+    // Capture path and content NOW, not when the timer fires
+    const pathToSave = activeNotePath
+    const contentToSave = content
+
+    if (!useEditorStore.getState().isDirty) return
+
+    const timer = setTimeout(async () => {
+      await window.api.fs.writeFile(pathToSave, contentToSave)
+      // Only mark saved if still on the same file
+      const current = useEditorStore.getState()
+      if (current.activeNotePath === pathToSave) {
+        current.markSaved()
+      }
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [content, activeNotePath])
+
   const handleToggleMode = useCallback(() => {
     setMode(mode === 'rich' ? 'source' : 'rich')
   }, [mode, setMode])
