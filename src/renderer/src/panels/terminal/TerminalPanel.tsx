@@ -9,6 +9,10 @@ import { TerminalTabs } from './TerminalTabs'
 import { colors } from '../../design/tokens'
 import 'xterm/css/xterm.css'
 
+const FONT_SIZE_DEFAULT = 13
+const FONT_SIZE_MIN = 8
+const FONT_SIZE_MAX = 28
+
 interface TerminalInstance {
   terminal: Terminal
   fitAddon: FitAddon
@@ -18,8 +22,13 @@ interface TerminalInstance {
 export function TerminalPanel() {
   const containerRef = useRef<HTMLDivElement>(null)
   const instancesRef = useRef<Map<string, TerminalInstance>>(new Map())
+  const searchAddonsRef = useRef<Map<string, SearchAddon>>(new Map())
   const activeContainerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [termFontSize, setTermFontSize] = useState(FONT_SIZE_DEFAULT)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { sessions, activeSessionId, addSession, removeSession } = useTerminalStore()
   const { vaultPath } = useVaultStore()
@@ -43,7 +52,7 @@ export function TerminalPanel() {
 
     const term = new Terminal({
       fontFamily: '"JetBrains Mono", monospace',
-      fontSize: 13,
+      fontSize: termFontSize,
       theme: {
         background: colors.bg.base,
         foreground: colors.text.primary,
@@ -62,6 +71,8 @@ export function TerminalPanel() {
     term.loadAddon(webLinksAddon)
     term.loadAddon(searchAddon)
 
+    searchAddonsRef.current.set(sessionId, searchAddon)
+
     term.onData((data) => {
       window.api.terminal.write(sessionId, data)
     })
@@ -69,7 +80,7 @@ export function TerminalPanel() {
     instancesRef.current.set(sessionId, { terminal: term, fitAddon, sessionId })
 
     return sessionId
-  }, [vaultPath, sessions.length, addSession])
+  }, [vaultPath, sessions.length, addSession, termFontSize])
 
   const handleNewTab = useCallback(() => {
     createTerminalInstance()
@@ -104,6 +115,7 @@ export function TerminalPanel() {
         instance.terminal.writeln(`\r\n[Process exited with code ${payload.code}]`)
         instancesRef.current.delete(payload.sessionId)
       }
+      searchAddonsRef.current.delete(payload.sessionId)
       removeSession(payload.sessionId)
     })
 
@@ -132,6 +144,57 @@ export function TerminalPanel() {
     return () => observer.disconnect()
   }, [activeSessionId])
 
+  // Keyboard shortcuts: Cmd+F (search), Cmd+=/ Cmd+- (zoom)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!e.metaKey) return
+
+      if (e.key === 'f') {
+        e.preventDefault()
+        setSearchOpen((prev) => {
+          const next = !prev
+          if (next) {
+            // Focus search input after state update
+            setTimeout(() => searchInputRef.current?.focus(), 0)
+          }
+          return next
+        })
+        return
+      }
+
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault()
+        setTermFontSize((prev) => Math.min(prev + 1, FONT_SIZE_MAX))
+        return
+      }
+
+      if (e.key === '-') {
+        e.preventDefault()
+        setTermFontSize((prev) => Math.max(prev - 1, FONT_SIZE_MIN))
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Apply font size to all terminal instances when termFontSize changes
+  useEffect(() => {
+    for (const instance of instancesRef.current.values()) {
+      instance.terminal.options.fontSize = termFontSize
+      instance.fitAddon.fit()
+    }
+  }, [termFontSize])
+
+  // Run search when query changes
+  useEffect(() => {
+    if (!activeSessionId || !searchQuery) return
+    const addon = searchAddonsRef.current.get(activeSessionId)
+    if (addon) {
+      addon.findNext(searchQuery)
+    }
+  }, [searchQuery, activeSessionId])
+
   const handleCloseTab = useCallback(
     (sessionId: string) => {
       if (sessions.length <= 1) return
@@ -141,6 +204,7 @@ export function TerminalPanel() {
         instance.terminal.dispose()
         instancesRef.current.delete(sessionId)
       }
+      searchAddonsRef.current.delete(sessionId)
       removeSession(sessionId)
     },
     [sessions.length, removeSession]
@@ -176,6 +240,47 @@ export function TerminalPanel() {
       style={{ backgroundColor: colors.bg.base }}
     >
       <TerminalTabs onNewTab={handleNewTab} onCloseTab={handleCloseTab} />
+
+      {/* Search bar */}
+      {searchOpen && (
+        <div
+          className="flex items-center gap-2 px-3 py-1 border-b"
+          style={{ backgroundColor: colors.bg.surface, borderColor: colors.border.default }}
+        >
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const addon = activeSessionId
+                  ? searchAddonsRef.current.get(activeSessionId)
+                  : undefined
+                if (addon && searchQuery) addon.findNext(searchQuery)
+              }
+              if (e.key === 'Escape') {
+                setSearchOpen(false)
+                setSearchQuery('')
+              }
+            }}
+            placeholder="Search..."
+            className="flex-1 bg-transparent outline-none text-xs"
+            style={{ color: colors.text.primary }}
+          />
+          <button
+            onClick={() => {
+              setSearchOpen(false)
+              setSearchQuery('')
+            }}
+            className="text-xs"
+            style={{ color: colors.text.muted }}
+          >
+            x
+          </button>
+        </div>
+      )}
+
       {error ? (
         <div
           className="flex-1 flex items-center justify-center p-4"
