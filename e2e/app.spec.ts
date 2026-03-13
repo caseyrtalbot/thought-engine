@@ -125,7 +125,7 @@ test.describe('Workspace with Test Vault', () => {
 
     // Wait for reload and vault to load
     await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(3000) // Allow parsing/indexing to complete
+    await page.waitForSelector('[data-testid="file-tree"]', { timeout: 10000 })
   })
 
   test.afterEach(async () => {
@@ -170,7 +170,7 @@ test.describe('Workspace with Test Vault', () => {
     // Terminal tabs should be visible
     const shellTab = page.locator('text=Shell 1')
     // May take time for terminal to init
-    await page.waitForTimeout(1000)
+    await page.waitForSelector('[data-testid="terminal-tabs"]', { timeout: 5000 })
 
     await screenshot('03-terminal-panel')
 
@@ -183,7 +183,7 @@ test.describe('Workspace with Test Vault', () => {
 
   test('Claude activate button is visible in terminal header', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' })
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
     await screenshot('04-claude-button')
 
     const count = await claudeBtn.count()
@@ -198,7 +198,7 @@ test.describe('Workspace with Test Vault', () => {
 
   test('Claude button has neon purple glow styling', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
 
     const styles = await claudeBtn.evaluate((el) => {
       const cs = window.getComputedStyle(el)
@@ -223,11 +223,11 @@ test.describe('Workspace with Test Vault', () => {
 
   test('clicking Claude button creates Claude terminal session', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
 
     // Click the activate button
     await claudeBtn.click()
-    await page.waitForTimeout(2000) // Wait for terminal creation + shell init
+    await page.waitForSelector('text=Claude', { timeout: 5000 })
 
     await screenshot('04-claude-activated')
 
@@ -239,10 +239,10 @@ test.describe('Workspace with Test Vault', () => {
 
   test('Claude activation creates CLAUDE.md in vault', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
 
     await claudeBtn.click()
-    await page.waitForTimeout(2000)
+    await page.waitForSelector('text=Claude', { timeout: 5000 })
 
     // Check that CLAUDE.md was created in the test vault
     const claudeMdPath = path.join(TEST_VAULT, 'CLAUDE.md')
@@ -262,18 +262,17 @@ test.describe('Workspace with Test Vault', () => {
 
   test('second click on Claude button switches to existing session (idempotent)', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
 
     // First click - creates session
     await claudeBtn.click()
-    await page.waitForTimeout(1500)
+    await page.waitForSelector('text=Claude', { timeout: 5000 })
 
     // Count Claude tabs
     const firstClickTabs = await page.locator('span', { hasText: 'Claude' }).count()
 
     // Second click - should switch, not create
     await claudeBtn.click()
-    await page.waitForTimeout(500)
 
     const secondClickTabs = await page.locator('span', { hasText: 'Claude' }).count()
 
@@ -298,7 +297,7 @@ test.describe('Workspace with Test Vault', () => {
   test('graph view shows nodes from vault', async () => {
     // Switch to graph view if not already there
     await page.keyboard.press('Meta+g')
-    await page.waitForTimeout(1500)
+    await page.waitForSelector('[data-testid="graph-canvas"]', { timeout: 5000 })
 
     await screenshot('06-graph-view')
 
@@ -345,7 +344,7 @@ test.describe('Aesthetic Diagnostics', () => {
     }, TEST_VAULT)
 
     await page.waitForLoadState('domcontentloaded')
-    await page.waitForTimeout(3000)
+    await page.waitForSelector('[data-testid="file-tree"]', { timeout: 10000 })
   })
 
   test.afterEach(async () => {
@@ -360,7 +359,7 @@ test.describe('Aesthetic Diagnostics', () => {
 
   test('screenshot: graph view', async () => {
     await page.keyboard.press('Meta+g')
-    await page.waitForTimeout(1500)
+    await page.waitForSelector('[data-testid="graph-canvas"]', { timeout: 5000 })
     await screenshot('aesthetic-02-graph-view')
   })
 
@@ -369,7 +368,7 @@ test.describe('Aesthetic Diagnostics', () => {
     const fileLink = page.locator('text=Category Creation').first()
     if ((await fileLink.count()) > 0) {
       await fileLink.click()
-      await page.waitForTimeout(1000)
+      await page.waitForSelector('.ProseMirror', { timeout: 3000 })
     }
     await screenshot('aesthetic-03-editor-view')
   })
@@ -380,27 +379,27 @@ test.describe('Aesthetic Diagnostics', () => {
 
   test('screenshot: Claude button hover state', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
     if ((await claudeBtn.count()) > 0) {
       await claudeBtn.hover()
-      await page.waitForTimeout(200)
+      await page.waitForTimeout(100)
     }
     await screenshot('aesthetic-05-claude-button-hover')
   })
 
   test('screenshot: Claude activated with purple tab', async () => {
     const claudeBtn = page.locator('button', { hasText: 'Claude' }).first()
-    await page.waitForTimeout(1000)
+    await page.locator('[data-testid="claude-activate-btn"]').waitFor({ timeout: 5000 })
     if ((await claudeBtn.count()) > 0) {
       await claudeBtn.click()
-      await page.waitForTimeout(2000)
+      await page.waitForSelector('text=Claude', { timeout: 5000 })
     }
     await screenshot('aesthetic-06-claude-activated')
   })
 
   test('screenshot: command palette', async () => {
     await page.keyboard.press('Meta+k')
-    await page.waitForTimeout(500)
+    await page.waitForSelector('[data-testid="command-palette"]', { timeout: 3000 })
     await screenshot('aesthetic-07-command-palette')
   })
 })
