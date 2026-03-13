@@ -37,13 +37,13 @@ Relationships between ideas are the primary object. Documents are substrate that
 
 - **App-level settings** (appearance, editor, terminal preferences): `~/.thought-engine/settings.json` via electron-store
 - **Vault-level settings** (graph force values, filter toggles, collapse state): `<vault>/.thought-engine/config.json` via IPC
-- **Session state** (workspace.json): `<vault>/.thought-engine/workspace.json` via IPC (see Session Persistence below)
+- **Session state**: `<vault>/.thought-engine/state.json` via existing `vault:read-state` / `vault:write-state` IPC (see Session Persistence below)
 
 New IPC handlers: `config:read`, `config:write`, `config:watch` (generic key-value, scoped to app or vault). Zustand persist middleware replaced with a custom storage adapter that calls these IPC handlers.
 
 ### Session Persistence
 
-On crash or quit, the app must restore to previous state. Phase 1 implements a workspace state file (`<vault>/.thought-engine/workspace.json`) that captures:
+On crash or quit, the app must restore to previous state. Phase 1 extends the existing `VaultState` (persisted to `<vault>/.thought-engine/state.json`) to capture:
 
 - Panel sizes (sidebar width, terminal width)
 - Content view state (graph/editor/skills + which file was open)
@@ -52,7 +52,9 @@ On crash or quit, the app must restore to previous state. Phase 1 implements a w
 - File tree collapse state
 - Selected/hovered node ID
 
-**Save strategy**: debounced write on state change (500ms debounce). On app launch, read workspace.json and hydrate all stores before first render. On missing/corrupt file, fall back to defaults (no crash).
+**Relationship to existing `VaultState`**: the existing `VaultState` type in `src/shared/types.ts` already tracks `panelLayout` (sidebarWidth, terminalWidth), `lastOpenNote`, and `idCounters`. The workspace.json file is NOT a second persistence mechanism. Instead, `VaultState` is extended with the additional fields listed above, and the existing `vault:read-state` / `vault:write-state` IPC handlers continue to read/write `<vault>/.thought-engine/state.json`. No new `workspace.json` file is created. The type extension happens in `src/shared/types.ts`.
+
+**Save strategy**: debounced write on state change (500ms debounce). On app launch, read state.json via `vault:read-state` and hydrate all stores before first render. On missing/corrupt file, fall back to defaults (no crash).
 
 ### Error Boundaries
 
@@ -77,7 +79,7 @@ Future consideration: command pattern for app-level undo.
 
 The current preload (`src/preload/index.ts`) exposes the full `electronAPI` from `@electron-toolkit/preload` with no channel allowlist. Any renderer code can invoke any IPC channel. This is a security gap that must be closed in Phase 1.
 
-**Phase 1 requirement**: replace the blanket `electronAPI` exposure with a typed channel allowlist:
+**Phase 1 requirement**: replace the blanket `electronAPI` exposure with a typed channel allowlist. Channel names must match the actual registered handlers in `src/shared/ipc-channels.ts`:
 
 ```typescript
 // src/preload/index.ts — Phase 1 replacement
@@ -91,27 +93,54 @@ const api = {
     read: (scope: string, key: string) => ipcRenderer.invoke('config:read', scope, key),
     write: (scope: string, key: string, value: unknown) => ipcRenderer.invoke('config:write', scope, key, value),
   },
+  fs: {
+    readFile: (path: string) => ipcRenderer.invoke('fs:read-file', { path }),
+    writeFile: (path: string, content: string) => ipcRenderer.invoke('fs:write-file', { path, content }),
+    listFiles: (dir: string, pattern?: string) => ipcRenderer.invoke('fs:list-files', { dir, pattern }),
+    listFilesRecursive: (dir: string) => ipcRenderer.invoke('fs:list-files-recursive', { dir }),
+    deleteFile: (path: string) => ipcRenderer.invoke('fs:delete-file', { path }),
+    selectVault: () => ipcRenderer.invoke('fs:select-vault'),
+  },
   vault: {
-    readFile: (path: string) => ipcRenderer.invoke('vault:read-file', path),
-    writeFile: (path: string, content: string) => ipcRenderer.invoke('vault:write-file', path, content),
-    listFiles: (dir: string) => ipcRenderer.invoke('vault:list-files', dir),
-    deleteFile: (path: string) => ipcRenderer.invoke('vault:delete-file', path),
-    renameFile: (oldPath: string, newPath: string) => ipcRenderer.invoke('vault:rename-file', oldPath, newPath),
+    init: (vaultPath: string) => ipcRenderer.invoke('vault:init', { vaultPath }),
+    readConfig: (vaultPath: string) => ipcRenderer.invoke('vault:read-config', { vaultPath }),
+    writeConfig: (vaultPath: string, config: VaultConfig) => ipcRenderer.invoke('vault:write-config', { vaultPath, config }),
+    readState: (vaultPath: string) => ipcRenderer.invoke('vault:read-state', { vaultPath }),
+    writeState: (vaultPath: string, state: VaultState) => ipcRenderer.invoke('vault:write-state', { vaultPath, state }),
+    gitBranch: (vaultPath: string) => ipcRenderer.invoke('vault:git-branch', { vaultPath }),
+    watchStart: (vaultPath: string) => ipcRenderer.invoke('vault:watch-start', { vaultPath }),
+    watchStop: () => ipcRenderer.invoke('vault:watch-stop'),
   },
-  shell: {
-    create: (opts: ShellCreateOpts) => ipcRenderer.invoke('shell:create', opts),
-    resize: (id: string, cols: number, rows: number) => ipcRenderer.invoke('shell:resize', id, cols, rows),
-    write: (id: string, data: string) => ipcRenderer.invoke('shell:write', id, data),
-    kill: (id: string) => ipcRenderer.invoke('shell:kill', id),
-    getProcessName: (id: string) => ipcRenderer.invoke('shell:process-name', id),
+  terminal: {
+    create: (cwd: string, shell?: string) => ipcRenderer.invoke('terminal:create', { cwd, shell }),
+    write: (sessionId: string, data: string) => ipcRenderer.invoke('terminal:write', { sessionId, data }),
+    resize: (sessionId: string, cols: number, rows: number) => ipcRenderer.invoke('terminal:resize', { sessionId, cols, rows }),
+    kill: (sessionId: string) => ipcRenderer.invoke('terminal:kill', { sessionId }),
+    getProcessName: (sessionId: string) => ipcRenderer.invoke('terminal:process-name', { sessionId }),
   },
-  watcher: {
-    onFileChange: (callback: FileChangeCallback) => { /* ... */ },
+  on: {
+    terminalData: (callback: (data: { sessionId: string; data: string }) => void) =>
+      ipcRenderer.on('terminal:data', (_e, data) => callback(data)),
+    terminalExit: (callback: (data: { sessionId: string; code: number }) => void) =>
+      ipcRenderer.on('terminal:exit', (_e, data) => callback(data)),
+    fileChanged: (callback: (data: { path: string; event: 'add' | 'change' | 'unlink' }) => void) =>
+      ipcRenderer.on('vault:file-changed', (_e, data) => callback(data)),
   },
 }
 ```
 
-Only channels in this allowlist are callable from the renderer. The existing `window.electron.ipcRenderer.invoke` pattern is removed. All renderer code migrates to `window.api.<domain>.<method>()`. This is a breaking change to all existing IPC call sites, so it must be done as the first task in Phase 1 before any other IPC work builds on the old pattern.
+The existing `vault:read-config`, `vault:write-config`, `vault:read-state`, `vault:write-state` handlers are preserved as-is (they read/write typed JSON files). The new `config:read` / `config:write` handlers (Phase 1C) provide a generic key-value interface for the new settings and workspace persistence, layered alongside the existing typed vault config.
+
+New handler `terminal:process-name` must be registered in `src/main/ipc/shell.ts`. Implementation: `ShellService` gets a `getProcessName(sessionId: string): string | null` method that returns `session.process` from the `IPty` instance (node-pty exposes this as the `process` property).
+
+Only channels in this allowlist are callable from the renderer. The existing `window.electron.ipcRenderer` global is removed. All renderer code migrates to `window.api.<domain>.<method>()`.
+
+**Key migration targets** (files that currently call `window.electron.ipcRenderer` directly):
+- `src/renderer/src/store/vault-store.ts` (line 5: `const ipcRenderer = window.electron.ipcRenderer`)
+- `src/renderer/src/panels/terminal/TerminalPanel.tsx` (terminal IPC calls)
+- `src/renderer/src/App.tsx` (`vault:git-branch` call)
+
+This is a breaking change to all existing IPC call sites, so it must be done as the first task in Phase 1 before any other IPC work builds on the old pattern.
 
 ### Chokidar Watcher Hardening
 
@@ -163,7 +192,7 @@ Existing 35 tests must pass throughout all phases. New test files follow existin
 
 ### State Versioning
 
-The persistence files (`workspace.json`, `config.json`, `settings.json`) will evolve across versions. Each file includes a `version` field (integer, starting at 1). On read, the app checks the version and runs migration functions if the stored version is behind the current expected version.
+The persistence files (`state.json`, `config.json`, `settings.json`) will evolve across versions. Each file includes a `version` field (integer, starting at 1). On read, the app checks the version and runs migration functions if the stored version is behind the current expected version.
 
 ```typescript
 // Migration registry pattern
@@ -255,12 +284,14 @@ App (h-screen w-screen, flex column)
 │       ├── PanelErrorBoundary > Sidebar (240px default, resizable)
 │       ├── PanelErrorBoundary > ContentArea (flex-1)
 │       │   ├── GraphControls (overlay toggle)
-│       │   └── GraphPanel | EditorPanel | SkillsPanel
+│       │   └── GraphPanel | EditorPanel | SkillsPanel (switched via graph-store.contentView)
 │       └── PanelErrorBoundary > TerminalPanel (400px default, resizable)
 ├── StatusBar (24px, flex-shrink-0)
 └── CommandPalette (overlay)
     SettingsModal (overlay)
 ```
+
+The `ContentArea` renders one of three panels based on `graph-store.contentView` (`'graph' | 'editor' | 'skills'`). The editor remains a valid content view throughout all phases. In Phase 3C the pill toggle changes to Graph/Skills, but the editor is still reachable via double-click (graph) or file selection (sidebar). The `contentView === 'editor'` rendering path is never removed.
 
 The existing `SplitPane` component handles resizable dividers. The viewport is now: titlebar (38px) + panels (flex) + status bar (24px). Terminal default is 400px (320px is too narrow for meaningful CLI output with typical 80-column formatting).
 
@@ -325,7 +356,7 @@ Replace the flat file list with a hierarchical filesystem tree matching the vaul
 **Search bar**: existing component, no changes in this phase.
 
 **State management**:
-- Collapse state: stored in a `useRef<Map<string, boolean>>` to survive re-renders from vault-store updates without triggering unnecessary re-renders itself. Persisted to workspace.json.
+- Collapse state: stored in a `useRef<Map<string, boolean>>` to survive re-renders from vault-store updates without triggering unnecessary re-renders itself. Persisted to state.json via VaultState.
 - Sort preference: stored in vault-level config
 - Tree architecture must not preclude drag-and-drop reordering in a future version. Use a flat data structure with `parentPath` references rather than deeply nested objects, so DnD reorder is a path update, not a tree restructure.
 
@@ -495,7 +526,7 @@ When the agent writes a file via the terminal, the graph updates reactively.
 4. `vault-store` updates `files[]`
 5. `GraphPanel` diffs previous vs current file list
 
-**Diff logic**: diff by file path as key. Detect adds, removes, and renames (rename = remove + add with same content hash within a short time window). A rename should animate as a position-preserving transition, not exit-old + enter-new.
+**Diff logic**: diff by file path as key. Detect adds, removes, and renames. Rename detection: when an `unlink` and `add` event occur within a 500ms window, the renderer reads the new file's content from `vault-store` (already loaded by the watcher pipeline) and compares its `artifact.id` to the removed file's `artifact.id`. If the IDs match, treat as a rename. This avoids content hashing entirely and uses the existing artifact identity system. A rename should animate as a position-preserving transition, not exit-old + enter-new.
 
 **Batching**: rapid-fire file creation (agent writing 10 files in 2 seconds) is batched on a `requestAnimationFrame` cadence. Accumulate file change events, apply them as a single batch on the next animation frame, then restart the simulation once (not per-file).
 
@@ -527,6 +558,7 @@ Extends the center panel's content view to include a Skills lens.
 **Keyboard shortcut changes**:
 - `Cmd+G`: when in editor view, returns to graph view. When in graph view, switches to skills. When in skills, switches to graph. (Cycles graph > skills > graph, and always escapes editor back to graph.)
 - The existing `onToggleView` handler in `useKeyboard` is updated to implement this cycle.
+- **Command palette update**: the `BUILT_IN_COMMANDS` entry `cmd:toggle-view` (currently labeled "Toggle Graph/Editor" with `Cmd+G`) must be updated to "Cycle View" and its handler must call the new cycle logic, not the old binary toggle.
 
 **Files**:
 
@@ -535,7 +567,7 @@ Extends the center panel's content view to include a Skills lens.
 | Create | `src/renderer/src/panels/skills/SkillsPanel.tsx` (reads .claude/commands, list UI, run button) |
 | Modify | `src/renderer/src/panels/graph/GraphControls.tsx` (Graph/Skills toggle, remove Editor button) |
 | Modify | `src/renderer/src/store/graph-store.ts` (add `'skills'` to contentView union) |
-| Modify | `src/renderer/src/App.tsx` (ContentArea renders SkillsPanel, update toggle logic) |
+| Modify | `src/renderer/src/App.tsx` (ContentArea renders SkillsPanel, update toggle logic, update command palette entry label) |
 | Modify | `src/renderer/src/hooks/useKeyboard.ts` (updated Cmd+G cycle) |
 
 ### 3D: Enhanced Node Sizing
@@ -678,7 +710,7 @@ New toolbar, breadcrumb, backlinks panel, and frontmatter handling for the edito
 
 **Frontmatter rendering**: if a file has YAML frontmatter, render it as a collapsible metadata header above the content (showing artifact type, tags, dates as styled key-value pairs). In source mode, show raw YAML. Toggle to expand/collapse the metadata header. Never show raw YAML in rich mode.
 
-**Backlinks panel**: collapsible panel below the editor content showing all files that link to the current file. Each backlink entry shows: file title, the line containing the link (surrounding context, ~50 chars before and after), and artifact type dot. Clicking a backlink opens that file. Data source: the vault index (already tracks relationships via `getGraph()`). Collapsed by default, toggle via a "Backlinks (N)" button in the editor footer.
+**Backlinks panel**: collapsible panel below the editor content showing all files that link to the current file. Each backlink entry shows: file title, the line containing the link (surrounding context, ~50 chars before and after), and artifact type dot. Clicking a backlink opens that file. Data source: a new `getBacklinks(id: string): Artifact[]` method on `VaultIndex` that builds a reverse lookup from the graph edges (iterate edges, collect sources where target matches the given id). This method does not exist today and must be added. Collapsed by default, toggle via a "Backlinks (N)" button in the editor footer.
 
 **Files**:
 
@@ -689,6 +721,7 @@ New toolbar, breadcrumb, backlinks panel, and frontmatter handling for the edito
 | Create | `src/renderer/src/panels/editor/BacklinksPanel.tsx` |
 | Create | `src/renderer/src/panels/editor/FrontmatterHeader.tsx` |
 | Modify | `src/renderer/src/panels/editor/EditorPanel.tsx` (integrate toolbar, breadcrumb, frontmatter, backlinks) |
+| Modify | `src/renderer/src/engine/indexer.ts` (add `getBacklinks(id)` reverse lookup method) |
 
 ### 4D: Enhanced Status Bar
 
@@ -814,7 +847,7 @@ tension: '#F59E0B'
 
 ### File Inventory
 
-**New files (21)**:
+**New files (23)**:
 - `src/preload/api.d.ts` (TypeScript declarations for `window.api`)
 - `src/renderer/src/components/Titlebar.tsx`
 - `src/renderer/src/components/SettingsModal.tsx`
@@ -839,7 +872,7 @@ tension: '#F59E0B'
 - `src/renderer/src/store/graph-settings-store.ts`
 - `src/renderer/src/store/settings-store.ts`
 
-**Modified files (18)**:
+**Modified files (19)**:
 - `src/preload/index.ts` (typed IPC channel allowlist, remove blanket electronAPI)
 - `src/main/index.ts` (BrowserWindow config, config IPC registration, workspace restore)
 - `src/main/ipc/shell.ts` (expose PTY process name)
@@ -857,6 +890,7 @@ tension: '#F59E0B'
 - `src/renderer/src/hooks/useKeyboard.ts` (updated Cmd+G cycle)
 - `src/renderer/src/design/tokens.ts` (type scale, animation constants)
 - `src/renderer/src/assets/index.css` (CSS custom properties, prefers-reduced-motion)
+- `src/renderer/src/engine/indexer.ts` (add `getBacklinks(id)` method)
 - All renderer IPC call sites (migrate from `window.electron.*` to `window.api.*`)
 
 ## Constraints
