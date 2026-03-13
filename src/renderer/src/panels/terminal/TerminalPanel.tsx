@@ -9,8 +9,6 @@ import { TerminalTabs } from './TerminalTabs'
 import { colors } from '../../design/tokens'
 import 'xterm/css/xterm.css'
 
-const ipcRenderer = window.electron.ipcRenderer
-
 interface TerminalInstance {
   terminal: Terminal
   fitAddon: FitAddon
@@ -30,7 +28,7 @@ export function TerminalPanel() {
     const cwd = vaultPath || '/'
     let sessionId: string
     try {
-      sessionId = await ipcRenderer.invoke('terminal:create', { cwd })
+      sessionId = await window.api.terminal.create(cwd)
     } catch (err) {
       setError(
         `Failed to create terminal: ${err instanceof Error ? err.message : String(err)}. ` +
@@ -65,7 +63,7 @@ export function TerminalPanel() {
     term.loadAddon(searchAddon)
 
     term.onData((data) => {
-      ipcRenderer.invoke('terminal:write', { sessionId, data })
+      window.api.terminal.write(sessionId, data)
     })
 
     instancesRef.current.set(sessionId, { terminal: term, fitAddon, sessionId })
@@ -93,27 +91,21 @@ export function TerminalPanel() {
 
   // Listen for data and exit events from main process
   useEffect(() => {
-    const unsubData = ipcRenderer.on(
-      'terminal:data',
-      (_event, payload: { sessionId: string; data: string }) => {
-        const instance = instancesRef.current.get(payload.sessionId)
-        if (instance) {
-          instance.terminal.write(payload.data)
-        }
+    const unsubData = window.api.on.terminalData((payload: { sessionId: string; data: string }) => {
+      const instance = instancesRef.current.get(payload.sessionId)
+      if (instance) {
+        instance.terminal.write(payload.data)
       }
-    )
+    })
 
-    const unsubExit = ipcRenderer.on(
-      'terminal:exit',
-      (_event, payload: { sessionId: string; code: number }) => {
-        const instance = instancesRef.current.get(payload.sessionId)
-        if (instance) {
-          instance.terminal.writeln(`\r\n[Process exited with code ${payload.code}]`)
-          instancesRef.current.delete(payload.sessionId)
-        }
-        removeSession(payload.sessionId)
+    const unsubExit = window.api.on.terminalExit((payload: { sessionId: string; code: number }) => {
+      const instance = instancesRef.current.get(payload.sessionId)
+      if (instance) {
+        instance.terminal.writeln(`\r\n[Process exited with code ${payload.code}]`)
+        instancesRef.current.delete(payload.sessionId)
       }
-    )
+      removeSession(payload.sessionId)
+    })
 
     return () => {
       unsubData()
@@ -133,7 +125,7 @@ export function TerminalPanel() {
 
       instance.fitAddon.fit()
       const { cols, rows } = instance.terminal
-      ipcRenderer.invoke('terminal:resize', { sessionId: activeSessionId, cols, rows })
+      window.api.terminal.resize(activeSessionId, cols, rows)
     })
 
     observer.observe(container)
@@ -157,7 +149,7 @@ export function TerminalPanel() {
     return () => {
       for (const [sessionId, instance] of instances) {
         instance.terminal.dispose()
-        ipcRenderer.invoke('terminal:kill', { sessionId })
+        window.api.terminal.kill(sessionId)
       }
       instances.clear()
     }
