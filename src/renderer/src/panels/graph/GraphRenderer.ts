@@ -7,10 +7,42 @@ import {
   type Simulation
 } from 'd3-force'
 import type { GraphNode, RelationshipKind } from '@shared/types'
-import { ARTIFACT_COLORS, colors } from '../../design/tokens'
+import { ARTIFACT_COLORS, colors, animations } from '../../design/tokens'
 import { SIGNAL_OPACITY } from '@shared/types'
 import { GlowSpriteCache, drawGlowSprite } from './glowSprites'
 import type { HighlightState } from './useGraphHighlight'
+
+// ---------------------------------------------------------------------------
+// Animation utilities
+// ---------------------------------------------------------------------------
+
+let _prefersReducedMotion: boolean | null = null
+export function prefersReducedMotion(): boolean {
+  if (_prefersReducedMotion === null) {
+    _prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', (e) => {
+      _prefersReducedMotion = e.matches
+    })
+  }
+  return _prefersReducedMotion
+}
+
+export function parseAnimationMs(timing: string): number {
+  const match = timing.match(/^(\d+)ms/)
+  return match ? parseInt(match[1], 10) : 0
+}
+
+export const ANIMATION_MS = {
+  nodeHoverGlow: () =>
+    prefersReducedMotion() ? 0 : parseAnimationMs(animations.graphNodeHoverGlow),
+  networkReveal: () =>
+    prefersReducedMotion() ? 0 : parseAnimationMs(animations.graphNetworkReveal),
+  networkDim: () => (prefersReducedMotion() ? 0 : parseAnimationMs(animations.graphNetworkDim)),
+  nodeEnter: () => (prefersReducedMotion() ? 0 : parseAnimationMs(animations.graphNodeEnter)),
+  nodeExit: () => (prefersReducedMotion() ? 0 : parseAnimationMs(animations.graphNodeExit)),
+  spatialTransition: () =>
+    prefersReducedMotion() ? 0 : parseAnimationMs(animations.spatialTransition)
+} as const
 
 export type { NodeSizeMode } from '../../store/graph-settings-store'
 
@@ -193,8 +225,8 @@ function computeCullBounds(
 ): CullBounds {
   const { x, y, k } = transform
   // Convert canvas corners to graph-space, then expand by CULL_MARGIN
-  const minX = (-x / k) - CULL_MARGIN
-  const minY = (-y / k) - CULL_MARGIN
+  const minX = -x / k - CULL_MARGIN
+  const minY = -y / k - CULL_MARGIN
   const maxX = (canvasWidth - x) / k + CULL_MARGIN
   const maxY = (canvasHeight - y) / k + CULL_MARGIN
   return { minX, minY, maxX, maxY }
@@ -202,10 +234,7 @@ function computeCullBounds(
 
 function isNodeInView(node: SimNode, bounds: CullBounds): boolean {
   return (
-    node.x >= bounds.minX &&
-    node.x <= bounds.maxX &&
-    node.y >= bounds.minY &&
-    node.y <= bounds.maxY
+    node.x >= bounds.minX && node.x <= bounds.maxX && node.y >= bounds.minY && node.y <= bounds.maxY
   )
 }
 
@@ -217,10 +246,7 @@ function getEdgeNodeId(endpoint: string | SimNode): string {
   return typeof endpoint === 'string' ? endpoint : endpoint.id
 }
 
-function isEdgeConnected(
-  edge: SimEdge,
-  connectedSet: ReadonlySet<string>
-): boolean {
+function isEdgeConnected(edge: SimEdge, connectedSet: ReadonlySet<string>): boolean {
   const sourceId = getEdgeNodeId(edge.source)
   const targetId = getEdgeNodeId(edge.target)
   return connectedSet.has(sourceId) && connectedSet.has(targetId)
