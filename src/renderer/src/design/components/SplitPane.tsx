@@ -86,8 +86,10 @@ export function SplitPane({
       </div>
       <div
         onMouseDown={handleMouseDown}
-        className="w-[4px] cursor-col-resize bg-transparent hover:bg-[#6C63FF]/30 transition-colors flex-shrink-0"
-      />
+        className="w-[4px] cursor-col-resize flex-shrink-0 flex items-stretch justify-center"
+      >
+        <div className="panel-separator-h" />
+      </div>
       <div className="flex-1 overflow-hidden">{right}</div>
     </div>
   )
