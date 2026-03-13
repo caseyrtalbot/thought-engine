@@ -32,8 +32,6 @@ const api = {
       ipcRenderer.invoke('vault:read-state', { vaultPath }) as Promise<VaultState>,
     writeState: (vaultPath: string, state: VaultState) =>
       ipcRenderer.invoke('vault:write-state', { vaultPath, state }),
-    gitBranch: (vaultPath: string) =>
-      ipcRenderer.invoke('vault:git-branch', { vaultPath }) as Promise<string | null>,
     watchStart: (vaultPath: string) => ipcRenderer.invoke('vault:watch-start', { vaultPath }),
     watchStop: () => ipcRenderer.invoke('vault:watch-stop'),
     listCommands: (dirPath: string): Promise<string[]> =>

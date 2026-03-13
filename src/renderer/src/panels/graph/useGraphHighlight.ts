@@ -128,7 +128,6 @@ export function useGraphHighlight(edges: readonly SimEdge[]): {
   handleDoubleClick: (nodeId: string) => void
 } {
   const hoveredNodeId = useGraphStore((s) => s.hoveredNodeId)
-  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const setSelectedNode = useGraphStore((s) => s.setSelectedNode)
   const setHoveredNode = useGraphStore((s) => s.setHoveredNode)
 
@@ -147,11 +146,7 @@ export function useGraphHighlight(edges: readonly SimEdge[]): {
 
   // Derived: which node is focused and what mode we're in
   const focusedNodeId = clickLockedRef.current ?? hoveredNodeId
-  const mode: HighlightMode = clickLockedRef.current
-    ? 'click'
-    : hoveredNodeId
-      ? 'hover'
-      : 'idle'
+  const mode: HighlightMode = clickLockedRef.current ? 'click' : hoveredNodeId ? 'hover' : 'idle'
 
   // Memoize adjacency list from edges
   const adjacency = useMemo(() => buildAdjacencyList(edges), [edges])

@@ -26,10 +26,6 @@ export interface GraphRendererInterface {
 }
 
 export class Canvas2DGraphRenderer implements GraphRendererInterface {
-  private width = 0
-  private height = 0
-  private dpr = 1
-
   render(params: RenderParams): number {
     return renderGraph(
       params.ctx,
@@ -45,7 +41,7 @@ export class Canvas2DGraphRenderer implements GraphRendererInterface {
         transform: params.transform,
         canvasWidth: params.canvasWidth,
         canvasHeight: params.canvasHeight,
-        reducedMotion: params.reducedMotion,
+        reducedMotion: params.reducedMotion
       }
     )
   }
@@ -54,10 +50,9 @@ export class Canvas2DGraphRenderer implements GraphRendererInterface {
     return findNodeAt(nodes as SimNode[], x, y)
   }
 
-  resize(width: number, height: number, dpr: number): void {
-    this.width = width
-    this.height = height
-    this.dpr = dpr
+  resize(_width: number, _height: number, _dpr: number): void {
+    // Canvas2D doesn't need to track dimensions internally.
+    // A future WebGL renderer would store these for viewport management.
   }
 
   dispose(): void {

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import { useVaultStore } from '../store/vault-store'
 import { useEditorStore } from '../store/editor-store'
 import { useGraphStore } from '../store/graph-store'
@@ -61,21 +60,11 @@ export function StatusBar() {
   const contentView = useGraphStore((s) => s.contentView)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
 
-  const [gitBranch, setGitBranch] = useState<string | null>(null)
-
   const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
   const selectedNodeName = selectedNodeId
     ? (graphNodes.find((n) => n.id === selectedNodeId)?.title ?? null)
     : null
-
-  useEffect(() => {
-    if (!vaultPath) return
-    window.api.vault
-      .gitBranch(vaultPath)
-      .then(setGitBranch)
-      .catch(() => setGitBranch(null))
-  }, [vaultPath])
 
   return (
     <div
@@ -90,12 +79,6 @@ export function StatusBar() {
         <span>{vaultName}</span>
         <span className="mx-2">&middot;</span>
         <span>{fileCount} notes</span>
-        {gitBranch && (
-          <>
-            <span className="mx-2">&middot;</span>
-            <span>{gitBranch}</span>
-          </>
-        )}
       </div>
       <div className="flex items-center">
         {contentView === 'editor' && (
