@@ -12,7 +12,11 @@ export interface FileTreeProps {
 }
 
 // Walk up the parentPath chain; return true if any ancestor is collapsed.
-function isVisible(node: FlatTreeNode, collapsedPaths: Set<string>, allNodes: FlatTreeNode[]): boolean {
+function isVisible(
+  node: FlatTreeNode,
+  collapsedPaths: Set<string>,
+  allNodes: FlatTreeNode[]
+): boolean {
   let currentParent = node.parentPath
 
   while (currentParent) {
@@ -78,8 +82,14 @@ function DirectoryRow({
   return (
     <div
       onClick={() => onToggleDirectory(node.path)}
-      className="flex items-center py-0.5 cursor-pointer hover:bg-[#1A1A1D] transition-colors"
-      style={{ paddingLeft, color: colors.text.secondary }}
+      className="flex items-center py-0.5 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
+      style={
+        {
+          paddingLeft,
+          color: colors.text.secondary,
+          '--color-bg-elevated': colors.bg.elevated
+        } as React.CSSProperties
+      }
     >
       <span
         className="mr-1 text-xs inline-block transition-transform"
@@ -114,12 +124,15 @@ function FileRow({
     <div
       data-active={isActive ? 'true' : 'false'}
       onClick={() => onFileSelect(node.path)}
-      className="flex items-center py-0.5 cursor-pointer hover:bg-[#1A1A1D] transition-colors"
-      style={{
-        paddingLeft,
-        backgroundColor: isActive ? colors.accent.muted : undefined,
-        color: isActive ? colors.text.primary : colors.text.secondary
-      }}
+      className="flex items-center py-0.5 cursor-pointer hover:bg-[var(--color-bg-elevated)] transition-colors"
+      style={
+        {
+          paddingLeft,
+          backgroundColor: isActive ? colors.accent.muted : undefined,
+          color: isActive ? colors.text.primary : colors.text.secondary,
+          '--color-bg-elevated': colors.bg.elevated
+        } as React.CSSProperties
+      }
     >
       {artifactType && (
         <span

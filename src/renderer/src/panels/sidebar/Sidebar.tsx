@@ -5,6 +5,8 @@ import type { FlatTreeNode } from './buildFileTree'
 import type { ArtifactType } from '@shared/types'
 import { colors } from '../../design/tokens'
 
+const hoverBgStyle = { '--color-bg-elevated': colors.bg.elevated } as React.CSSProperties
+
 type SortMode = 'modified' | 'name' | 'type'
 
 interface SidebarProps {
@@ -42,14 +44,16 @@ function ActionBar({
     >
       <button
         onClick={onNewFile}
-        className="px-2 py-0.5 rounded hover:bg-[#1A1A1D] transition-colors cursor-pointer"
+        className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+        style={hoverBgStyle}
         title="New file"
       >
         + File
       </button>
       <button
         onClick={onNewFolder}
-        className="px-2 py-0.5 rounded hover:bg-[#1A1A1D] transition-colors cursor-pointer"
+        className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+        style={hoverBgStyle}
         title="New folder"
       >
         + Folder

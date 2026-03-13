@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import type { SimNode, SimEdge } from './GraphRenderer'
-import { ARTIFACT_COLORS } from '../../design/tokens'
+import { ARTIFACT_COLORS, colors } from '../../design/tokens'
 
 interface GraphMinimapProps {
   nodes: readonly SimNode[]
@@ -114,7 +114,7 @@ export function GraphMinimap({
 
     // Draw edges as faint lines
     ctx.globalAlpha = 0.15
-    ctx.strokeStyle = '#ffffff'
+    ctx.strokeStyle = colors.text.primary
     ctx.lineWidth = 0.5
     ctx.beginPath()
 

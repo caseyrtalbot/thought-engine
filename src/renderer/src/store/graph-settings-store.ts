@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ArtifactType } from '@shared/types'
+import { ARTIFACT_COLORS } from '../design/tokens'
 
 export type NodeSizeMode = 'degree' | 'uniform' | 'content'
 
@@ -43,12 +44,12 @@ interface GraphSettingsState {
 }
 
 const DEFAULT_GROUPS: Record<ArtifactType, GroupConfig> = {
-  gene: { visible: true, color: '#6C63FF' },
-  constraint: { visible: true, color: '#EF4444' },
-  research: { visible: true, color: '#2DD4BF' },
-  output: { visible: true, color: '#EC4899' },
-  note: { visible: true, color: '#8B8B8E' },
-  index: { visible: true, color: '#38BDF8' }
+  gene: { visible: true, color: ARTIFACT_COLORS.gene },
+  constraint: { visible: true, color: ARTIFACT_COLORS.constraint },
+  research: { visible: true, color: ARTIFACT_COLORS.research },
+  output: { visible: true, color: ARTIFACT_COLORS.output },
+  note: { visible: true, color: ARTIFACT_COLORS.note },
+  index: { visible: true, color: ARTIFACT_COLORS.index }
 }
 
 export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => ({

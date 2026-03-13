@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTerminalStore } from '../../store/terminal-store'
 import { colors } from '../../design/tokens'
 
-const STATUS_DOT_SHELL = '#34D399'
+const STATUS_DOT_SHELL = colors.semantic.cluster
 const STATUS_DOT_AGENT = '#A78BFA'
 
 function sessionDotColor(title: string): string {

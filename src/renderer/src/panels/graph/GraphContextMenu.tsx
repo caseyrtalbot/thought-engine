@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useVaultStore } from '../../store/vault-store'
-import { colors } from '../../design/tokens'
+import { colors, ARTIFACT_COLORS } from '../../design/tokens'
 
 interface GraphContextMenuProps {
   x: number
@@ -20,22 +20,15 @@ export const CONTEXT_MENU_ITEMS: readonly ContextMenuItem[] = [
   { label: 'Open in editor', action: 'open' },
   { label: 'Reveal in sidebar', action: 'reveal' },
   { label: 'Copy file path', action: 'copy-path' },
-  { label: 'Delete', action: 'delete', dangerous: true },
+  { label: 'Delete', action: 'delete', dangerous: true }
 ]
 
-export function GraphContextMenu({
-  x,
-  y,
-  nodeId,
-  onClose,
-  onOpenInEditor,
-}: GraphContextMenuProps) {
+export function GraphContextMenu({ x, y, nodeId, onClose, onOpenInEditor }: GraphContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [showConfirm, setShowConfirm] = useState(false)
 
   const fileToId = useVaultStore((s) => s.fileToId)
-  const filePath =
-    Object.entries(fileToId).find(([, id]) => id === nodeId)?.[0] ?? null
+  const filePath = Object.entries(fileToId).find(([, id]) => id === nodeId)?.[0] ?? null
 
   const handleClose = useCallback(() => {
     onClose()
@@ -79,9 +72,7 @@ export function GraphContextMenu({
           handleClose()
           break
         case 'reveal':
-          document.dispatchEvent(
-            new CustomEvent('graph:reveal-in-sidebar', { detail: { nodeId } })
-          )
+          document.dispatchEvent(new CustomEvent('graph:reveal-in-sidebar', { detail: { nodeId } }))
           handleClose()
           break
         case 'copy-path':
@@ -120,7 +111,7 @@ export function GraphContextMenu({
         border: `1px solid ${colors.border.default}`,
         borderRadius: '6px',
         padding: '4px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
       }}
     >
       {showConfirm ? (
@@ -129,7 +120,7 @@ export function GraphContextMenu({
             style={{
               color: colors.text.secondary,
               fontSize: '13px',
-              marginBottom: '8px',
+              marginBottom: '8px'
             }}
           >
             Delete this node? This cannot be undone.
@@ -144,7 +135,7 @@ export function GraphContextMenu({
                 border: `1px solid ${colors.border.default}`,
                 borderRadius: '4px',
                 color: colors.text.secondary,
-                cursor: 'pointer',
+                cursor: 'pointer'
               }}
             >
               Cancel
@@ -154,11 +145,11 @@ export function GraphContextMenu({
               style={{
                 padding: '4px 10px',
                 fontSize: '13px',
-                backgroundColor: '#EF4444',
+                backgroundColor: ARTIFACT_COLORS.constraint,
                 border: 'none',
                 borderRadius: '4px',
                 color: '#fff',
-                cursor: 'pointer',
+                cursor: 'pointer'
               }}
             >
               Delete
@@ -179,16 +170,16 @@ export function GraphContextMenu({
               backgroundColor: 'transparent',
               border: 'none',
               borderRadius: '4px',
-              color: item.dangerous ? '#EF4444' : colors.text.primary,
-              cursor: 'pointer',
+              color: item.dangerous ? ARTIFACT_COLORS.constraint : colors.text.primary,
+              cursor: 'pointer'
             }}
             onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                item.dangerous ? 'rgba(239,68,68,0.1)' : colors.accent.muted
+              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = item.dangerous
+                ? 'rgba(239,68,68,0.1)'
+                : colors.accent.muted
             }}
             onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                'transparent'
+              ;(e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'
             }}
           >
             {item.label}
