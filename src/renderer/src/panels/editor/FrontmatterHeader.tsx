@@ -15,7 +15,7 @@ export function buildMetadataEntries(artifact: Artifact): readonly MetadataEntry
     { label: 'Type', value: artifact.type },
     { label: 'Signal', value: artifact.signal },
     { label: 'Created', value: artifact.created },
-    { label: 'Modified', value: artifact.modified },
+    { label: 'Modified', value: artifact.modified }
   ]
 
   if (artifact.frame) {
@@ -55,7 +55,7 @@ function RelationshipBlock({ icon, label, ids, onNavigate }: RelationshipBlockPr
 }
 
 interface FrontmatterHeaderProps {
-  artifact: Artifact
+  artifact: Artifact | null
   mode: 'rich' | 'source'
   onNavigate?: (id: string) => void
 }
@@ -63,7 +63,7 @@ interface FrontmatterHeaderProps {
 export function FrontmatterHeader({ artifact, mode, onNavigate }: FrontmatterHeaderProps) {
   const [expanded, setExpanded] = useState(false)
 
-  if (mode === 'source') return null
+  if (mode === 'source' || !artifact) return null
 
   const entries = buildMetadataEntries(artifact)
   const typeColor = ARTIFACT_COLORS[artifact.type]
@@ -74,15 +74,12 @@ export function FrontmatterHeader({ artifact, mode, onNavigate }: FrontmatterHea
       style={{
         borderColor: colors.border.default,
         backgroundColor: colors.bg.surface,
-        transition: transitions.default,
+        transition: transitions.default
       }}
     >
       {/* Summary row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: typeColor }}
-        />
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: typeColor }} />
         <Badge label={artifact.type} color={typeColor} />
         {artifact.tags.map((tag) => (
           <Badge key={tag} label={tag} color={colors.text.secondary} />
@@ -128,7 +125,10 @@ export function FrontmatterHeader({ artifact, mode, onNavigate }: FrontmatterHea
             artifact.clusters_with.length > 0 ||
             artifact.tensions_with.length > 0 ||
             artifact.appears_in.length > 0) && (
-            <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: colors.border.default }}>
+            <div
+              className="space-y-1.5 pt-1 border-t"
+              style={{ borderColor: colors.border.default }}
+            >
               <RelationshipBlock
                 icon="↔"
                 label="Connections"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useRef } from 'react'
 import { useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
@@ -15,6 +15,14 @@ import { RichEditor } from './RichEditor'
 import { SourceEditor } from './SourceEditor'
 import { colors } from '../../design/tokens'
 
+/** Strip YAML frontmatter (---...---) from markdown content for rich editing */
+function stripFrontmatter(raw: string): string {
+  if (!raw.startsWith('---')) return raw
+  const end = raw.indexOf('---', 3)
+  if (end === -1) return raw
+  return raw.slice(end + 3).trimStart()
+}
+
 interface EditorPanelProps {
   onNavigate: (id: string) => void
 }
@@ -30,7 +38,7 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
 
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifact = useVaultStore((s) =>
-    activeNoteId ? s.artifacts.find((a) => a.id === activeNoteId) ?? null : null
+    activeNoteId ? (s.artifacts.find((a) => a.id === activeNoteId) ?? null) : null
   )
   const getBacklinks = useVaultStore((s) => s.getBacklinks)
 
@@ -40,6 +48,7 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   )
 
   const { canGoBack, canGoForward, push, goBack, goForward } = useNavigationHistory()
+  const prevPathRef = useRef<string | null>(null)
 
   // Push to navigation history when active note changes
   useEffect(() => {
@@ -52,10 +61,10 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   const extensions = useMemo(
     () => [
       StarterKit,
-      Markdown.configure({ indentation: { style: 'space', size: 2 } }),
+      Markdown,
       TaskList,
       TaskItem.configure({ nested: true }),
-      Link.configure({ openOnClick: false }),
+      Link.configure({ openOnClick: false })
     ],
     []
   )
@@ -63,9 +72,9 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   const handleUpdate = useCallback(
     ({ editor: ed }: { editor: ReturnType<typeof useEditor> }) => {
       if (!ed) return
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const markdown = (ed as any).getMarkdown?.()
-      if (typeof markdown === 'string') {
+      const manager = ed.storage.markdown?.manager
+      if (manager) {
+        const markdown = manager.serialize(ed.getJSON())
         setContent(markdown)
       }
     },
@@ -77,11 +86,9 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
       if (!ed) return
       const { from } = ed.state.selection
       const resolved = ed.state.doc.resolve(from)
-      // Approximate line/col from the document position
       const lineBlock = resolved.node(1)
       const lineText = lineBlock ? lineBlock.textContent : ''
       const offset = from - resolved.start(1)
-      // Use 1-based indexing for display
       const lineNumber = resolved.depth > 0 ? resolved.index(0) + 1 : 1
       const colNumber = Math.max(1, offset + 1)
       setCursorPosition(lineNumber, Math.min(colNumber, lineText.length + 1))
@@ -91,33 +98,39 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
 
   const editor = useEditor({
     extensions,
-    content,
+    content: '',
     onUpdate: handleUpdate,
     onSelectionUpdate: handleSelectionUpdate,
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-full px-8 py-6',
-        style: `color: ${colors.text.primary}; font-family: Inter, system-ui, sans-serif;`,
-      },
-    },
+        style: `color: ${colors.text.primary}; font-family: Inter, system-ui, sans-serif;`
+      }
+    }
   })
 
-  // Sync external content changes into the editor
+  // Load content into editor when file changes (strip frontmatter for rich view)
   useEffect(() => {
-    if (!editor) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const currentMarkdown = (editor as any).getMarkdown?.()
-    if (typeof currentMarkdown === 'string' && content !== currentMarkdown) {
-      editor.commands.setContent(content)
+    if (!editor || !content) return
+    if (activeNotePath === prevPathRef.current) return
+    prevPathRef.current = activeNotePath
+    const body = stripFrontmatter(content)
+    // Use the Markdown extension's parser to convert markdown → ProseMirror JSON
+    const manager = editor.storage.markdown?.manager
+    if (manager) {
+      const json = manager.parse(body)
+      editor.commands.setContent(json)
+    } else {
+      editor.commands.setContent(body)
     }
-  }, [content, editor])
+  }, [content, editor, activeNotePath])
 
   const handleToggleMode = useCallback(() => {
     setMode(mode === 'rich' ? 'source' : 'rich')
   }, [mode, setMode])
 
-  // Empty state
-  if (!artifact) {
+  // Empty state - only show when no file is selected
+  if (!activeNotePath) {
     return (
       <div
         className="h-full flex items-center justify-center"
@@ -145,19 +158,11 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
         onGoForward={goForward}
       />
 
-      <EditorToolbar
-        editor={editor}
-        mode={mode}
-        onToggleMode={handleToggleMode}
-      />
+      <EditorToolbar editor={editor} mode={mode} onToggleMode={handleToggleMode} />
 
-      <FrontmatterHeader
-        artifact={artifact}
-        mode={mode}
-        onNavigate={onNavigate}
-      />
+      <FrontmatterHeader artifact={artifact} mode={mode} onNavigate={onNavigate} />
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         {mode === 'rich' ? (
           <RichEditor editor={editor} />
         ) : (

@@ -61,7 +61,9 @@ function ConnectedSidebar() {
   const artifacts = useVaultStore((s) => s.artifacts)
   const fileToId = useVaultStore((s) => s.fileToId)
   const setActiveNote = useEditorStore((s) => s.setActiveNote)
+  const setContent = useEditorStore((s) => s.setContent)
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
+  const setContentView = useGraphStore((s) => s.setContentView)
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<'modified' | 'name' | 'type'>('modified')
 
@@ -83,10 +85,17 @@ function ConnectedSidebar() {
   }, [artifacts, fileToId])
 
   const handleFileSelect = useCallback(
-    (path: string) => {
+    async (path: string) => {
       setActiveNote(path, path)
+      setContentView('editor')
+      try {
+        const fileContent = await window.api.fs.readFile(path)
+        setContent(fileContent)
+      } catch {
+        setContent('')
+      }
     },
-    [setActiveNote]
+    [setActiveNote, setContentView, setContent]
   )
 
   const handleSearch = useCallback((_query: string) => {
