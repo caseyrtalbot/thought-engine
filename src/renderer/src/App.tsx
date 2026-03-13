@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useVaultWorker } from './engine/useVaultWorker'
 import { ThemeProvider } from './design/Theme'
 import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
@@ -34,7 +35,11 @@ function StatusBar() {
   return (
     <div
       className="h-6 flex items-center px-3 text-[11px] border-t flex-shrink-0"
-      style={{ backgroundColor: colors.bg.surface, color: colors.text.muted, borderColor: colors.border.default }}
+      style={{
+        backgroundColor: colors.bg.surface,
+        color: colors.text.muted,
+        borderColor: colors.border.default
+      }}
     >
       <span>{vaultName}</span>
       <span className="mx-2">&middot;</span>
@@ -202,11 +207,23 @@ function WorkspaceShell() {
       <Titlebar vaultName={vaultName} onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex-1 overflow-hidden">
         <SplitPane
-          left={<PanelErrorBoundary name="Sidebar"><ConnectedSidebar /></PanelErrorBoundary>}
+          left={
+            <PanelErrorBoundary name="Sidebar">
+              <ConnectedSidebar />
+            </PanelErrorBoundary>
+          }
           right={
             <SplitPane
-              left={<PanelErrorBoundary name="Content"><ContentArea /></PanelErrorBoundary>}
-              right={<PanelErrorBoundary name="Terminal"><TerminalPanel /></PanelErrorBoundary>}
+              left={
+                <PanelErrorBoundary name="Content">
+                  <ContentArea />
+                </PanelErrorBoundary>
+              }
+              right={
+                <PanelErrorBoundary name="Terminal">
+                  <TerminalPanel />
+                </PanelErrorBoundary>
+              }
               initialLeftWidth={580}
               minLeftWidth={300}
               minRightWidth={400}
@@ -229,20 +246,102 @@ function WorkspaceShell() {
   )
 }
 
+function LoadingSkeleton() {
+  return (
+    <div
+      className="h-screen w-screen flex items-center justify-center"
+      style={{ backgroundColor: colors.bg.base }}
+    >
+      <div className="text-center">
+        <div
+          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+          style={{ borderColor: colors.accent.default, borderTopColor: 'transparent' }}
+        />
+        <p className="text-sm" style={{ color: colors.text.muted }}>
+          Loading vault...
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const isLoading = useVaultStore((s) => s.isLoading)
   const loadVault = useVaultStore((s) => s.loadVault)
+  const setWorkerResult = useVaultStore((s) => s.setWorkerResult)
+  const setFiles = useVaultStore((s) => s.setFiles)
 
-  const handleVaultSelected = useCallback(
-    (path: string) => {
-      loadVault(path)
+  const onWorkerResult = useCallback(
+    (result: { artifacts: any[]; graph: any; errors: any[]; fileToId: Record<string, string> }) => {
+      setWorkerResult(result)
+      const files = useVaultStore.getState().files
+      const updatedFiles = files.map((f) => {
+        const id = result.fileToId[f.path]
+        const artifact = id ? result.artifacts.find((a: any) => a.id === id) : undefined
+        return artifact ? { ...f, title: artifact.title, modified: artifact.modified } : f
+      })
+      setFiles(updatedFiles)
     },
-    [loadVault]
+    [setWorkerResult, setFiles]
   )
+
+  const { loadFiles, updateFile, removeFile } = useVaultWorker(onWorkerResult)
+
+  const orchestrateLoad = useCallback(
+    async (path: string) => {
+      await window.api.vault.init(path)
+      await loadVault(path)
+      const state = useVaultStore.getState().state
+      if (state) {
+        if (state.contentView)
+          useGraphStore.getState().setContentView(state.contentView as 'editor' | 'graph')
+        if (state.selectedNodeId) useGraphStore.getState().setSelectedNode(state.selectedNodeId)
+        if (state.lastOpenNote)
+          useEditorStore.getState().setActiveNote(state.lastOpenNote, state.lastOpenNote)
+      }
+      window.api.config.write('app', 'lastVaultPath', path)
+      await window.api.vault.watchStart(path)
+      const filePaths = useVaultStore.getState().files.map((f) => f.path)
+      const filesWithContent = await Promise.all(
+        filePaths.map(async (p) => ({ path: p, content: await window.api.fs.readFile(p) }))
+      )
+      loadFiles(filesWithContent)
+    },
+    [loadVault, loadFiles]
+  )
+
+  useEffect(() => {
+    window.api.config
+      .read('app', 'lastVaultPath')
+      .then((savedPath) => {
+        if (typeof savedPath === 'string' && savedPath) orchestrateLoad(savedPath)
+      })
+      .catch(() => {})
+  }, [orchestrateLoad])
+
+  useEffect(() => {
+    const unsub = window.api.on.fileChanged(async (data) => {
+      if (data.event === 'unlink') {
+        removeFile(data.path)
+      } else {
+        updateFile(data.path, await window.api.fs.readFile(data.path))
+      }
+    })
+    return () => {
+      unsub()
+    }
+  }, [updateFile, removeFile])
 
   return (
     <ThemeProvider>
-      {vaultPath ? <WorkspaceShell /> : <WelcomeScreen onVaultSelected={handleVaultSelected} />}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : vaultPath ? (
+        <WorkspaceShell />
+      ) : (
+        <WelcomeScreen onVaultSelected={orchestrateLoad} />
+      )}
     </ThemeProvider>
   )
 }
