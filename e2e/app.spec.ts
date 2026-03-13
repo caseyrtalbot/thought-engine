@@ -320,12 +320,18 @@ test.describe('Workspace with Test Vault', () => {
     await screenshot('07-custom-type-file')
     expect(hasPattern).toBeTruthy()
   })
+
+  test('app closes cleanly with active terminal sessions', async () => {
+    const termTabs = page.locator('[data-testid="terminal-tabs"]')
+    await termTabs.waitFor({ timeout: 5000 })
+    await app.close()
+  })
 })
 
 // ─────────────────────────────────────────────────────────
 // 4. AESTHETIC DIAGNOSTICS (screenshot-based)
 // ─────────────────────────────────────────────────────────
-test.describe('Aesthetic Diagnostics', () => {
+test.describe('Screenshot Capture (no assertions)', () => {
   test.beforeEach(async () => {
     app = await electron.launch({ args: [MAIN_ENTRY] })
     page = await app.firstWindow()
