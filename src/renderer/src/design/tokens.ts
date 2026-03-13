@@ -37,8 +37,31 @@ export const ARTIFACT_COLORS: Record<BuiltInArtifactType, string> = {
 
 export const DEFAULT_ARTIFACT_COLOR = '#64748b'
 
+// Palette excludes colors already used by built-in types
+const CUSTOM_TYPE_PALETTE = [
+  '#c084fc', // purple (distinct from research #a78bfa)
+  '#818cf8', // indigo
+  '#34d399', // emerald
+  '#facc15', // yellow
+  '#fb923c', // orange
+  '#f87171', // red-light (distinct from constraint #ef4444)
+  '#2dd4bf', // teal
+  '#a3e635', // lime
+  '#fbbf24' // amber
+] as const
+
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash)
+}
+
 export function getArtifactColor(type: string): string {
-  return (ARTIFACT_COLORS as Record<string, string>)[type] ?? DEFAULT_ARTIFACT_COLOR
+  const builtIn = (ARTIFACT_COLORS as Record<string, string>)[type]
+  if (builtIn) return builtIn
+  return CUSTOM_TYPE_PALETTE[hashString(type) % CUSTOM_TYPE_PALETTE.length]
 }
 
 export const spacing = {

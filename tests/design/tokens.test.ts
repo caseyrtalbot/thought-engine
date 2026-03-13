@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   colors,
   ARTIFACT_COLORS,
+  getArtifactColor,
   typeScale,
   borderRadius,
   transitions,
@@ -88,5 +89,31 @@ describe('extended design tokens', () => {
       const ms = parseInt(timing, 10)
       expect(ms).toBeLessThanOrEqual(400)
     }
+  })
+})
+
+describe('getArtifactColor', () => {
+  it('returns distinct colors for different custom types', () => {
+    const patternColor = getArtifactColor('pattern')
+    const doctrineColor = getArtifactColor('doctrine')
+    const theoryColor = getArtifactColor('theory')
+
+    const uniqueColors = new Set([patternColor, doctrineColor, theoryColor])
+    expect(uniqueColors.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('returns consistent color for the same custom type', () => {
+    expect(getArtifactColor('pattern')).toBe(getArtifactColor('pattern'))
+  })
+
+  it('still returns built-in colors for known types', () => {
+    expect(getArtifactColor('gene')).toBe('#22d3ee')
+    expect(getArtifactColor('constraint')).toBe('#ef4444')
+  })
+
+  it('custom type colors do not collide with built-in colors', () => {
+    const builtInColors = new Set(Object.values(ARTIFACT_COLORS))
+    const customColor = getArtifactColor('myCustomType')
+    expect(builtInColors.has(customColor)).toBe(false)
   })
 })
