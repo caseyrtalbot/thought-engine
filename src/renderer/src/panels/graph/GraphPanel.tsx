@@ -479,7 +479,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     <div
       className="h-full relative focus-ring"
       tabIndex={0}
-      style={{ backgroundColor: colors.bg.surface }}
+      style={{ backgroundColor: colors.bg.base }}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
     >

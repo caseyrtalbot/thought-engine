@@ -60,7 +60,7 @@ export function TerminalTabs({
 
   return (
     <div
-      className="flex items-center overflow-x-auto gap-1"
+      className="flex items-center overflow-x-auto gap-1 shrink-0"
       style={{
         height: 40,
         padding: '4px 8px 4px',
@@ -75,7 +75,7 @@ export function TerminalTabs({
           <div
             key={session.id}
             onClick={() => setActiveSession(session.id)}
-            className="flex items-center gap-1.5 cursor-pointer group"
+            className="flex items-center gap-1.5 cursor-pointer group shrink-0 whitespace-nowrap"
             style={{
               padding: '4px 12px',
               fontSize: 12,

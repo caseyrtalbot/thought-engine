@@ -364,14 +364,14 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
                   </PanelErrorBoundary>
                 </div>
               }
-              initialLeftWidth={580}
-              minLeftWidth={300}
-              minRightWidth={400}
+              initialLeftWidth={480}
+              minLeftWidth={280}
+              minRightWidth={300}
             />
           }
-          initialLeftWidth={240}
-          minLeftWidth={0}
-          minRightWidth={500}
+          initialLeftWidth={220}
+          minLeftWidth={180}
+          minRightWidth={580}
         />
       </div>
       <StatusBar />

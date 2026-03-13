@@ -145,7 +145,7 @@ export function Sidebar({
   )
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.surface }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.base }}>
       <div className="p-2 border-b" style={{ borderColor: colors.border.default }}>
         <SearchBar onSearch={onSearch} />
       </div>

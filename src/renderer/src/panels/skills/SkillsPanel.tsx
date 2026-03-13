@@ -34,13 +34,7 @@ function EmptyState() {
   )
 }
 
-function SkillCard({
-  skill,
-  onRun
-}: {
-  skill: SkillEntry
-  onRun: (skill: SkillEntry) => void
-}) {
+function SkillCard({ skill, onRun }: { skill: SkillEntry; onRun: (skill: SkillEntry) => void }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -61,10 +55,7 @@ function SkillCard({
         >
           {skill.name}
         </div>
-        <div
-          className="truncate mt-0.5"
-          style={{ fontSize: '11px', color: colors.text.secondary }}
-        >
+        <div className="truncate mt-0.5" style={{ fontSize: '11px', color: colors.text.secondary }}>
           {skill.description}
         </div>
       </div>
@@ -153,7 +144,10 @@ export function SkillsPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto" style={{ backgroundColor: colors.bg.surface }}>
+    <div
+      className="h-full flex flex-col overflow-y-auto"
+      style={{ backgroundColor: colors.bg.base }}
+    >
       <div
         className="px-4 py-2 border-b text-xs shrink-0"
         style={{ borderColor: colors.border.default, color: colors.text.muted }}

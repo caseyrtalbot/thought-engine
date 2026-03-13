@@ -55,7 +55,7 @@ export function TerminalPanel() {
       fontFamily: '"JetBrains Mono", monospace',
       fontSize: termFontSize,
       theme: {
-        background: colors.bg.surface,
+        background: colors.bg.base,
         foreground: colors.text.primary,
         cursor: colors.accent.default,
         selectionBackground: colors.accent.muted

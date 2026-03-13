@@ -25,19 +25,29 @@ export function SplitPane({
     up: (() => void) | null
   }>({ move: null, up: null })
 
-  // Clamp initial width once the container has measured
+  // Re-clamp left width whenever the container resizes
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    const totalWidth = el.clientWidth
-    const dividerWidth = 4
-    const maxLeft = totalWidth - dividerWidth - minRightWidth
-    if (leftWidth > maxLeft) {
-      const clamped = Math.max(minLeftWidth, maxLeft)
-      setLeftWidth(clamped)
-      onResize?.(clamped)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const observer = new ResizeObserver(() => {
+      if (dragging.current) return
+      const totalWidth = el.clientWidth
+      const dividerWidth = 4
+      const maxLeft = totalWidth - dividerWidth - minRightWidth
+      setLeftWidth((prev) => {
+        if (prev > maxLeft) {
+          const clamped = Math.max(minLeftWidth, maxLeft)
+          onResize?.(clamped)
+          return clamped
+        }
+        return prev
+      })
+    })
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [minLeftWidth, minRightWidth, onResize])
 
   useEffect(() => {
     return () => {
