@@ -13,9 +13,13 @@ import { useVaultStore } from './store/vault-store'
 import { useEditorStore } from './store/editor-store'
 import { useGraphStore } from './store/graph-store'
 import { colors } from './design/tokens'
+import { Titlebar } from './components/Titlebar'
+import { SettingsModal } from './components/SettingsModal'
+import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 
 function StatusBar() {
-  const { vaultPath, files } = useVaultStore()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const fileCount = useVaultStore((s) => s.files.length)
   const [gitBranch, setGitBranch] = useState<string | null>(null)
   const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
@@ -29,12 +33,12 @@ function StatusBar() {
 
   return (
     <div
-      className="h-6 flex items-center px-3 text-[11px] text-[#5A5A5E] border-t border-[#2A2A2E]"
-      style={{ backgroundColor: colors.bg.surface }}
+      className="h-6 flex items-center px-3 text-[11px] border-t flex-shrink-0"
+      style={{ backgroundColor: colors.bg.surface, color: colors.text.muted, borderColor: colors.border.default }}
     >
       <span>{vaultName}</span>
       <span className="mx-2">&middot;</span>
-      <span>{files.length} notes</span>
+      <span>{fileCount} notes</span>
       {gitBranch && (
         <>
           <span className="mx-2">&middot;</span>
@@ -46,9 +50,9 @@ function StatusBar() {
 }
 
 function ContentArea() {
-  const { contentView } = useGraphStore()
-  const { setActiveNote } = useEditorStore()
-  const { setContentView } = useGraphStore()
+  const contentView = useGraphStore((s) => s.contentView)
+  const setActiveNote = useEditorStore((s) => s.setActiveNote)
+  const setContentView = useGraphStore((s) => s.setContentView)
 
   const handleNodeClick = useCallback(
     (id: string) => {
@@ -78,8 +82,12 @@ function ContentArea() {
 }
 
 function ConnectedSidebar() {
-  const { files, config, activeWorkspace, setActiveWorkspace } = useVaultStore()
-  const { setActiveNote, activeNotePath } = useEditorStore()
+  const files = useVaultStore((s) => s.files)
+  const config = useVaultStore((s) => s.config)
+  const activeWorkspace = useVaultStore((s) => s.activeWorkspace)
+  const setActiveWorkspace = useVaultStore((s) => s.setActiveWorkspace)
+  const setActiveNote = useEditorStore((s) => s.setActiveNote)
+  const activeNotePath = useEditorStore((s) => s.activeNotePath)
 
   const handleFileSelect = useCallback(
     (path: string) => {
@@ -137,10 +145,15 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
 
 function WorkspaceShell() {
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const { files } = useVaultStore()
-  const { setActiveNote } = useEditorStore()
-  const { contentView, setContentView } = useGraphStore()
-  const { mode, setMode } = useEditorStore()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const files = useVaultStore((s) => s.files)
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const setActiveNote = useEditorStore((s) => s.setActiveNote)
+  const contentView = useGraphStore((s) => s.contentView)
+  const setContentView = useGraphStore((s) => s.setContentView)
+  const mode = useEditorStore((s) => s.mode)
+  const setMode = useEditorStore((s) => s.setMode)
+  const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
   const toggleView = useCallback(() => {
     setContentView(contentView === 'editor' ? 'graph' : 'editor')
@@ -186,19 +199,20 @@ function WorkspaceShell() {
       className="h-screen w-screen flex flex-col"
       style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
     >
+      <Titlebar vaultName={vaultName} onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex-1 overflow-hidden">
         <SplitPane
-          left={<ConnectedSidebar />}
+          left={<PanelErrorBoundary name="Sidebar"><ConnectedSidebar /></PanelErrorBoundary>}
           right={
             <SplitPane
-              left={<ContentArea />}
-              right={<TerminalPanel />}
+              left={<PanelErrorBoundary name="Content"><ContentArea /></PanelErrorBoundary>}
+              right={<PanelErrorBoundary name="Terminal"><TerminalPanel /></PanelErrorBoundary>}
               initialLeftWidth={580}
               minLeftWidth={300}
-              minRightWidth={320}
+              minRightWidth={400}
             />
           }
-          initialLeftWidth={260}
+          initialLeftWidth={240}
           minLeftWidth={0}
           minRightWidth={500}
         />
@@ -210,12 +224,14 @@ function WorkspaceShell() {
         items={paletteItems}
         onSelect={handlePaletteSelect}
       />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
 
 export default function App() {
-  const { vaultPath, loadVault } = useVaultStore()
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const loadVault = useVaultStore((s) => s.loadVault)
 
   const handleVaultSelected = useCallback(
     (path: string) => {
