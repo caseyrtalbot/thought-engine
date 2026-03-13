@@ -26,6 +26,11 @@ export function registerFilesystemIpc(): void {
     return fileService.listFilesRecursive(args.dir)
   })
 
+  ipcMain.handle('fs:file-exists', async (_e, args: { path: string }) => {
+    const { existsSync } = await import('node:fs')
+    return existsSync(args.path)
+  })
+
   ipcMain.handle('fs:select-vault', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
     return result.canceled ? null : result.filePaths[0]

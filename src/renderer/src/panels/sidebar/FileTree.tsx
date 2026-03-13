@@ -1,4 +1,4 @@
-import { colors, ARTIFACT_COLORS } from '../../design/tokens'
+import { colors, getArtifactColor } from '../../design/tokens'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
 import { RenameInput } from './FileContextMenu'
@@ -212,7 +212,7 @@ function FileRow({
       {artifactType && (
         <span
           className="w-2 h-2 rounded-full mr-2 flex-shrink-0"
-          style={{ backgroundColor: ARTIFACT_COLORS[artifactType] }}
+          style={{ backgroundColor: getArtifactColor(artifactType) }}
         />
       )}
       {isRenaming ? (

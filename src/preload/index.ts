@@ -19,6 +19,7 @@ const api = {
     listFiles: (dir: string, pattern?: string) =>
       ipcRenderer.invoke('fs:list-files', { dir, pattern }),
     listFilesRecursive: (dir: string) => ipcRenderer.invoke('fs:list-files-recursive', { dir }),
+    fileExists: (path: string): Promise<boolean> => ipcRenderer.invoke('fs:file-exists', { path }),
     deleteFile: (path: string) => ipcRenderer.invoke('fs:delete-file', { path }),
     renameFile: (oldPath: string, newPath: string): Promise<void> =>
       ipcRenderer.invoke('fs:rename-file', { oldPath, newPath }),

@@ -48,14 +48,15 @@ All cross-process communication follows: Main registers `ipcMain.handle('channel
 
 Core domain logic that parses markdown files into typed Artifacts and builds a KnowledgeGraph:
 
-- **parser.ts**: gray-matter frontmatter → Artifact (types: gene, constraint, research, output, note, index; signals: untested, emerging, validated, core)
+- **parser.ts**: gray-matter frontmatter → Artifact. Type is an open string (any value accepted, defaults to `note`). Built-in types: gene, constraint, research, output, note, index. Custom types (e.g., `pattern`, `doctrine`) are auto-discovered. Signals: untested, emerging, validated, core.
+- **claude-md-template.ts**: Generates vault-scoped CLAUDE.md that teaches Claude the ontology system
 - **indexer.ts**: VaultIndex class maintaining in-memory cache with search, backlinks, file→id mapping
 - **graph-builder.ts**: Artifacts → nodes + edges from relationship fields (connection, cluster, tension, appears_in). Creates ghost nodes for unresolved references.
 - **vault-worker.ts**: Web Worker for bulk parsing. Main thread sends files, worker posts back complete result (artifacts, graph, errors, fileToId). Incremental updates on file change.
 
 ### State Management (Zustand)
 
-- **vault-store**: Files, artifacts, graph, parse errors, vault path/config/state
+- **vault-store**: Files, artifacts, graph, parse errors, vault path/config/state, discoveredTypes (auto-collected from parsed artifacts)
 - **editor-store**: Active note, mode (rich|source), dirty state, content, cursor
 - **graph-store**: Content view (editor|graph|skills), selected node
 - **graph-settings-store**: D3 physics params, render options

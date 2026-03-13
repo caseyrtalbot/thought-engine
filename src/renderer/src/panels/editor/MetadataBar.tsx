@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Artifact } from '@shared/types'
 import { Badge } from '../../design/components/Badge'
 import { Chip } from '../../design/components/Chip'
-import { ARTIFACT_COLORS, colors } from '../../design/tokens'
+import { getArtifactColor, colors } from '../../design/tokens'
 
 interface MetadataBarProps {
   artifact: Artifact
@@ -20,9 +20,9 @@ export function MetadataBar({ artifact, onNavigate }: MetadataBarProps) {
       <div className="flex items-center gap-2 flex-wrap">
         <span
           className="w-2.5 h-2.5 rounded-full"
-          style={{ backgroundColor: ARTIFACT_COLORS[artifact.type] }}
+          style={{ backgroundColor: getArtifactColor(artifact.type) }}
         />
-        <Badge label={artifact.type} color={ARTIFACT_COLORS[artifact.type]} />
+        <Badge label={artifact.type} color={getArtifactColor(artifact.type)} />
         <Badge label={artifact.id} color={colors.text.secondary} />
         {artifact.frame && <Badge label={artifact.frame} color={colors.text.secondary} />}
         <Badge

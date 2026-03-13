@@ -1,5 +1,10 @@
 export const ARTIFACT_TYPES = ['gene', 'constraint', 'research', 'output', 'note', 'index'] as const
-export type ArtifactType = (typeof ARTIFACT_TYPES)[number]
+export type BuiltInArtifactType = (typeof ARTIFACT_TYPES)[number]
+export type ArtifactType = string
+
+export function isBuiltInType(t: string): t is BuiltInArtifactType {
+  return (ARTIFACT_TYPES as readonly string[]).includes(t)
+}
 
 export const SIGNALS = ['untested', 'emerging', 'validated', 'core'] as const
 export type Signal = (typeof SIGNALS)[number]

@@ -79,6 +79,41 @@ describe('parseArtifact', () => {
     const result = parseArtifact(MALFORMED_YAML, 'broken.md')
     expect(result.ok).toBe(false)
   })
+
+  it('accepts custom type strings (progressive type discovery)', () => {
+    const md = `---
+id: p01
+title: Feedback Loops
+type: pattern
+created: 2026-03-13
+modified: 2026-03-13
+connections: [g17]
+---
+
+Patterns emerge from repeated observation.`
+
+    const result = parseArtifact(md, 'feedback-loops.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.type).toBe('pattern')
+    expect(result.value.id).toBe('p01')
+  })
+
+  it('defaults to note when type is missing', () => {
+    const md = `---
+id: n42
+title: No Type Specified
+created: 2026-03-13
+modified: 2026-03-13
+---
+
+A note without an explicit type.`
+
+    const result = parseArtifact(md, 'no-type.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.type).toBe('note')
+  })
 })
 
 describe('serializeArtifact', () => {
@@ -93,5 +128,31 @@ describe('serializeArtifact', () => {
     expect(reparsed.value.id).toBe(parsed.value.id)
     expect(reparsed.value.connections).toEqual(parsed.value.connections)
     expect(reparsed.value.body).toContain('Bessemer asks')
+  })
+
+  it('round-trips a custom type artifact', () => {
+    const md = `---
+id: d01
+title: Maneuver Warfare
+type: doctrine
+created: 2026-03-13
+modified: 2026-03-13
+signal: emerging
+connections: [g17]
+---
+
+Boyd's OODA loop applied to strategy.`
+
+    const parsed = parseArtifact(md, 'doctrine.md')
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.type).toBe('doctrine')
+
+    const serialized = serializeArtifact(parsed.value)
+    const reparsed = parseArtifact(serialized, 'doctrine.md')
+    expect(reparsed.ok).toBe(true)
+    if (!reparsed.ok) return
+    expect(reparsed.value.type).toBe('doctrine')
+    expect(reparsed.value.id).toBe('d01')
   })
 })

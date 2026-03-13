@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Artifact } from '@shared/types'
-import { ARTIFACT_COLORS, colors, transitions } from '../../design/tokens'
+import { getArtifactColor, colors, transitions } from '../../design/tokens'
 
 /**
  * Finds the line containing targetId in body and returns a 100-character
@@ -27,7 +27,7 @@ interface BacklinkItemProps {
 }
 
 function BacklinkItem({ artifact, currentNoteId, onNavigate }: BacklinkItemProps) {
-  const typeColor = ARTIFACT_COLORS[artifact.type]
+  const typeColor = getArtifactColor(artifact.type)
   const context = extractContext(artifact.body, currentNoteId)
 
   return (
@@ -38,10 +38,7 @@ function BacklinkItem({ artifact, currentNoteId, onNavigate }: BacklinkItemProps
       style={{ borderRadius: 0 }}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: typeColor }}
-        />
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: typeColor }} />
         <span
           className="text-xs truncate"
           style={{ color: colors.text.primary, transition: transitions.hover }}
@@ -50,11 +47,7 @@ function BacklinkItem({ artifact, currentNoteId, onNavigate }: BacklinkItemProps
         </span>
       </div>
       {context && (
-        <p
-          className="text-xs truncate pl-4"
-          style={{ color: colors.text.muted }}
-          title={context}
-        >
+        <p className="text-xs truncate pl-4" style={{ color: colors.text.muted }} title={context}>
           {context}
         </p>
       )}
@@ -74,10 +67,7 @@ export function BacklinksPanel({ currentNoteId, backlinks, onNavigate }: Backlin
   if (backlinks.length === 0) return null
 
   return (
-    <div
-      className="border-t"
-      style={{ borderColor: colors.border.default }}
-    >
+    <div className="border-t" style={{ borderColor: colors.border.default }}>
       {/* Header row */}
       <button
         type="button"

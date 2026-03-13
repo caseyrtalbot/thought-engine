@@ -6,6 +6,7 @@ export interface IpcChannels {
   'fs:delete-file': { request: { path: string }; response: void }
   'fs:list-files': { request: { dir: string; pattern?: string }; response: string[] }
   'fs:list-files-recursive': { request: { dir: string }; response: string[] }
+  'fs:file-exists': { request: { path: string }; response: boolean }
   'fs:select-vault': { request: void; response: string | null }
 
   'vault:read-config': { request: { vaultPath: string }; response: VaultConfig }

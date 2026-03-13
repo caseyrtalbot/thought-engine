@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Artifact } from '@shared/types'
 import { Badge } from '../../design/components/Badge'
 import { Chip } from '../../design/components/Chip'
-import { ARTIFACT_COLORS, colors, transitions } from '../../design/tokens'
+import { getArtifactColor, colors, transitions } from '../../design/tokens'
 
 export interface MetadataEntry {
   readonly label: string
@@ -131,7 +131,12 @@ interface FrontmatterHeaderProps {
   onNavigate?: (id: string) => void
 }
 
-export function FrontmatterHeader({ artifact, frontmatter, mode, onNavigate }: FrontmatterHeaderProps) {
+export function FrontmatterHeader({
+  artifact,
+  frontmatter,
+  mode,
+  onNavigate
+}: FrontmatterHeaderProps) {
   const [expanded, setExpanded] = useState(false)
 
   if (mode === 'source') return null
@@ -139,7 +144,7 @@ export function FrontmatterHeader({ artifact, frontmatter, mode, onNavigate }: F
   // If we have a TE artifact, show the rich artifact view
   if (artifact) {
     const entries = buildMetadataEntries(artifact)
-    const typeColor = ARTIFACT_COLORS[artifact.type]
+    const typeColor = getArtifactColor(artifact.type)
 
     return (
       <div

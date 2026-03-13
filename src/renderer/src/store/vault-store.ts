@@ -22,6 +22,7 @@ interface VaultStore {
   graph: KnowledgeGraph
   parseErrors: ParseError[]
   fileToId: Record<string, string>
+  discoveredTypes: string[]
   activeWorkspace: string | null
   isLoading: boolean
 
@@ -49,6 +50,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   graph: { nodes: [], edges: [] },
   parseErrors: [],
   fileToId: {},
+  discoveredTypes: [],
   activeWorkspace: null,
   isLoading: false,
 
@@ -80,13 +82,16 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
     }
   },
 
-  setWorkerResult: (result) =>
+  setWorkerResult: (result) => {
+    const discoveredTypes = [...new Set(result.artifacts.map((a) => a.type))].sort()
     set({
       artifacts: result.artifacts,
       graph: result.graph,
       parseErrors: result.errors,
-      fileToId: result.fileToId
-    }),
+      fileToId: result.fileToId,
+      discoveredTypes
+    })
+  },
 
   getBacklinks: (targetId: string): Artifact[] => {
     const { graph, artifacts } = get()

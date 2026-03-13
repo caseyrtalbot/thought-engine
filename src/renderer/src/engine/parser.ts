@@ -1,8 +1,7 @@
 import matter from 'gray-matter'
-import type { Artifact, ArtifactType, Signal } from '@shared/types'
+import type { Artifact, Signal } from '@shared/types'
 import type { Result } from './types'
 
-const VALID_TYPES = new Set<string>(['gene', 'constraint', 'research', 'output', 'note', 'index'])
 const VALID_SIGNALS = new Set<string>(['untested', 'emerging', 'validated', 'core'])
 
 function toStringArray(val: unknown): string[] {
@@ -27,15 +26,11 @@ export function parseArtifact(content: string, filename: string): Result<Artifac
 
   const { data, content: body } = parsed
 
-  if (!data || typeof data !== 'object' || !data.id || !data.title || !data.type) {
+  if (!data || typeof data !== 'object' || !data.id || !data.title) {
     return {
       ok: false,
-      error: `Missing required frontmatter fields (id, title, type) in ${filename}`
+      error: `Missing required frontmatter fields (id, title) in ${filename}`
     }
-  }
-
-  if (!VALID_TYPES.has(data.type)) {
-    return { ok: false, error: `Invalid artifact type "${data.type}" in ${filename}` }
   }
 
   const signal = VALID_SIGNALS.has(data.signal) ? (data.signal as Signal) : 'untested'
@@ -45,7 +40,7 @@ export function parseArtifact(content: string, filename: string): Result<Artifac
     value: {
       id: String(data.id),
       title: String(data.title),
-      type: data.type as ArtifactType,
+      type: typeof data.type === 'string' && data.type ? data.type : 'note',
       created: toDateString(data.created),
       modified: toDateString(data.modified),
       source: data.source ? String(data.source) : undefined,
