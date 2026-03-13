@@ -11,6 +11,7 @@ type TabId = 'appearance' | 'editor' | 'graph' | 'terminal' | 'vault'
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
+  onChangeVault?: () => void
 }
 
 // ---- Helper components ----
@@ -77,14 +78,14 @@ function Toggle({ value, onChange }: ToggleProps) {
       className="w-9 h-5 rounded-full relative transition-colors flex-shrink-0"
       style={{
         backgroundColor: value ? colors.accent.default : colors.bg.elevated,
-        border: `1px solid ${value ? colors.accent.default : colors.border.default}`,
+        border: `1px solid ${value ? colors.accent.default : colors.border.default}`
       }}
     >
       <span
         className="absolute top-0.5 w-3.5 h-3.5 rounded-full transition-transform"
         style={{
           backgroundColor: value ? '#fff' : colors.text.muted,
-          left: value ? 'calc(100% - 1rem)' : '2px',
+          left: value ? 'calc(100% - 1rem)' : '2px'
         }}
       />
     </button>
@@ -112,7 +113,7 @@ function SelectInput({ value, options, onChange }: SelectInputProps) {
         backgroundColor: colors.bg.elevated,
         color: colors.text.primary,
         border: `1px solid ${colors.border.default}`,
-        outline: 'none',
+        outline: 'none'
       }}
     >
       {options.map((opt) => (
@@ -157,7 +158,7 @@ function AppearanceTab() {
           options={[
             { value: 'Inter', label: 'Inter' },
             { value: 'System', label: 'System' },
-            { value: 'JetBrains Mono', label: 'JetBrains Mono' },
+            { value: 'JetBrains Mono', label: 'JetBrains Mono' }
           ]}
           onChange={setFontFamily}
         />
@@ -187,7 +188,7 @@ function EditorTab() {
           value={defaultEditorMode}
           options={[
             { value: 'rich', label: 'Rich' },
-            { value: 'source', label: 'Source' },
+            { value: 'source', label: 'Source' }
           ]}
           onChange={(v) => setDefaultEditorMode(v as 'rich' | 'source')}
         />
@@ -275,7 +276,7 @@ function TerminalTab() {
             backgroundColor: colors.bg.elevated,
             color: colors.text.primary,
             border: `1px solid ${colors.border.default}`,
-            outline: 'none',
+            outline: 'none'
           }}
         />
       </SettingRow>
@@ -301,7 +302,7 @@ function TerminalTab() {
   )
 }
 
-function VaultTab() {
+function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
 
   const handleReindex = () => {
@@ -320,7 +321,18 @@ function VaultTab() {
           {vaultPath ?? 'No vault loaded'}
         </span>
       </SettingRow>
-      <div className="mt-4">
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onChangeVault}
+          className="text-xs px-3 py-1.5 rounded transition-colors"
+          style={{
+            backgroundColor: colors.accent.default,
+            color: '#fff'
+          }}
+        >
+          Open Vault...
+        </button>
         <button
           type="button"
           onClick={handleReindex}
@@ -328,7 +340,7 @@ function VaultTab() {
           style={{
             backgroundColor: colors.bg.elevated,
             color: colors.text.primary,
-            border: `1px solid ${colors.border.default}`,
+            border: `1px solid ${colors.border.default}`
           }}
         >
           Re-index Vault
@@ -345,10 +357,10 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'editor', label: 'Editor' },
   { id: 'graph', label: 'Graph' },
   { id: 'terminal', label: 'Terminal' },
-  { id: 'vault', label: 'Vault' },
+  { id: 'vault', label: 'Vault' }
 ]
 
-function renderTabContent(tab: TabId) {
+function renderTabContent(tab: TabId, onChangeVault?: () => void) {
   switch (tab) {
     case 'appearance':
       return <AppearanceTab />
@@ -359,13 +371,13 @@ function renderTabContent(tab: TabId) {
     case 'terminal':
       return <TerminalTab />
     case 'vault':
-      return <VaultTab />
+      return <VaultTab onChangeVault={onChangeVault} />
   }
 }
 
 // ---- Main modal ----
 
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalProps) {
   const [currentTab, setCurrentTab] = useState<TabId>('appearance')
   const firstTabRef = useRef<HTMLButtonElement>(null)
 
@@ -396,7 +408,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           width: 560,
           height: 480,
           backgroundColor: colors.bg.surface,
-          borderColor: colors.border.default,
+          borderColor: colors.border.default
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -406,7 +418,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           style={{
             width: 160,
             borderRight: `1px solid ${colors.border.default}`,
-            backgroundColor: colors.bg.base,
+            backgroundColor: colors.bg.base
           }}
         >
           <span className="text-xs font-medium px-4 mb-3" style={{ color: colors.text.muted }}>
@@ -421,7 +433,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               className="text-left text-xs px-4 py-2 transition-colors"
               style={{
                 color: currentTab === tab.id ? colors.text.primary : colors.text.secondary,
-                backgroundColor: currentTab === tab.id ? colors.accent.muted : 'transparent',
+                backgroundColor: currentTab === tab.id ? colors.accent.muted : 'transparent'
               }}
             >
               {tab.label}
@@ -451,7 +463,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {renderTabContent(currentTab)}
+            {renderTabContent(currentTab, onChangeVault)}
           </div>
         </div>
       </div>

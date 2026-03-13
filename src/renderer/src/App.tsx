@@ -196,7 +196,7 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' }
 ]
 
-function WorkspaceShell() {
+function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const files = useVaultStore((s) => s.files)
@@ -217,6 +217,14 @@ function WorkspaceShell() {
   const toggleSourceMode = useCallback(() => {
     setMode(mode === 'rich' ? 'source' : 'rich')
   }, [mode, setMode])
+
+  const handleChangeVault = useCallback(async () => {
+    const path = await window.api.fs.selectVault()
+    if (path) {
+      setSettingsOpen(false)
+      await onLoadVault(path)
+    }
+  }, [onLoadVault])
 
   useKeyboard({
     onCommandPalette: () => setPaletteOpen(true),
@@ -298,7 +306,11 @@ function WorkspaceShell() {
         items={paletteItems}
         onSelect={handlePaletteSelect}
       />
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onChangeVault={handleChangeVault}
+      />
     </div>
   )
 }
@@ -397,7 +409,7 @@ export default function App() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : vaultPath ? (
-        <WorkspaceShell />
+        <WorkspaceShell onLoadVault={orchestrateLoad} />
       ) : (
         <WelcomeScreen onVaultSelected={orchestrateLoad} />
       )}
