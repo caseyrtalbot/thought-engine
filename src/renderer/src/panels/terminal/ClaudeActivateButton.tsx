@@ -11,6 +11,7 @@ interface ClaudeActivateButtonProps {
 export function ClaudeActivateButton({ onClick, isActive, disabled }: ClaudeActivateButtonProps) {
   return (
     <button
+      data-testid="claude-activate-btn"
       onClick={onClick}
       disabled={disabled}
       className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
@@ -28,9 +29,7 @@ export function ClaudeActivateButton({ onClick, isActive, disabled }: ClaudeActi
       onMouseEnter={(e) => {
         if (disabled) return
         const el = e.currentTarget
-        el.style.backgroundColor = isActive
-          ? 'rgba(167,139,250,0.15)'
-          : 'rgba(167,139,250,0.1)'
+        el.style.backgroundColor = isActive ? 'rgba(167,139,250,0.15)' : 'rgba(167,139,250,0.1)'
         el.style.boxShadow = '0 0 12px rgba(167,139,250,0.3)'
       }}
       onMouseLeave={(e) => {
@@ -44,10 +43,7 @@ export function ClaudeActivateButton({ onClick, isActive, disabled }: ClaudeActi
     >
       {/* Sparkle icon */}
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path
-          d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8L6 0Z"
-          fill="currentColor"
-        />
+        <path d="M6 0L7.2 4.8L12 6L7.2 7.2L6 12L4.8 7.2L0 6L4.8 4.8L6 0Z" fill="currentColor" />
       </svg>
       Claude
     </button>

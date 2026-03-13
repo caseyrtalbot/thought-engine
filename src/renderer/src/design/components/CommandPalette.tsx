@@ -31,21 +31,29 @@ export function fuzzyMatch(
   const queryLower = query.toLowerCase()
 
   if (lower.startsWith(queryLower)) {
-    return { match: true, score: 100, indices: Array.from({ length: queryLower.length }, (_, i) => i) }
+    return {
+      match: true,
+      score: 100,
+      indices: Array.from({ length: queryLower.length }, (_, i) => i)
+    }
   }
 
   const substringIdx = lower.indexOf(queryLower)
   if (substringIdx !== -1) {
     return {
-      match: true, score: 50,
-      indices: Array.from({ length: queryLower.length }, (_, i) => substringIdx + i),
+      match: true,
+      score: 50,
+      indices: Array.from({ length: queryLower.length }, (_, i) => substringIdx + i)
     }
   }
 
   const indices: number[] = []
   let qi = 0
   for (let i = 0; i < lower.length && qi < queryLower.length; i++) {
-    if (lower[i] === queryLower[qi]) { indices.push(i); qi++ }
+    if (lower[i] === queryLower[qi]) {
+      indices.push(i)
+      qi++
+    }
   }
   return qi === queryLower.length
     ? { match: true, score: 10, indices }
@@ -60,10 +68,9 @@ export function filterItems(
 
   const isCommandMode = query.startsWith('>') || query.startsWith('/')
   const searchQuery = isCommandMode ? query.slice(1).trim() : query
-  const candidates = isCommandMode
-    ? items.filter((item) => item.category === 'command')
-    : items
-  if (searchQuery === '') return candidates as ReadonlyArray<CommandItem & { matchIndices?: number[] }>
+  const candidates = isCommandMode ? items.filter((item) => item.category === 'command') : items
+  if (searchQuery === '')
+    return candidates as ReadonlyArray<CommandItem & { matchIndices?: number[] }>
 
   return candidates
     .map((item) => {
@@ -101,7 +108,10 @@ function HighlightedLabel({ label, indices }: { label: string; indices?: number[
   return (
     <span>
       {label.split('').map((char, i) => (
-        <span key={i} style={indexSet.has(i) ? { color: colors.accent.default, fontWeight: 600 } : undefined}>
+        <span
+          key={i}
+          style={indexSet.has(i) ? { color: colors.accent.default, fontWeight: 600 } : undefined}
+        >
           {char}
         </span>
       ))}
@@ -187,6 +197,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
 
   return (
     <div
+      data-testid="command-palette"
       className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}

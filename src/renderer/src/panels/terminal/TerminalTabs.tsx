@@ -60,6 +60,7 @@ export function TerminalTabs({
 
   return (
     <div
+      data-testid="terminal-tabs"
       className="flex items-center overflow-x-auto gap-1 shrink-0"
       style={{
         height: 40,

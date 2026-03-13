@@ -85,7 +85,7 @@ export function FileTree({
   const visibleNodes = nodes.filter((n) => isVisible(n, collapsedPaths, nodes))
 
   return (
-    <div className="text-sm select-none">
+    <div data-testid="file-tree" className="text-sm select-none">
       {visibleNodes.map((node) =>
         node.isDirectory ? (
           <DirectoryRow

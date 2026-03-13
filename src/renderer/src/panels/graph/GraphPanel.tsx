@@ -477,6 +477,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
   return (
     <div
+      data-testid="graph-canvas"
       className="h-full relative focus-ring"
       tabIndex={0}
       style={{ backgroundColor: colors.bg.base }}
