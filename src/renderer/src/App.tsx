@@ -63,8 +63,6 @@ function ConnectedSidebar() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
   const fileToId = useVaultStore((s) => s.fileToId)
-  const setActiveNote = useEditorStore((s) => s.setActiveNote)
-  const setContent = useEditorStore((s) => s.setContent)
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
   const setContentView = useGraphStore((s) => s.setContentView)
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
@@ -114,18 +112,15 @@ function ConnectedSidebar() {
     return map
   }, [artifacts, fileToId])
 
+  const openTab = useEditorStore((s) => s.openTab)
+
   const handleFileSelect = useCallback(
-    async (path: string) => {
-      setActiveNote(path, path)
+    (path: string) => {
+      const file = files.find((f) => f.path === path)
+      openTab(path, file?.title)
       setContentView('editor')
-      try {
-        const fileContent = await window.api.fs.readFile(path)
-        setContent(fileContent)
-      } catch {
-        setContent('')
-      }
     },
-    [setActiveNote, setContentView, setContent]
+    [files, openTab, setContentView]
   )
 
   const handleSearch = useCallback((query: string) => {
@@ -163,10 +158,9 @@ function ConnectedSidebar() {
 
     await window.api.fs.writeFile(filePath, content)
     // Select the new file in the editor
-    setActiveNote(filePath, filePath)
+    openTab(filePath, title)
     setContentView('editor')
-    setContent(content)
-  }, [vaultPath, files, setActiveNote, setContentView, setContent])
+  }, [vaultPath, files, openTab, setContentView])
 
   const handleNewFolder = useCallback(async () => {
     if (!vaultPath) return
@@ -193,9 +187,8 @@ function ConnectedSidebar() {
           const title = filename.replace('.md', '')
           const content = `---\ntitle: ${title}\ncreated: ${now}\ntags: []\n---\n\n`
           await window.api.fs.writeFile(filePath, content)
-          setActiveNote(filePath, filePath)
+          openTab(filePath, title)
           setContentView('editor')
-          setContent(content)
           break
         }
         case 'copy-path': {
@@ -220,16 +213,14 @@ function ConnectedSidebar() {
         }
         case 'delete': {
           await window.api.shell.trashItem(action.path)
-          // If the deleted file was active, clear the editor
-          if (action.path === activeNotePath) {
-            setActiveNote(null, null)
-            setContent('')
-          }
+          // If the deleted file was active, close its tab
+          const { closeTab: storeCloseTab } = useEditorStore.getState()
+          storeCloseTab(action.path)
           break
         }
       }
     },
-    [activeNotePath, files, setActiveNote, setContent, setContentView]
+    [files, openTab, setContentView]
   )
 
   return (
@@ -274,7 +265,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const [settingsOpen, setSettingsOpen] = useState(false)
   const files = useVaultStore((s) => s.files)
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const setActiveNote = useEditorStore((s) => s.setActiveNote)
   const contentView = useGraphStore((s) => s.contentView)
   const setContentView = useGraphStore((s) => s.setContentView)
   const mode = useEditorStore((s) => s.mode)
@@ -299,10 +289,16 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     }
   }, [onLoadVault])
 
+  const handleCloseTab = useCallback(() => {
+    const { activeNotePath: path, closeTab: storeCloseTab } = useEditorStore.getState()
+    if (path) storeCloseTab(path)
+  }, [])
+
   useKeyboard({
     onCommandPalette: () => setPaletteOpen(true),
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
+    onCloseTab: handleCloseTab,
     onEscape: () => setPaletteOpen(false)
   })
 
@@ -320,7 +316,8 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     (item: CommandItem) => {
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
-        setActiveNote(path, path)
+        const { openTab: storeOpenTab } = useEditorStore.getState()
+        storeOpenTab(path)
         setContentView('editor')
       } else if (item.id === 'cmd:toggle-view') {
         toggleView()
@@ -334,7 +331,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         // TODO: trigger graph zoom-to-fit
       }
     },
-    [setActiveNote, setContentView, toggleView, toggleSourceMode, setSettingsOpen]
+    [setContentView, toggleView, toggleSourceMode, setSettingsOpen]
   )
 
   return (
