@@ -21,8 +21,8 @@ function StatusBar() {
 
   useEffect(() => {
     if (!vaultPath) return
-    window.electron.ipcRenderer
-      .invoke('vault:git-branch', { vaultPath })
+    window.api.vault
+      .gitBranch(vaultPath)
       .then(setGitBranch)
       .catch(() => setGitBranch(null))
   }, [vaultPath])
