@@ -2,29 +2,29 @@ import { create } from 'zustand'
 import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
 
 interface ParseError {
-  filename: string
-  error: string
+  readonly filename: string
+  readonly error: string
 }
 
 interface VaultFile {
-  path: string
-  filename: string
-  title: string
-  modified: string
+  readonly path: string
+  readonly filename: string
+  readonly title: string
+  readonly modified: string
 }
 
 interface VaultStore {
-  vaultPath: string | null
-  config: VaultConfig | null
-  state: VaultState | null
-  files: VaultFile[]
-  artifacts: Artifact[]
-  graph: KnowledgeGraph
-  parseErrors: ParseError[]
-  fileToId: Record<string, string>
-  discoveredTypes: string[]
-  activeWorkspace: string | null
-  isLoading: boolean
+  readonly vaultPath: string | null
+  readonly config: VaultConfig | null
+  readonly state: VaultState | null
+  readonly files: readonly VaultFile[]
+  readonly artifacts: readonly Artifact[]
+  readonly graph: KnowledgeGraph
+  readonly parseErrors: readonly ParseError[]
+  readonly fileToId: Readonly<Record<string, string>>
+  readonly discoveredTypes: readonly string[]
+  readonly activeWorkspace: string | null
+  readonly isLoading: boolean
 
   setVaultPath: (path: string) => void
   setConfig: (config: VaultConfig) => void
@@ -66,7 +66,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
       const config = await window.api.vault.readConfig(vaultPath)
       const state = await window.api.vault.readState(vaultPath)
       const filePaths = await window.api.fs.listFilesRecursive(vaultPath)
-      const files: VaultFile[] = filePaths.map((filePath) => {
+      const files: VaultFile[] = filePaths.map((filePath: string) => {
         const filename = filePath.split('/').pop() ?? filePath
         return {
           path: filePath,

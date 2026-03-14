@@ -1,42 +1,36 @@
-import { ipcMain, type BrowserWindow } from 'electron'
+import type { BrowserWindow } from 'electron'
 import { ShellService } from '../services/shell-service'
+import { typedHandle, typedSend } from '../typed-ipc'
 
 const shellService = new ShellService()
 
 export function registerShellIpc(mainWindow: BrowserWindow): void {
   shellService.setCallbacks(
     (sessionId, data) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal:data', { sessionId, data })
-      }
+      typedSend(mainWindow, 'terminal:data', { sessionId, data })
     },
     (sessionId, code) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('terminal:exit', { sessionId, code })
-      }
+      typedSend(mainWindow, 'terminal:exit', { sessionId, code })
     }
   )
 
-  ipcMain.handle('terminal:create', async (_e, args: { cwd: string; shell?: string }) => {
+  typedHandle('terminal:create', async (args) => {
     return shellService.create(args.cwd, args.shell)
   })
 
-  ipcMain.handle('terminal:write', async (_e, args: { sessionId: string; data: string }) => {
+  typedHandle('terminal:write', async (args) => {
     shellService.write(args.sessionId, args.data)
   })
 
-  ipcMain.handle(
-    'terminal:resize',
-    async (_e, args: { sessionId: string; cols: number; rows: number }) => {
-      shellService.resize(args.sessionId, args.cols, args.rows)
-    }
-  )
+  typedHandle('terminal:resize', async (args) => {
+    shellService.resize(args.sessionId, args.cols, args.rows)
+  })
 
-  ipcMain.handle('terminal:kill', async (_e, args: { sessionId: string }) => {
+  typedHandle('terminal:kill', async (args) => {
     shellService.kill(args.sessionId)
   })
 
-  ipcMain.handle('terminal:process-name', async (_e, args: { sessionId: string }) => {
+  typedHandle('terminal:process-name', async (args) => {
     return shellService.getProcessName(args.sessionId)
   })
 }

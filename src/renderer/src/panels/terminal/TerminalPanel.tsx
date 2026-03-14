@@ -8,6 +8,7 @@ import { useVaultStore } from '../../store/vault-store'
 import { TerminalTabs } from './TerminalTabs'
 import { generateClaudeMd } from '../../engine/claude-md-template'
 import { colors } from '../../design/tokens'
+import type { SessionId } from '@shared/types'
 import 'xterm/css/xterm.css'
 
 const FONT_SIZE_DEFAULT = 12
@@ -17,13 +18,13 @@ const FONT_SIZE_MAX = 28
 interface TerminalInstance {
   terminal: Terminal
   fitAddon: FitAddon
-  sessionId: string
+  sessionId: SessionId
 }
 
 export function TerminalPanel() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const instancesRef = useRef<Map<string, TerminalInstance>>(new Map())
-  const searchAddonsRef = useRef<Map<string, SearchAddon>>(new Map())
+  const instancesRef = useRef<Map<SessionId, TerminalInstance>>(new Map())
+  const searchAddonsRef = useRef<Map<SessionId, SearchAddon>>(new Map())
   const activeContainerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -36,7 +37,7 @@ export function TerminalPanel() {
 
   const createTerminalInstance = useCallback(async () => {
     const cwd = vaultPath || '/'
-    let sessionId: string
+    let sessionId: SessionId
     try {
       sessionId = await window.api.terminal.create(cwd)
     } catch (err) {
@@ -138,14 +139,14 @@ export function TerminalPanel() {
 
   // Listen for data and exit events from main process
   useEffect(() => {
-    const unsubData = window.api.on.terminalData((payload: { sessionId: string; data: string }) => {
+    const unsubData = window.api.on.terminalData((payload) => {
       const instance = instancesRef.current.get(payload.sessionId)
       if (instance) {
         instance.terminal.write(payload.data)
       }
     })
 
-    const unsubExit = window.api.on.terminalExit((payload: { sessionId: string; code: number }) => {
+    const unsubExit = window.api.on.terminalExit((payload) => {
       const instance = instancesRef.current.get(payload.sessionId)
       if (instance) {
         instance.terminal.writeln(`\r\n[Process exited with code ${payload.code}]`)
@@ -256,7 +257,7 @@ export function TerminalPanel() {
   }, [searchQuery, activeSessionId])
 
   const handleCloseTab = useCallback(
-    (sessionId: string) => {
+    (sessionId: SessionId) => {
       if (sessions.length <= 1) return
       window.api.terminal.kill(sessionId)
       const instance = instancesRef.current.get(sessionId)
@@ -285,9 +286,9 @@ export function TerminalPanel() {
   useEffect(() => {
     const instances = instancesRef.current
     return () => {
-      for (const [sessionId, instance] of instances) {
+      for (const [id, instance] of instances) {
         instance.terminal.dispose()
-        window.api.terminal.kill(sessionId)
+        window.api.terminal.kill(id)
       }
       instances.clear()
     }

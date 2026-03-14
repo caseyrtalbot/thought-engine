@@ -1,93 +1,68 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { VaultConfig, VaultState } from '../shared/types'
+import { contextBridge } from 'electron'
+import { typedInvoke, typedOn } from './typed-ipc'
+import type { SessionId, VaultConfig, VaultState } from '../shared/types'
 
 const api = {
   window: {
-    minimize: () => ipcRenderer.invoke('window:minimize'),
-    maximize: () => ipcRenderer.invoke('window:maximize'),
-    close: () => ipcRenderer.invoke('window:close')
+    minimize: () => typedInvoke('window:minimize'),
+    maximize: () => typedInvoke('window:maximize'),
+    close: () => typedInvoke('window:close')
   },
   config: {
-    read: (scope: string, key: string) => ipcRenderer.invoke('config:read', { scope, key }),
+    read: (scope: string, key: string) => typedInvoke('config:read', { scope, key }),
     write: (scope: string, key: string, value: unknown) =>
-      ipcRenderer.invoke('config:write', { scope, key, value })
+      typedInvoke('config:write', { scope, key, value })
   },
   fs: {
-    readFile: (path: string) => ipcRenderer.invoke('fs:read-file', { path }),
-    writeFile: (path: string, content: string) =>
-      ipcRenderer.invoke('fs:write-file', { path, content }),
-    listFiles: (dir: string, pattern?: string) =>
-      ipcRenderer.invoke('fs:list-files', { dir, pattern }),
-    listFilesRecursive: (dir: string) => ipcRenderer.invoke('fs:list-files-recursive', { dir }),
-    fileExists: (path: string): Promise<boolean> => ipcRenderer.invoke('fs:file-exists', { path }),
-    deleteFile: (path: string) => ipcRenderer.invoke('fs:delete-file', { path }),
-    renameFile: (oldPath: string, newPath: string): Promise<void> =>
-      ipcRenderer.invoke('fs:rename-file', { oldPath, newPath }),
-    copyFile: (srcPath: string, destPath: string): Promise<void> =>
-      ipcRenderer.invoke('fs:copy-file', { srcPath, destPath }),
-    selectVault: () => ipcRenderer.invoke('fs:select-vault'),
-    createFolder: (defaultPath: string): Promise<string | null> =>
-      ipcRenderer.invoke('fs:create-folder', { defaultPath }),
-    mkdir: (path: string): Promise<void> => ipcRenderer.invoke('fs:mkdir', { path })
+    readFile: (path: string) => typedInvoke('fs:read-file', { path }),
+    writeFile: (path: string, content: string) => typedInvoke('fs:write-file', { path, content }),
+    listFiles: (dir: string, pattern?: string) => typedInvoke('fs:list-files', { dir, pattern }),
+    listFilesRecursive: (dir: string) => typedInvoke('fs:list-files-recursive', { dir }),
+    fileExists: (path: string) => typedInvoke('fs:file-exists', { path }),
+    deleteFile: (path: string) => typedInvoke('fs:delete-file', { path }),
+    renameFile: (oldPath: string, newPath: string) =>
+      typedInvoke('fs:rename-file', { oldPath, newPath }),
+    copyFile: (srcPath: string, destPath: string) =>
+      typedInvoke('fs:copy-file', { srcPath, destPath }),
+    selectVault: () => typedInvoke('fs:select-vault'),
+    createFolder: (defaultPath: string) => typedInvoke('fs:create-folder', { defaultPath }),
+    mkdir: (path: string) => typedInvoke('fs:mkdir', { path })
   },
   vault: {
-    init: (vaultPath: string) => ipcRenderer.invoke('vault:init', { vaultPath }),
-    readConfig: (vaultPath: string) =>
-      ipcRenderer.invoke('vault:read-config', { vaultPath }) as Promise<VaultConfig>,
+    init: (vaultPath: string) => typedInvoke('vault:init', { vaultPath }),
+    readConfig: (vaultPath: string) => typedInvoke('vault:read-config', { vaultPath }),
     writeConfig: (vaultPath: string, config: VaultConfig) =>
-      ipcRenderer.invoke('vault:write-config', { vaultPath, config }),
-    readState: (vaultPath: string) =>
-      ipcRenderer.invoke('vault:read-state', { vaultPath }) as Promise<VaultState>,
+      typedInvoke('vault:write-config', { vaultPath, config }),
+    readState: (vaultPath: string) => typedInvoke('vault:read-state', { vaultPath }),
     writeState: (vaultPath: string, state: VaultState) =>
-      ipcRenderer.invoke('vault:write-state', { vaultPath, state }),
-    watchStart: (vaultPath: string) => ipcRenderer.invoke('vault:watch-start', { vaultPath }),
-    watchStop: () => ipcRenderer.invoke('vault:watch-stop'),
-    listCommands: (dirPath: string): Promise<string[]> =>
-      ipcRenderer.invoke('vault:list-commands', dirPath),
-    readFile: (filePath: string): Promise<string> =>
-      ipcRenderer.invoke('vault:read-file', filePath),
-    deleteFile: (filePath: string): Promise<void> =>
-      ipcRenderer.invoke('fs:delete-file', { path: filePath })
+      typedInvoke('vault:write-state', { vaultPath, state }),
+    watchStart: (vaultPath: string) => typedInvoke('vault:watch-start', { vaultPath }),
+    watchStop: () => typedInvoke('vault:watch-stop'),
+    listCommands: (dirPath: string) => typedInvoke('vault:list-commands', { dirPath }),
+    readFile: (filePath: string) => typedInvoke('vault:read-file', { filePath }),
+    deleteFile: (filePath: string) => typedInvoke('fs:delete-file', { path: filePath })
   },
   shell: {
-    showInFolder: (path: string) => ipcRenderer.invoke('shell:show-in-folder', { path }),
-    openPath: (path: string) => ipcRenderer.invoke('shell:open-path', { path }),
-    trashItem: (path: string) => ipcRenderer.invoke('shell:trash-item', { path })
+    showInFolder: (path: string) => typedInvoke('shell:show-in-folder', { path }),
+    openPath: (path: string) => typedInvoke('shell:open-path', { path }),
+    trashItem: (path: string) => typedInvoke('shell:trash-item', { path })
   },
   terminal: {
-    create: (cwd: string, shell?: string) =>
-      ipcRenderer.invoke('terminal:create', { cwd, shell }) as Promise<string>,
-    write: (sessionId: string, data: string) =>
-      ipcRenderer.invoke('terminal:write', { sessionId, data }),
-    resize: (sessionId: string, cols: number, rows: number) =>
-      ipcRenderer.invoke('terminal:resize', { sessionId, cols, rows }),
-    kill: (sessionId: string) => ipcRenderer.invoke('terminal:kill', { sessionId }),
-    getProcessName: (sessionId: string) =>
-      ipcRenderer.invoke('terminal:process-name', { sessionId }) as Promise<string | null>
+    create: (cwd: string, shell?: string) => typedInvoke('terminal:create', { cwd, shell }),
+    write: (sessionId: SessionId, data: string) =>
+      typedInvoke('terminal:write', { sessionId, data }),
+    resize: (sessionId: SessionId, cols: number, rows: number) =>
+      typedInvoke('terminal:resize', { sessionId, cols, rows }),
+    kill: (sessionId: SessionId) => typedInvoke('terminal:kill', { sessionId }),
+    getProcessName: (sessionId: SessionId) => typedInvoke('terminal:process-name', { sessionId })
   },
   on: {
-    terminalData: (callback: (data: { sessionId: string; data: string }) => void) => {
-      const handler = (_e: Electron.IpcRendererEvent, data: { sessionId: string; data: string }) =>
-        callback(data)
-      ipcRenderer.on('terminal:data', handler)
-      return () => ipcRenderer.removeListener('terminal:data', handler)
-    },
-    terminalExit: (callback: (data: { sessionId: string; code: number }) => void) => {
-      const handler = (_e: Electron.IpcRendererEvent, data: { sessionId: string; code: number }) =>
-        callback(data)
-      ipcRenderer.on('terminal:exit', handler)
-      return () => ipcRenderer.removeListener('terminal:exit', handler)
-    },
-    fileChanged: (
-      callback: (data: { path: string; event: 'add' | 'change' | 'unlink' }) => void
-    ) => {
-      const handler = (
-        _e: Electron.IpcRendererEvent,
-        data: { path: string; event: 'add' | 'change' | 'unlink' }
-      ) => callback(data)
-      ipcRenderer.on('vault:file-changed', handler)
-      return () => ipcRenderer.removeListener('vault:file-changed', handler)
-    }
+    terminalData: (callback: (data: { sessionId: SessionId; data: string }) => void) =>
+      typedOn('terminal:data', callback),
+    terminalExit: (callback: (data: { sessionId: SessionId; code: number }) => void) =>
+      typedOn('terminal:exit', callback),
+    fileChanged: (callback: (data: { path: string; event: 'add' | 'change' | 'unlink' }) => void) =>
+      typedOn('vault:file-changed', callback)
   }
 }
 

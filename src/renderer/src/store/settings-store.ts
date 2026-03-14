@@ -3,16 +3,16 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { ThemeId, AccentColorId } from '../design/themes'
 
 interface SettingsState {
-  theme: ThemeId
-  accentColor: AccentColorId
-  fontSize: number
-  fontFamily: string
-  defaultEditorMode: 'rich' | 'source'
-  autosaveInterval: number
-  spellCheck: boolean
-  terminalShell: string
-  terminalFontSize: number
-  scrollbackLines: number
+  readonly theme: ThemeId
+  readonly accentColor: AccentColorId
+  readonly fontSize: number
+  readonly fontFamily: string
+  readonly defaultEditorMode: 'rich' | 'source'
+  readonly autosaveInterval: number
+  readonly spellCheck: boolean
+  readonly terminalShell: string
+  readonly terminalFontSize: number
+  readonly scrollbackLines: number
 }
 
 interface SettingsActions {
@@ -53,11 +53,11 @@ export const useSettingsStore = create<SettingsStore>()(
       setSpellCheck: (value) => set({ spellCheck: value }),
       setTerminalShell: (value) => set({ terminalShell: value }),
       setTerminalFontSize: (value) => set({ terminalFontSize: value }),
-      setScrollbackLines: (value) => set({ scrollbackLines: value }),
+      setScrollbackLines: (value) => set({ scrollbackLines: value })
     }),
     {
       name: 'thought-engine-settings',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => localStorage)
     }
   )
 )

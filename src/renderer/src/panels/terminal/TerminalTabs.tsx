@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTerminalStore } from '../../store/terminal-store'
 import { colors } from '../../design/tokens'
 import { ClaudeActivateButton } from './ClaudeActivateButton'
+import type { SessionId } from '@shared/types'
 
 const STATUS_DOT_SHELL = colors.semantic.cluster
 const STATUS_DOT_AGENT = '#00e5bf'
@@ -12,7 +13,7 @@ function sessionDotColor(title: string): string {
 
 interface TerminalTabsProps {
   onNewTab: () => void
-  onCloseTab: (sessionId: string) => void
+  onCloseTab: (sessionId: SessionId) => void
   onActivateClaude: () => void
   claudeSessionActive: boolean
   vaultPath: string | null
@@ -26,7 +27,7 @@ export function TerminalTabs({
   vaultPath
 }: TerminalTabsProps) {
   const { sessions, activeSessionId, setActiveSession, renameSession } = useTerminalStore()
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<SessionId | null>(null)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -37,7 +38,7 @@ export function TerminalTabs({
     }
   }, [editingId])
 
-  function startEditing(id: string, currentTitle: string) {
+  function startEditing(id: SessionId, currentTitle: string) {
     setEditingId(id)
     setEditValue(currentTitle)
   }

@@ -31,14 +31,14 @@ export function getComputedCssColor(varName: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
 }
 
-export const ARTIFACT_COLORS: Record<BuiltInArtifactType, string> = {
+export const ARTIFACT_COLORS = {
   gene: '#22d3ee',
   constraint: '#ef4444',
   research: '#a78bfa',
   output: '#f472b6',
   note: '#94a3b8',
   index: '#38bdf8'
-}
+} as const satisfies Record<BuiltInArtifactType, string>
 
 // Palette excludes colors already used by built-in types
 const CUSTOM_TYPE_PALETTE = [

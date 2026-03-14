@@ -3,18 +3,18 @@ import type { CanvasNode, CanvasEdge, CanvasViewport, CanvasFile } from '@shared
 
 interface CanvasStore {
   // Document state
-  filePath: string | null
-  nodes: readonly CanvasNode[]
-  edges: readonly CanvasEdge[]
-  viewport: CanvasViewport
-  isDirty: boolean
+  readonly filePath: string | null
+  readonly nodes: readonly CanvasNode[]
+  readonly edges: readonly CanvasEdge[]
+  readonly viewport: CanvasViewport
+  readonly isDirty: boolean
 
   // Selection
-  selectedNodeIds: Set<string>
-  selectedEdgeId: string | null
+  readonly selectedNodeIds: ReadonlySet<string>
+  readonly selectedEdgeId: string | null
 
   // Interaction state
-  focusedTerminalId: string | null
+  readonly focusedTerminalId: string | null
 
   // Document lifecycle
   loadCanvas: (filePath: string, data: CanvasFile) => void

@@ -4,11 +4,11 @@ import type { ArtifactType, Signal } from '@shared/types'
 type ContentView = 'editor' | 'graph' | 'skills' | 'canvas'
 
 interface GraphStore {
-  contentView: ContentView
-  selectedNodeId: string | null
-  hoveredNodeId: string | null
-  typeFilters: Set<ArtifactType>
-  signalFilter: Signal | null
+  readonly contentView: ContentView
+  readonly selectedNodeId: string | null
+  readonly hoveredNodeId: string | null
+  readonly typeFilters: ReadonlySet<ArtifactType>
+  readonly signalFilter: Signal | null
 
   setContentView: (view: ContentView) => void
   setSelectedNode: (id: string | null) => void

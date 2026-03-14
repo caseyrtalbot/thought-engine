@@ -1,11 +1,12 @@
 import { spawn, type IPty } from 'node-pty'
 import { randomUUID } from 'crypto'
+import { type SessionId, sessionId } from '@shared/types'
 
-export type DataCallback = (sessionId: string, data: string) => void
-export type ExitCallback = (sessionId: string, code: number) => void
+export type DataCallback = (id: SessionId, data: string) => void
+export type ExitCallback = (id: SessionId, code: number) => void
 
 export class ShellService {
-  private sessions = new Map<string, IPty>()
+  private sessions = new Map<SessionId, IPty>()
   private onData: DataCallback = () => {}
   private onExit: ExitCallback = () => {}
 
@@ -14,8 +15,8 @@ export class ShellService {
     this.onExit = onExit
   }
 
-  create(cwd: string, shell?: string): string {
-    const sessionId = randomUUID()
+  create(cwd: string, shell?: string): SessionId {
+    const id = sessionId(randomUUID())
     const defaultShell = shell || process.env.SHELL || '/bin/zsh'
 
     const pty = spawn(defaultShell, [], {
@@ -30,27 +31,27 @@ export class ShellService {
       }
     })
 
-    pty.onData((data) => this.onData(sessionId, data))
+    pty.onData((data) => this.onData(id, data))
     pty.onExit(({ exitCode }) => {
-      this.onExit(sessionId, exitCode)
-      this.sessions.delete(sessionId)
+      this.onExit(id, exitCode)
+      this.sessions.delete(id)
     })
 
-    this.sessions.set(sessionId, pty)
-    return sessionId
+    this.sessions.set(id, pty)
+    return id
   }
 
-  write(sessionId: string, data: string): void {
-    this.sessions.get(sessionId)?.write(data)
+  write(id: SessionId, data: string): void {
+    this.sessions.get(id)?.write(data)
   }
 
-  resize(sessionId: string, cols: number, rows: number): void {
-    this.sessions.get(sessionId)?.resize(cols, rows)
+  resize(id: SessionId, cols: number, rows: number): void {
+    this.sessions.get(id)?.resize(cols, rows)
   }
 
-  kill(sessionId: string): void {
-    this.sessions.get(sessionId)?.kill()
-    this.sessions.delete(sessionId)
+  kill(id: SessionId): void {
+    this.sessions.get(id)?.kill()
+    this.sessions.delete(id)
   }
 
   killAll(): void {
@@ -59,8 +60,8 @@ export class ShellService {
     }
   }
 
-  getProcessName(sessionId: string): string | null {
-    const pty = this.sessions.get(sessionId)
+  getProcessName(id: SessionId): string | null {
+    const pty = this.sessions.get(id)
     return pty?.process ?? null
   }
 }

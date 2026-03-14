@@ -1,3 +1,18 @@
+// ---------------------------------------------------------------------------
+// Branded types: prevent mixing up IDs and paths at compile time.
+// Use the constructor functions to create values of these types.
+// ---------------------------------------------------------------------------
+
+export type ArtifactId = string & { readonly __brand: 'ArtifactId' }
+export type FilePath = string & { readonly __brand: 'FilePath' }
+export type SessionId = string & { readonly __brand: 'SessionId' }
+
+export const artifactId = (id: string): ArtifactId => id as ArtifactId
+export const filePath = (path: string): FilePath => path as FilePath
+export const sessionId = (id: string): SessionId => id as SessionId
+
+// ---------------------------------------------------------------------------
+
 export const ARTIFACT_TYPES = ['gene', 'constraint', 'research', 'output', 'note', 'index'] as const
 export type BuiltInArtifactType = (typeof ARTIFACT_TYPES)[number]
 export type ArtifactType = string
@@ -9,21 +24,21 @@ export function isBuiltInType(t: string): t is BuiltInArtifactType {
 export const SIGNALS = ['untested', 'emerging', 'validated', 'core'] as const
 export type Signal = (typeof SIGNALS)[number]
 
-export const TYPE_PREFIXES: Record<ArtifactType, string> = {
+export const TYPE_PREFIXES = {
   gene: 'g',
   constraint: 'c',
   research: 'r',
   output: 'o',
   note: 'n',
   index: 'i'
-}
+} as const satisfies Record<BuiltInArtifactType, string>
 
-export const SIGNAL_OPACITY: Record<Signal, number> = {
+export const SIGNAL_OPACITY = {
   core: 1.0,
   validated: 0.9,
   emerging: 0.8,
   untested: 0.65
-}
+} as const satisfies Record<Signal, number>
 
 export interface Artifact {
   id: string

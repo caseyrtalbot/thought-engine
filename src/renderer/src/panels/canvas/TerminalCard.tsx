@@ -6,6 +6,7 @@ import { useVaultStore } from '../../store/vault-store'
 import { CardShell } from './CardShell'
 import { colors } from '../../design/tokens'
 import type { CanvasNode } from '@shared/canvas-types'
+import { type SessionId, sessionId as toSessionId } from '@shared/types'
 import 'xterm/css/xterm.css'
 
 interface TerminalCardProps {
@@ -16,7 +17,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const termContainerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
-  const sessionIdRef = useRef<string | null>(node.content || null)
+  const sessionIdRef = useRef<SessionId | null>(node.content ? toSessionId(node.content) : null)
   const [sessionDead, setSessionDead] = useState(false)
   const [focused, setFocused] = useState(false)
 

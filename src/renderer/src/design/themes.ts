@@ -76,7 +76,7 @@ export function resolveColors(themeId: ThemeId, accentId: AccentColorId): Resolv
 
 // ── Theme palettes ──────────────────────────────────────────────────────
 
-export const THEMES: Record<ThemeId, ThemeDefinition> = {
+export const THEMES = {
   midnight: {
     label: 'Midnight',
     colors: {
@@ -125,11 +125,11 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
       text: { primary: '#0f172a', secondary: '#475569', muted: '#94a3b8' }
     }
   }
-} as const
+} as const satisfies Record<ThemeId, ThemeDefinition>
 
 // ── Accent colors ───────────────────────────────────────────────────────
 
-export const ACCENT_COLORS: Record<AccentColorId, AccentDefinition> = {
+export const ACCENT_COLORS = {
   teal: { label: 'Teal', value: '#00e5bf' },
   blue: { label: 'Blue', value: '#3b82f6' },
   violet: { label: 'Violet', value: '#8b5cf6' },
@@ -138,20 +138,20 @@ export const ACCENT_COLORS: Record<AccentColorId, AccentDefinition> = {
   emerald: { label: 'Emerald', value: '#10b981' },
   cyan: { label: 'Cyan', value: '#06b6d4' },
   orange: { label: 'Orange', value: '#f97316' }
-} as const
+} as const satisfies Record<AccentColorId, AccentDefinition>
 
 // ── Ordering for UI display ─────────────────────────────────────────────
 
-export const THEME_ORDER: ThemeId[] = [
+export const THEME_ORDER = [
   'midnight',
   'slate',
   'obsidian',
   'nord',
   'evergreen',
   'light'
-]
+] as const satisfies readonly ThemeId[]
 
-export const ACCENT_ORDER: AccentColorId[] = [
+export const ACCENT_ORDER = [
   'teal',
   'blue',
   'violet',
@@ -160,4 +160,4 @@ export const ACCENT_ORDER: AccentColorId[] = [
   'emerald',
   'cyan',
   'orange'
-]
+] as const satisfies readonly AccentColorId[]

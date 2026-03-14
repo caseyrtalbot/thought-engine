@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
+import { app, shell, BrowserWindow, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -6,6 +6,7 @@ import { registerFilesystemIpc } from './ipc/filesystem'
 import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
+import { typedHandle } from './typed-ipc'
 
 const PROD_CSP = [
   "default-src 'self'",
@@ -58,12 +59,16 @@ function createWindow(): BrowserWindow {
 }
 
 function registerWindowIpc(): void {
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize())
-  ipcMain.handle('window:maximize', () => {
+  typedHandle('window:minimize', () => {
+    mainWindow?.minimize()
+  })
+  typedHandle('window:maximize', () => {
     if (mainWindow?.isMaximized()) mainWindow.unmaximize()
     else mainWindow?.maximize()
   })
-  ipcMain.handle('window:close', () => mainWindow?.close())
+  typedHandle('window:close', () => {
+    mainWindow?.close()
+  })
 }
 
 app.whenReady().then(() => {

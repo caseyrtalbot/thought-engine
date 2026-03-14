@@ -1,4 +1,4 @@
-import { TYPE_PREFIXES, type ArtifactType } from '@shared/types'
+import { TYPE_PREFIXES, isBuiltInType, type ArtifactType } from '@shared/types'
 
 export type IdCounters = Record<string, number>
 
@@ -10,7 +10,7 @@ export function generateId(
   type: ArtifactType,
   counters: IdCounters
 ): { id: string; updatedCounters: IdCounters } {
-  const prefix = TYPE_PREFIXES[type]
+  const prefix = isBuiltInType(type) ? TYPE_PREFIXES[type] : type.charAt(0)
   const current = counters[type] ?? 0
   const next = current + 1
   return {

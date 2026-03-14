@@ -8,20 +8,20 @@ export interface Tab {
 }
 
 interface EditorStore {
-  activeNoteId: string | null
-  activeNotePath: string | null
-  mode: EditorMode
-  isDirty: boolean
-  content: string
-  cursorLine: number
-  cursorCol: number
+  readonly activeNoteId: string | null
+  readonly activeNotePath: string | null
+  readonly mode: EditorMode
+  readonly isDirty: boolean
+  readonly content: string
+  readonly cursorLine: number
+  readonly cursorCol: number
 
   // Tabs
-  openTabs: readonly Tab[]
+  readonly openTabs: readonly Tab[]
 
   // Navigation history
-  historyStack: readonly string[]
-  historyIndex: number
+  readonly historyStack: readonly string[]
+  readonly historyIndex: number
 
   setActiveNote: (id: string | null, path: string | null) => void
   setMode: (mode: EditorMode) => void

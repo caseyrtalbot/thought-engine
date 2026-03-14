@@ -13,10 +13,7 @@ interface KeyboardConfig {
   onEscape?: () => void
 }
 
-const META_KEY_BINDINGS: ReadonlyArray<{
-  key: string
-  handler: keyof KeyboardConfig
-}> = [
+const META_KEY_BINDINGS = [
   { key: 'b', handler: 'onToggleSidebar' },
   { key: '`', handler: 'onToggleTerminal' },
   { key: 'n', handler: 'onNewNote' },
@@ -26,7 +23,7 @@ const META_KEY_BINDINGS: ReadonlyArray<{
   { key: 's', handler: 'onSave' },
   { key: 't', handler: 'onNewTerminalTab' },
   { key: 'w', handler: 'onCloseTab' }
-]
+] as const satisfies ReadonlyArray<{ key: string; handler: keyof KeyboardConfig }>
 
 export function useKeyboard(config: KeyboardConfig): void {
   useEffect(() => {

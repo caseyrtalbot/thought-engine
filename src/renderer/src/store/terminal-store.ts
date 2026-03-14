@@ -1,18 +1,19 @@
 import { create } from 'zustand'
+import type { SessionId } from '@shared/types'
 
 interface TerminalSession {
-  id: string
-  title: string
+  readonly id: SessionId
+  readonly title: string
 }
 
 interface TerminalStore {
-  sessions: TerminalSession[]
-  activeSessionId: string | null
+  readonly sessions: readonly TerminalSession[]
+  readonly activeSessionId: SessionId | null
 
   addSession: (session: TerminalSession) => void
-  removeSession: (id: string) => void
-  setActiveSession: (id: string) => void
-  renameSession: (id: string, title: string) => void
+  removeSession: (id: SessionId) => void
+  setActiveSession: (id: SessionId) => void
+  renameSession: (id: SessionId, title: string) => void
 }
 
 export const useTerminalStore = create<TerminalStore>((set) => ({

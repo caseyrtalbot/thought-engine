@@ -5,10 +5,11 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
     "src/shared/**/*",
-    "src/preload/*.d.ts"
+    "src/preload/*"
   ],
   "compilerOptions": {
     "composite": true,
+    "noImplicitAny": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
