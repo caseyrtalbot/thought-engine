@@ -23,6 +23,9 @@ import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { StatusBar } from './components/StatusBar'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
+import { useCanvasStore } from './store/canvas-store'
+import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
+import { createCanvasFile } from '@shared/canvas-types'
 
 function ContentArea() {
   const contentView = useGraphStore((s) => s.contentView)
@@ -259,7 +262,8 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   { id: 'cmd:open-settings', label: 'Open Settings', category: 'command' },
   { id: 'cmd:reindex-vault', label: 'Re-index Vault', category: 'command' },
   { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' },
-  { id: 'cmd:activate-claude', label: 'Activate Claude', category: 'command' }
+  { id: 'cmd:activate-claude', label: 'Activate Claude', category: 'command' },
+  { id: 'cmd:new-canvas', label: 'New Canvas', category: 'command' }
 ]
 
 function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
@@ -316,7 +320,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   }, [files])
 
   const handlePaletteSelect = useCallback(
-    (item: CommandItem) => {
+    async (item: CommandItem) => {
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
         const { openTab: storeOpenTab } = useEditorStore.getState()
@@ -332,9 +336,18 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         // TODO: trigger vault re-index
       } else if (item.id === 'cmd:zoom-to-fit') {
         // TODO: trigger graph zoom-to-fit
+      } else if (item.id === 'cmd:new-canvas') {
+        if (vaultPath) {
+          const filename = defaultCanvasFilename([])
+          const canvasPath = `${vaultPath}/${filename}`
+          const data = createCanvasFile()
+          await saveCanvas(canvasPath, data)
+          useCanvasStore.getState().loadCanvas(canvasPath, data)
+          setContentView('canvas')
+        }
       }
     },
-    [setContentView, toggleView, toggleSourceMode, setSettingsOpen]
+    [setContentView, toggleView, toggleSourceMode, setSettingsOpen, vaultPath]
   )
 
   return (

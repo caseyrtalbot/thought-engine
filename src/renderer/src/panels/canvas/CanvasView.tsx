@@ -9,11 +9,16 @@ import { TerminalCard } from './TerminalCard'
 import { EdgeLayer } from './EdgeLayer'
 import { ConnectionDragOverlay } from './ConnectionDragOverlay'
 import { CommandStack } from './canvas-commands'
+import { saveCanvas } from './canvas-io'
 
 export function CanvasView() {
   const nodes = useCanvasStore((s) => s.nodes)
   const clearSelection = useCanvasStore((s) => s.clearSelection)
   const addNode = useCanvasStore((s) => s.addNode)
+  const filePath = useCanvasStore((s) => s.filePath)
+  const isDirty = useCanvasStore((s) => s.isDirty)
+  const toCanvasFile = useCanvasStore((s) => s.toCanvasFile)
+  const markSaved = useCanvasStore((s) => s.markSaved)
   const commandStack = useRef(new CommandStack())
 
   const addNodeWithUndo = useCallback(
@@ -96,6 +101,16 @@ export function CanvasView() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  // Auto-save debounce
+  useEffect(() => {
+    if (!filePath || !isDirty) return
+    const timer = setTimeout(async () => {
+      await saveCanvas(filePath, toCanvasFile())
+      markSaved()
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filePath, isDirty, toCanvasFile, markSaved])
 
   return (
     <div className="h-full relative">
