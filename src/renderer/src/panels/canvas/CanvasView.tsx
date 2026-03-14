@@ -3,7 +3,7 @@ import { CanvasSurface } from './CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
 import { createCanvasNode } from '@shared/canvas-types'
 import { CanvasContextMenu } from './CanvasContextMenu'
-import { colors } from '../../design/tokens'
+import { TextCard } from './TextCard'
 
 export function CanvasView() {
   const nodes = useCanvasStore((s) => s.nodes)
@@ -44,36 +44,12 @@ export function CanvasView() {
 
   return (
     <div className="h-full relative">
-      <CanvasSurface
-        onDoubleClick={handleDoubleClick}
-        onBackgroundClick={handleBackgroundClick}
-      >
-        {/* NodeLayer and EdgeLayer will be added in subsequent tasks */}
-        {nodes.map((node) => (
-          <div
-            key={node.id}
-            data-canvas-node
-            className="absolute rounded-lg border"
-            style={{
-              left: node.position.x,
-              top: node.position.y,
-              width: node.size.width,
-              height: node.size.height,
-              backgroundColor: colors.bg.surface,
-              borderColor: colors.border.default
-            }}
-          >
-            <div
-              className="px-3 py-2 text-xs font-medium border-b"
-              style={{ color: colors.text.secondary, borderColor: colors.border.subtle }}
-            >
-              {node.type}
-            </div>
-            <div className="p-3 text-sm" style={{ color: colors.text.primary }}>
-              {node.content || 'Empty card'}
-            </div>
-          </div>
-        ))}
+      <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
+        {nodes.map((node) => {
+          if (node.type === 'text') return <TextCard key={node.id} node={node} />
+          // NoteCard and TerminalCard will be added later
+          return null
+        })}
       </CanvasSurface>
 
       {contextMenu && (
