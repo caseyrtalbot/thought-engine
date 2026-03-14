@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useCallback, useEffect, useMemo } from 'react'
 import type { SimNode } from './graph-config'
 import type { GraphRenderRuntime } from './graph-runtime'
 
@@ -269,12 +269,16 @@ export function useGraphAnimation(
     }
   }, [])
 
-  return {
-    queueEnter,
-    queueExit,
-    getNodeTransition,
-    hasActiveAnimations,
-    diffNodes,
-    detectRenames
-  }
+  return useMemo(
+    () => ({
+      queueEnter,
+      queueExit,
+      getNodeTransition,
+      hasActiveAnimations,
+      diffNodes,
+      detectRenames
+    }),
+    [queueEnter, queueExit, getNodeTransition, hasActiveAnimations]
+  )
+  // diffNodes and detectRenames are module-level pure functions, always stable
 }

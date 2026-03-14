@@ -82,7 +82,16 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     }
   }, [])
 
-  // Drag state refs (hot path — no React state)
+  // Hover state ref (bypasses React re-render for 60fps canvas)
+  const hoveredNodeIdRef = useRef<string | null>(null)
+
+  // Pan state guard (prevents hover lookups during d3-zoom pan)
+  const isPanningRef = useRef(false)
+
+  // Drag-after-click guard (prevents double-click action after short drag)
+  const wasJustDraggingRef = useRef(false)
+
+  // Drag state refs (hot path -- no React state)
   const dragNodeRef = useRef<SimNode | null>(null)
   const isDraggingRef = useRef(false)
   const dragStartTimeRef = useRef(0)
@@ -96,7 +105,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
   const graph = useVaultStore((s) => s.graph)
   const fileToId = useVaultStore((s) => s.fileToId)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
-  const hoveredNodeId = useGraphStore((s) => s.hoveredNodeId)
   const setSelectedNode = useGraphStore((s) => s.setSelectedNode)
   const setContentView = useGraphStore((s) => s.setContentView)
 
@@ -129,7 +137,13 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
   } | null>(null)
   const reducedMotion = useReducedMotion()
 
-  // Build reverse map: artifactId → filePath (for group rule path matching)
+  // Ref-mirror for nodeSizeMultiplier (used in zoom filter to avoid stale closure)
+  const nodeSizeMultiplierRef = useRef(nodeSizeMultiplier)
+  useEffect(() => {
+    nodeSizeMultiplierRef.current = nodeSizeMultiplier
+  }, [nodeSizeMultiplier])
+
+  // Build reverse map: artifactId -> filePath (for group rule path matching)
   const idToPath = useMemo(() => {
     const map = new Map<string, string>()
     for (const [path, id] of Object.entries(fileToId)) {
@@ -227,7 +241,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     ctx.scale(t.k, t.k)
 
     // Render graph content (graph-space)
-    renderGraph(ctx, runtime, nodes, edges, w, h, selectedNodeId, hoveredNodeId, {
+    renderGraph(ctx, runtime, nodes, edges, w, h, selectedNodeId, hoveredNodeIdRef.current, {
       highlight: highlightHook.state,
       transform: t,
       canvasWidth: w,
@@ -253,7 +267,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     }
   }, [
     selectedNodeId,
-    hoveredNodeId,
     nodeSizeMultiplier,
     highlightHook.state,
     animation,
@@ -277,7 +290,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     showArrows,
     nodeSizeMultiplier,
     searchQuery,
-    hoveredNodeId,
     selectedNodeId,
     highlightHook.state
   ])
@@ -413,16 +425,22 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
             nodesRef.current ?? [],
             gx,
             gy,
-            nodeSizeMultiplier
+            nodeSizeMultiplierRef.current
           )
           if (hit) return false // let our mouseDown handle it
         }
         return true
       })
+      .on('start', () => {
+        isPanningRef.current = true
+      })
       .on('zoom', (event) => {
         transformRef.current = event.transform
         // Use ref to avoid recreating this effect when render changes
         renderRef.current()
+      })
+      .on('end', () => {
+        isPanningRef.current = false
       })
 
     select(canvas).call(zb)
@@ -473,8 +491,8 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         // Pin the node at its current position
         node.fx = node.x
         node.fy = node.y
-        // Gentle reheat — keep neighbors calm while dragging
-        runtimeRef.current?.simulation?.alphaTarget(0.1).restart()
+        // Gentle reheat -- keep neighbors calm while dragging
+        runtimeRef.current?.simulation?.alphaTarget(0.02).restart()
         const canvas = canvasRef.current
         if (canvas) canvas.style.cursor = 'grabbing'
       }
@@ -484,6 +502,9 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Skip hover lookups while d3-zoom is panning
+      if (isPanningRef.current) return
+
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
 
@@ -504,7 +525,11 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
           coords.y,
           nodeSizeMultiplier
         ) ?? null
+
+      // Update hover ref and highlight hook (bypasses React re-render)
+      hoveredNodeIdRef.current = node?.id ?? null
       highlightHook.handleHover(node?.id ?? null)
+      runtimeRef.current?.requestRender()
 
       const canvas = canvasRef.current
       if (canvas) canvas.style.cursor = node ? 'grab' : 'default'
@@ -551,6 +576,12 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         highlightHook.handleClick(draggedNode.id)
         onNodeClick(draggedNode.id)
         if (canvas) canvas.style.cursor = 'grab'
+
+        // Flag so handleClick doesn't fire again on the same gesture
+        wasJustDraggingRef.current = true
+        requestAnimationFrame(() => {
+          wasJustDraggingRef.current = false
+        })
       } else {
         // Real drag: spring-back — unpin and let sim gently settle
         if (draggedNode) {
@@ -560,7 +591,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         // Gentle spring-back: low alpha so node drifts back smoothly
         const sim = runtimeRef.current?.simulation
         if (sim) {
-          sim.alphaTarget(0).alpha(0.15).restart()
+          sim.alphaTarget(0).alpha(0.05).restart()
         }
         if (canvas) canvas.style.cursor = 'grab'
       }
@@ -570,7 +601,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       // Don't select if we were dragging
-      if (isDraggingRef.current) return
+      if (isDraggingRef.current || wasJustDraggingRef.current) return
       setContextMenu(null)
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return

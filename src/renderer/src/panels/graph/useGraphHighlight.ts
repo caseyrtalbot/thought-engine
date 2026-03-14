@@ -261,13 +261,18 @@ export function useGraphHighlight(edges: readonly SimEdge[]): {
     [setSelectedNode, setHoveredNode]
   )
 
-  return {
-    state: {
+  const state = useMemo<HighlightState>(
+    () => ({
       mode,
       focusedNodeId: focusedNodeId ?? fadeFocusedNodeIdRef.current,
       connectedSet: focusedNodeId ? connectedSet : fadeConnectedSetRef.current,
       glowIntensity
-    },
+    }),
+    [mode, focusedNodeId, connectedSet, glowIntensity]
+  )
+
+  return {
+    state,
     adjacency,
     handleHover,
     handleClick,
