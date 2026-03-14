@@ -20,9 +20,9 @@ export const TYPE_PREFIXES: Record<ArtifactType, string> = {
 
 export const SIGNAL_OPACITY: Record<Signal, number> = {
   core: 1.0,
-  validated: 0.85,
-  emerging: 0.7,
-  untested: 0.4
+  validated: 0.9,
+  emerging: 0.8,
+  untested: 0.65
 }
 
 export interface Artifact {

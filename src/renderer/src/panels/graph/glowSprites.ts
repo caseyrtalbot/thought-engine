@@ -4,8 +4,8 @@ interface GlowSprite {
   height: number
 }
 
-const GLOW_PADDING = 16
-const AMBIENT_BLUR = 8
+const GLOW_PADDING = 6
+const AMBIENT_BLUR = 4
 
 function createGlowSprite(color: string, radius: number): GlowSprite {
   const size = (radius + GLOW_PADDING) * 2
@@ -65,10 +65,6 @@ export function drawGlowSprite(
 ): void {
   const previousAlpha = ctx.globalAlpha
   ctx.globalAlpha = alpha
-  ctx.drawImage(
-    sprite.bitmap as CanvasImageSource,
-    x - sprite.width / 2,
-    y - sprite.height / 2
-  )
+  ctx.drawImage(sprite.bitmap as CanvasImageSource, x - sprite.width / 2, y - sprite.height / 2)
   ctx.globalAlpha = previousAlpha
 }

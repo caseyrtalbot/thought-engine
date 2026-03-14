@@ -147,7 +147,6 @@ export function GraphMinimap({
     ctx.globalAlpha = 1
 
     // Compute viewport rect in graph-space, then map to minimap coords
-    // The visible graph region: from (-transform.x / transform.k) to ((canvasWidth - transform.x) / transform.k)
     const viewGraphMinX = -transform.x / transform.k
     const viewGraphMinY = -transform.y / transform.k
     const viewGraphMaxX = (canvasWidth - transform.x) / transform.k
@@ -157,6 +156,12 @@ export function GraphMinimap({
     const rectY = toMinimapY(viewGraphMinY)
     const rectW = (viewGraphMaxX - viewGraphMinX) * scale
     const rectH = (viewGraphMaxY - viewGraphMinY) * scale
+
+    // Clip to minimap bounds so viewport rect never overflows
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT)
+    ctx.clip()
 
     // Filled viewport rect
     ctx.fillStyle = accentColor
@@ -169,6 +174,7 @@ export function GraphMinimap({
     ctx.globalAlpha = 0.5
     ctx.lineWidth = 1
     ctx.strokeRect(rectX, rectY, rectW, rectH)
+    ctx.restore()
   }, [nodes, edges, transform, canvasWidth, canvasHeight])
 
   const handleClick = useCallback(
@@ -213,7 +219,11 @@ export function GraphMinimap({
       width={MINIMAP_WIDTH}
       height={MINIMAP_HEIGHT}
       onClick={handleClick}
-      style={{ width: MINIMAP_WIDTH, height: MINIMAP_HEIGHT }}
+      style={{
+        width: MINIMAP_WIDTH,
+        height: MINIMAP_HEIGHT,
+        border: '1px solid rgba(255, 255, 255, 0.08)'
+      }}
       className="absolute bottom-3 left-3 cursor-crosshair rounded z-10"
     />
   )

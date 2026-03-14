@@ -24,7 +24,7 @@ describe('design tokens', () => {
     expect(ARTIFACT_COLORS.constraint).toBe('#ef4444')
     expect(ARTIFACT_COLORS.research).toBe('#a78bfa')
     expect(ARTIFACT_COLORS.output).toBe('#f472b6')
-    expect(ARTIFACT_COLORS.note).toBe('#64748b')
+    expect(ARTIFACT_COLORS.note).toBe('#94a3b8')
     expect(ARTIFACT_COLORS.index).toBe('#38bdf8')
   })
 

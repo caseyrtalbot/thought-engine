@@ -75,7 +75,7 @@ function TagChip({ tag, onRemove }: TagChipProps) {
           style={{ color: '#f59e0b', fontSize: '10px', lineHeight: 1 }}
           aria-label={`Remove tag ${tag}`}
         >
-          \u00D7
+          {'\u00D7'}
         </button>
       )}
     </span>
@@ -181,7 +181,7 @@ function PropertyRow({ propKey, value, onChangeValue, onRemove }: PropertyRowPro
           style={{ color: colors.text.muted }}
           aria-label={`Remove ${propKey}`}
         >
-          \u00D7
+          {'\u00D7'}
         </button>
       </div>
     )
@@ -211,7 +211,7 @@ function PropertyRow({ propKey, value, onChangeValue, onRemove }: PropertyRowPro
         style={{ color: colors.text.muted }}
         aria-label={`Remove ${propKey}`}
       >
-        \u00D7
+        {'\u00D7'}
       </button>
     </div>
   )
@@ -293,10 +293,7 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
             />
           </div>
           {available.length > 0 && (
-            <div
-              className="border-t"
-              style={{ borderColor: colors.border.default }}
-            >
+            <div className="border-t" style={{ borderColor: colors.border.default }}>
               {available.map((prop) => (
                 <button
                   key={prop}
@@ -360,13 +357,12 @@ export function FrontmatterHeader({
 
   const dispatchChange = (updated: Record<string, string | string[]>) => {
     if (!onFrontmatterChange) return
-    // Convert to the format serializeFrontmatter expects
     const clean: Record<string, string | readonly string[]> = {}
     for (const [k, v] of Object.entries(updated)) {
       if (Array.isArray(v)) {
         clean[k] = v
-      } else if (typeof v === 'string' && v.trim() !== '') {
-        clean[k] = v
+      } else {
+        clean[k] = String(v)
       }
     }
     const raw = serializeFrontmatter(clean)
@@ -501,10 +497,7 @@ export function FrontmatterHeader({
             )}
 
           <div className="mt-2">
-            <AddPropertyButton
-              existingKeys={Object.keys(properties)}
-              onAdd={handleAddProperty}
-            />
+            <AddPropertyButton existingKeys={Object.keys(properties)} onAdd={handleAddProperty} />
           </div>
         </div>
       )}
@@ -523,10 +516,7 @@ interface RelationshipRowProps {
 function RelationshipRow({ label, ids, onNavigate }: RelationshipRowProps) {
   return (
     <div className="flex items-start gap-3">
-      <span
-        className="text-xs shrink-0 mt-0.5"
-        style={{ color: colors.text.muted, minWidth: 100 }}
-      >
+      <span className="text-xs shrink-0 mt-0.5" style={{ color: colors.text.muted, minWidth: 100 }}>
         {label}
       </span>
       <div className="flex flex-wrap gap-1">

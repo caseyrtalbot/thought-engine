@@ -8,11 +8,14 @@ beforeEach(() => {
 describe('graph-settings-store', () => {
   it('has sensible defaults', () => {
     const state = useGraphSettingsStore.getState()
-    expect(state.showOrphans).toBe(true)
-    expect(state.baseNodeSize).toBe(4)
-    expect(state.centerForce).toBe(0.5)
-    expect(state.repelForce).toBe(-120)
+    expect(state.showOrphans).toBe(false)
+    expect(state.baseNodeSize).toBe(5)
+    expect(state.centerForce).toBe(0.3)
+    expect(state.repelForce).toBe(-80)
     expect(state.isAnimating).toBe(true)
+    expect(state.linkOpacity).toBe(0.15)
+    expect(state.linkDistance).toBe(60)
+    expect(state.showMinimap).toBe(true)
   })
 
   it('updates filter settings immutably', () => {

@@ -9,7 +9,8 @@ import {
 import type { GraphNode, RelationshipKind } from '@shared/types'
 import { getArtifactColor, animations, getComputedCssColor } from '../../design/tokens'
 import { SIGNAL_OPACITY } from '@shared/types'
-import { GlowSpriteCache, drawGlowSprite } from './glowSprites'
+// Glow sprites available but not used in hot path for performance
+// import { GlowSpriteCache, drawGlowSprite } from './glowSprites'
 import type { HighlightState } from './useGraphHighlight'
 
 // ---------------------------------------------------------------------------
@@ -110,14 +111,9 @@ const DEFAULT_RENDER_CONFIG: RenderConfig = {
 
 const DEFAULT_SIZE_CONFIG: NodeSizeConfig = { mode: 'degree', baseSize: 4 }
 
-const EDGE_COLOR_MAP: Record<string, { color: string; width: number; dash: number[] }> = {
-  connection: { color: '#252a3a', width: 1, dash: [] },
-  cluster: { color: '#2DD4BF66', width: 1.5, dash: [] },
-  tension: { color: '#EF444466', width: 1, dash: [4, 4] },
-  appears_in: { color: '#3A3A3E', width: 1, dash: [] },
-  wikilink: { color: '#64748b44', width: 0.75, dash: [2, 3] },
-  tag: { color: '#f59e0b33', width: 0.75, dash: [] }
-}
+// Batched rendering uses a single edge color for performance.
+// Per-kind styling available for future use if needed.
+const EDGE_COLOR = '#475569'
 
 const LINK_STRENGTH: Record<RelationshipKind, number> = {
   connection: 0.3,
@@ -131,7 +127,7 @@ const LINK_STRENGTH: Record<RelationshipKind, number> = {
 const HIGHLIGHT_EDGE_WIDTH = 1.5
 const HIGHLIGHT_EDGE_ALPHA = 0.7
 const DIM_ALPHA = 0.08
-const HOVER_SHADOW_BLUR = 14
+const HOVER_SHADOW_BLUR = 8
 const LABEL_FONT = '12px Inter, sans-serif'
 const SELECTED_RING_OFFSET = 4
 const SELECTED_RING_ALPHA = 0.4
@@ -144,14 +140,19 @@ interface RenderOptions {
   canvasWidth: number
   canvasHeight: number
   reducedMotion: boolean
+  /** @deprecated no longer used — kept for interface compatibility */
   skipAmbientSprites?: boolean
+  linkOpacity?: number
+  linkThickness?: number
+  textFadeThreshold?: number
+  showArrows?: boolean
 }
 
 // ---------------------------------------------------------------------------
 // Module-scoped glow sprite cache (shared across render calls)
 // ---------------------------------------------------------------------------
 
-const glowCache = new GlowSpriteCache()
+// const glowCache = new GlowSpriteCache()
 
 // ---------------------------------------------------------------------------
 // Simulation
@@ -164,7 +165,20 @@ export function createSimulation(
   height: number,
   config: SimulationConfig = DEFAULT_SIM_CONFIG
 ): Simulation<SimNode, SimEdge> {
+  // Scale physics for graph size: larger graphs need faster settling + weaker forces
+  const n = nodes.length
+  const isLarge = n > 200
+  const alphaDecay = isLarge ? 0.04 : 0.0228 // default is ~0.0228; larger = settles faster
+  const velocityDecay = isLarge ? 0.5 : 0.4 // higher = more friction
+
+  const charge = forceManyBody<SimNode>().strength(config.repelForce)
+  // Barnes-Hut theta: higher = faster approximation for O(n log n) instead of O(n²)
+  if (isLarge) charge.theta(1.2)
+
   return forceSimulation<SimNode>(nodes)
+    .alphaMin(isLarge ? 0.01 : 0.001) // stop sooner for large graphs
+    .alphaDecay(alphaDecay)
+    .velocityDecay(velocityDecay)
     .force(
       'link',
       forceLink<SimNode, SimEdge>(edges)
@@ -172,7 +186,7 @@ export function createSimulation(
         .strength((d) => Math.abs(LINK_STRENGTH[d.kind]) * config.linkForce)
         .distance(config.linkDistance)
     )
-    .force('charge', forceManyBody<SimNode>().strength(config.repelForce))
+    .force('charge', charge)
     .force('center', forceCenter(width / 2, height / 2).strength(config.centerForce))
     .force(
       'collide',
@@ -207,7 +221,7 @@ export function computeNodeRadius(
       return config.baseSize + Math.log(Math.max(charCount ?? 100, 100) / 100) * 2
     case 'degree':
     default:
-      return config.baseSize + Math.sqrt(node.connectionCount) * 2.5
+      return config.baseSize + Math.sqrt(node.connectionCount) * 1.5
   }
 }
 
@@ -277,24 +291,17 @@ export function renderGraph(
   options?: RenderOptions
 ): number {
   // Resolve theme colors once per frame (canvas 2D needs raw values, not CSS vars)
-  const themeBg = getComputedCssColor('--color-bg-surface') || '#141620'
-  const themeBorder = getComputedCssColor('--color-border-default') || '#252a3a'
   const themeAccent = getComputedCssColor('--color-accent-default') || '#00e5bf'
   const themeText = getComputedCssColor('--color-text-primary') || '#e2e8f0'
 
-  // Stage 1: Clear + background
+  // Stage 1: timing start (caller handles canvas clear + background fill)
   const t0 = performance.now()
-  ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = themeBg
-  ctx.fillRect(0, 0, width, height)
 
   // Stage 2: Compute highlight context
   const highlight = options?.highlight
   const highlightActive = highlight !== undefined && highlight.mode !== 'idle'
   const connectedSet: ReadonlySet<string> = highlight?.connectedSet ?? new Set()
   const focusedNodeId = highlight?.focusedNodeId ?? null
-  const glowIntensity = highlight?.glowIntensity ?? 0
-
   // Size config
   const sizeConfig = options?.sizeConfig ?? DEFAULT_SIZE_CONFIG
 
@@ -302,16 +309,56 @@ export function renderGraph(
   const transform = options?.transform ?? { x: 0, y: 0, k: 1 }
   const canvasWidth = options?.canvasWidth ?? width
   const canvasHeight = options?.canvasHeight ?? height
-  const textFadeThreshold = DEFAULT_RENDER_CONFIG.textFadeThreshold
+  const textFadeThreshold = options?.textFadeThreshold ?? DEFAULT_RENDER_CONFIG.textFadeThreshold
+  const linkOpacity = options?.linkOpacity ?? DEFAULT_RENDER_CONFIG.linkOpacity
+  const linkThickness = options?.linkThickness ?? DEFAULT_RENDER_CONFIG.linkThickness
 
   // Stage 3: Viewport culling bounds
   const cullBounds = computeCullBounds(canvasWidth, canvasHeight, transform)
 
-  // Stage 4: Edge LOD - if very zoomed out, draw all edges in a single pass
-  if (transform.k < 0.2) {
-    ctx.globalAlpha = 0.06
-    ctx.strokeStyle = themeBorder
-    ctx.lineWidth = 1
+  // ---------------------------------------------------------------------------
+  // Stage 4: BATCHED edge rendering (single draw call for all normal edges)
+  // ---------------------------------------------------------------------------
+  // Obsidian-style: one batch path for all non-highlighted edges, then a small
+  // separate pass for highlighted edges only. This avoids per-edge state changes.
+  // ---------------------------------------------------------------------------
+
+  if (highlightActive) {
+    // Dimmed edges: single batch
+    ctx.globalAlpha = DIM_ALPHA
+    ctx.strokeStyle = EDGE_COLOR
+    ctx.lineWidth = 0.5 * linkThickness
+    ctx.setLineDash([])
+    ctx.beginPath()
+    for (const edge of edges) {
+      const source = edge.source as SimNode
+      const target = edge.target as SimNode
+      if (!source.x || !target.x) continue
+      if (isEdgeConnected(edge, connectedSet)) continue // skip highlighted
+      ctx.moveTo(source.x, source.y)
+      ctx.lineTo(target.x, target.y)
+    }
+    ctx.stroke()
+
+    // Highlighted edges: separate batch
+    ctx.globalAlpha = HIGHLIGHT_EDGE_ALPHA
+    ctx.strokeStyle = themeAccent
+    ctx.lineWidth = HIGHLIGHT_EDGE_WIDTH * linkThickness
+    ctx.beginPath()
+    for (const edge of edges) {
+      const source = edge.source as SimNode
+      const target = edge.target as SimNode
+      if (!source.x || !target.x) continue
+      if (!isEdgeConnected(edge, connectedSet)) continue
+      ctx.moveTo(source.x, source.y)
+      ctx.lineTo(target.x, target.y)
+    }
+    ctx.stroke()
+  } else {
+    // Normal mode: ALL edges in one single batch path
+    ctx.globalAlpha = linkOpacity
+    ctx.strokeStyle = EDGE_COLOR
+    ctx.lineWidth = 0.5 * linkThickness
     ctx.setLineDash([])
     ctx.beginPath()
     for (const edge of edges) {
@@ -322,99 +369,58 @@ export function renderGraph(
       ctx.lineTo(target.x, target.y)
     }
     ctx.stroke()
-    ctx.globalAlpha = 1
-  } else {
-    // Stage 5: Draw individual edges
-    for (const edge of edges) {
-      const source = edge.source as SimNode
-      const target = edge.target as SimNode
-      if (!source.x || !target.x) continue
-
-      // Cull if both endpoints are outside the viewport
-      const sourceInView = isNodeInView(source, cullBounds)
-      const targetInView = isNodeInView(target, cullBounds)
-      if (!sourceInView && !targetInView) continue
-
-      const kindKey = edge.kind as string
-      const baseEdgeStyle = EDGE_COLOR_MAP[kindKey] ?? EDGE_COLOR_MAP.connection
-      const edgeStyle =
-        kindKey === 'connection' || !EDGE_COLOR_MAP[kindKey]
-          ? { ...baseEdgeStyle, color: themeBorder }
-          : baseEdgeStyle
-
-      ctx.beginPath()
-      ctx.moveTo(source.x, source.y)
-      ctx.lineTo(target.x, target.y)
-
-      if (highlightActive) {
-        const connected = isEdgeConnected(edge, connectedSet)
-        if (connected) {
-          ctx.strokeStyle = themeAccent
-          ctx.lineWidth = HIGHLIGHT_EDGE_WIDTH
-          ctx.globalAlpha = HIGHLIGHT_EDGE_ALPHA
-          ctx.setLineDash([])
-        } else {
-          ctx.strokeStyle = edgeStyle.color
-          ctx.lineWidth = edgeStyle.width
-          ctx.globalAlpha = DIM_ALPHA
-          ctx.setLineDash(edgeStyle.dash)
-        }
-      } else {
-        ctx.strokeStyle = edgeStyle.color
-        ctx.lineWidth = edgeStyle.width
-        ctx.globalAlpha = 0.4
-        ctx.setLineDash(edgeStyle.dash)
-      }
-
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.globalAlpha = 1
-    }
   }
+  ctx.setLineDash([])
+  ctx.globalAlpha = 1
 
-  // Stage 6: Draw nodes
-  const skipAmbientSprites = options?.skipAmbientSprites ?? false
+  // ---------------------------------------------------------------------------
+  // Stage 5: BATCHED node rendering (group by color to minimize state changes)
+  // ---------------------------------------------------------------------------
+
+  // Collect visible nodes with precomputed values
+  const visibleNodes: Array<{
+    node: SimNode
+    r: number
+    color: string
+    opacity: number
+    isDimmed: boolean
+  }> = []
 
   for (const node of nodes) {
     if (!node.x || !node.y) continue
     if (!isNodeInView(node, cullBounds)) continue
-
-    const r = computeNodeRadius(node, sizeConfig)
-    const color = getArtifactColor(node.type)
-    const opacity = SIGNAL_OPACITY[node.signal] ?? 0.4
-    const isSelected = node.id === selectedId
-    const isHovered = node.id === hoveredId
-    const isFocused = node.id === focusedNodeId
     const isConnected = connectedSet.has(node.id)
     const isDimmed = highlightActive && !isConnected
+    visibleNodes.push({
+      node,
+      r: computeNodeRadius(node, sizeConfig),
+      color: getArtifactColor(node.type),
+      opacity: SIGNAL_OPACITY[node.signal] ?? 0.65,
+      isDimmed
+    })
+  }
 
-    if (transform.k < 0.4) {
-      // Low detail: simple rectangle for performance
-      ctx.globalAlpha = isDimmed ? DIM_ALPHA : opacity
-      ctx.fillStyle = color
-      ctx.fillRect(node.x - r / 2, node.y - r / 2, r, r)
-      ctx.globalAlpha = 1
+  // Group by color for batched fills
+  const colorGroups = new Map<string, typeof visibleNodes>()
+  for (const entry of visibleNodes) {
+    const key = entry.isDimmed ? `dim:${entry.color}` : entry.color
+    const group = colorGroups.get(key)
+    if (group) {
+      group.push(entry)
     } else {
-      // Full detail rendering
+      colorGroups.set(key, [entry])
+    }
+  }
 
-      // Ambient glow sprite (skipped when dimmed or flag is set)
-      if (!isDimmed && !skipAmbientSprites) {
-        const sprite = glowCache.get(color, r)
-        drawGlowSprite(ctx, sprite, node.x, node.y, opacity * glowIntensity * 0.5)
-      }
+  // Draw all nodes in batched color groups
+  for (const [key, group] of colorGroups) {
+    const isDimGroup = key.startsWith('dim:')
+    const color = isDimGroup ? key.slice(4) : key
+    ctx.fillStyle = color
+    ctx.globalAlpha = isDimGroup ? DIM_ALPHA : group[0].opacity
 
-      // Shadow effect for focused/hovered/connected nodes
-      if (isFocused || isHovered || (isConnected && highlightActive)) {
-        ctx.shadowColor = color
-        ctx.shadowBlur = HOVER_SHADOW_BLUR
-      }
-
-      // Draw node shape
-      ctx.fillStyle = color
-      ctx.globalAlpha = isDimmed ? DIM_ALPHA : opacity
-
+    for (const { node, r } of group) {
       if (node.type === 'tag') {
-        // Diamond shape for tag nodes
         ctx.beginPath()
         ctx.moveTo(node.x, node.y - r)
         ctx.lineTo(node.x + r, node.y)
@@ -423,36 +429,43 @@ export function renderGraph(
         ctx.closePath()
         ctx.fill()
       } else {
-        // Circle for all other nodes
         ctx.beginPath()
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
         ctx.fill()
       }
-      ctx.globalAlpha = 1
+    }
+  }
+  ctx.globalAlpha = 1
 
-      // Selected: outer ring
-      if (isSelected) {
-        ctx.strokeStyle = themeAccent
-        ctx.lineWidth = 2
-        ctx.globalAlpha = SELECTED_RING_ALPHA
-        ctx.beginPath()
-        if (node.type === 'tag') {
-          const outerR = r + SELECTED_RING_OFFSET
-          ctx.moveTo(node.x, node.y - outerR)
-          ctx.lineTo(node.x + outerR, node.y)
-          ctx.lineTo(node.x, node.y + outerR)
-          ctx.lineTo(node.x - outerR, node.y)
-          ctx.closePath()
-        } else {
-          ctx.arc(node.x, node.y, r + SELECTED_RING_OFFSET, 0, Math.PI * 2)
-        }
-        ctx.stroke()
-        ctx.globalAlpha = 1
-      }
-
-      // Reset shadow
+  // Hovered node: subtle glow (only 1 node, fine to use shadow)
+  if (hoveredId || focusedNodeId) {
+    const targetId = focusedNodeId ?? hoveredId
+    const entry = visibleNodes.find((e) => e.node.id === targetId)
+    if (entry) {
+      ctx.shadowColor = entry.color
+      ctx.shadowBlur = HOVER_SHADOW_BLUR
+      ctx.fillStyle = entry.color
+      ctx.globalAlpha = entry.opacity
+      ctx.beginPath()
+      ctx.arc(entry.node.x, entry.node.y, entry.r, 0, Math.PI * 2)
+      ctx.fill()
       ctx.shadowColor = 'transparent'
       ctx.shadowBlur = 0
+      ctx.globalAlpha = 1
+    }
+  }
+
+  // Selected node: accent ring
+  if (selectedId) {
+    const entry = visibleNodes.find((e) => e.node.id === selectedId)
+    if (entry) {
+      ctx.strokeStyle = themeAccent
+      ctx.lineWidth = 2
+      ctx.globalAlpha = SELECTED_RING_ALPHA
+      ctx.beginPath()
+      ctx.arc(entry.node.x, entry.node.y, entry.r + SELECTED_RING_OFFSET, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = 1
     }
   }
 
