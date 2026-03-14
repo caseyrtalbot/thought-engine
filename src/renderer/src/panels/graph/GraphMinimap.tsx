@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
-import type { SimNode, SimEdge } from './GraphRenderer'
+import type { SimNode, SimEdge } from './graph-config'
 
 interface GraphMinimapProps {
   nodes: readonly SimNode[]
@@ -137,28 +137,46 @@ export function GraphMinimap({
     for (const edge of edges) {
       const source = edge.source as SimNode
       const target = edge.target as SimNode
-      if (!source.x || !target.x) continue
+      if (!Number.isFinite(source.x) || !Number.isFinite(source.y)) continue
+      if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) continue
 
       ctx.moveTo(toMinimapX(source.x), toMinimapY(source.y))
       ctx.lineTo(toMinimapX(target.x), toMinimapY(target.y))
     }
     ctx.stroke()
 
-    // Draw nodes as colored dots (non-highlighted first, then highlighted on top)
+    // Pass 1: non-highlighted nodes (faint)
+    ctx.globalAlpha = DOT_ALPHA_NORMAL
     for (const node of nodes) {
-      if (!node.x || !node.y) continue
-
-      const isHighlighted = highlightedNodeIds.has(node.id)
-      const dotSize = isHighlighted ? DOT_SIZE_HIGHLIGHTED : DOT_SIZE_NORMAL
-      const alpha = isHighlighted ? DOT_ALPHA_HIGHLIGHTED : DOT_ALPHA_NORMAL
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) continue
+      if (highlightedNodeIds.has(node.id)) continue
 
       const mx = toMinimapX(node.x)
       const my = toMinimapY(node.y)
-      const color = getNodeDotColor(node)
+      ctx.fillStyle = getNodeDotColor(node)
+      ctx.fillRect(
+        mx - DOT_SIZE_NORMAL / 2,
+        my - DOT_SIZE_NORMAL / 2,
+        DOT_SIZE_NORMAL,
+        DOT_SIZE_NORMAL
+      )
+    }
 
-      ctx.globalAlpha = alpha
-      ctx.fillStyle = color
-      ctx.fillRect(mx - dotSize / 2, my - dotSize / 2, dotSize, dotSize)
+    // Pass 2: highlighted nodes drawn on top (bright)
+    ctx.globalAlpha = DOT_ALPHA_HIGHLIGHTED
+    for (const node of nodes) {
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) continue
+      if (!highlightedNodeIds.has(node.id)) continue
+
+      const mx = toMinimapX(node.x)
+      const my = toMinimapY(node.y)
+      ctx.fillStyle = getNodeDotColor(node)
+      ctx.fillRect(
+        mx - DOT_SIZE_HIGHLIGHTED / 2,
+        my - DOT_SIZE_HIGHLIGHTED / 2,
+        DOT_SIZE_HIGHLIGHTED,
+        DOT_SIZE_HIGHLIGHTED
+      )
     }
 
     ctx.globalAlpha = 1

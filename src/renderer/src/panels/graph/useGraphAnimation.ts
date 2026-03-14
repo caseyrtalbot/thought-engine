@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react'
-import type { SimNode } from './GraphRenderer'
+import type { SimNode } from './graph-config'
 import type { GraphRenderRuntime } from './graph-runtime'
 
 // ---------------------------------------------------------------------------

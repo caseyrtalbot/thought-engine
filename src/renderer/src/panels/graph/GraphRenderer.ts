@@ -35,13 +35,6 @@ const SELECTED_RING_WIDTH = 2
 const BOKEH_SHADOW_ALPHA = 0.04
 
 // ---------------------------------------------------------------------------
-// Backwards-compatible re-exports (consumers will be updated in a later task)
-// ---------------------------------------------------------------------------
-
-export type { SimNode, SimEdge, SimulationConfig, RenderOptions }
-export { GRAPH_PALETTE }
-
-// ---------------------------------------------------------------------------
 // Memoized color utility caches (pure function caches, deterministic)
 // ---------------------------------------------------------------------------
 
@@ -515,11 +508,7 @@ export function renderGraph(
       const glowColor = hexToRgba(vn.color, 0.6)
       const sprite = runtime.glowCache.get(glowColor, vn.r, NEIGHBOR_SHADOW_BLUR)
       ctx.globalAlpha = 0.6
-      ctx.drawImage(
-        sprite.source,
-        vn.node.x - sprite.width / 2,
-        vn.node.y - sprite.height / 2
-      )
+      ctx.drawImage(sprite.source, vn.node.x - sprite.width / 2, vn.node.y - sprite.height / 2)
     }
     ctx.globalAlpha = 1
   }
