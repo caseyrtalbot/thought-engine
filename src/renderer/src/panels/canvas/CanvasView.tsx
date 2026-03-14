@@ -4,6 +4,7 @@ import { useCanvasStore } from '../../store/canvas-store'
 import { createCanvasNode } from '@shared/canvas-types'
 import { CanvasContextMenu } from './CanvasContextMenu'
 import { TextCard } from './TextCard'
+import { NoteCard } from './NoteCard'
 import { EdgeLayer } from './EdgeLayer'
 import { ConnectionDragOverlay } from './ConnectionDragOverlay'
 
@@ -73,9 +74,16 @@ export function CanvasView() {
       <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
         <EdgeLayer />
         {nodes.map((node) => {
-          if (node.type === 'text') return <TextCard key={node.id} node={node} />
-          // NoteCard and TerminalCard will be added later
-          return null
+          switch (node.type) {
+            case 'text':
+              return <TextCard key={node.id} node={node} />
+            case 'note':
+              return <NoteCard key={node.id} node={node} />
+            case 'terminal':
+              return null // Task 11
+            default:
+              return null
+          }
         })}
       </CanvasSurface>
 
