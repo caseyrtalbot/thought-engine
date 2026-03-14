@@ -4,17 +4,15 @@ import { select } from 'd3-selection'
 import { useVaultStore } from '../../store/vault-store'
 import { useGraphStore } from '../../store/graph-store'
 import { useGraphSettingsStore, resolveGroupColor } from '../../store/graph-settings-store'
+import { GraphRenderRuntime } from './graph-runtime'
+import { buildGlobalGraphModel, type GraphFilters } from './graph-model'
 import {
   createSimulation,
   renderGraph,
   renderVignette,
-  findNodeAt,
-  updateQuadtree,
-  GRAPH_PALETTE,
-  type SimNode,
-  type SimEdge,
-  type SimulationConfig
+  updateSimulationForces
 } from './GraphRenderer'
+import { GRAPH_PALETTE, type SimNode, type SimEdge, type SimulationConfig } from './graph-config'
 import { useGraphHighlight } from './useGraphHighlight'
 import { useGraphAnimation } from './useGraphAnimation'
 import { useGraphKeyboard } from './useGraphKeyboard'
@@ -61,14 +59,28 @@ interface GraphPanelProps {
 export function GraphPanel({ onNodeClick }: GraphPanelProps) {
   // Canvas and simulation refs
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const simRef = useRef<ReturnType<typeof createSimulation> | null>(null)
   const nodesRef = useRef<SimNode[] | null>(null)
   const edgesRef = useRef<SimEdge[] | null>(null)
   const transformRef = useRef({ x: 0, y: 0, k: 1 })
   const zoomBehaviorRef = useRef<ZoomBehavior<HTMLCanvasElement, unknown> | null>(null)
   const prevNodesRef = useRef<SimNode[]>([])
-  const rafIdRef = useRef<number | null>(null)
   const renderRef = useRef<() => void>(() => {})
+
+  // Pane-scoped runtime (lazily created, disposed on unmount)
+  const runtimeRef = useRef<GraphRenderRuntime | null>(null)
+  if (!runtimeRef.current) {
+    runtimeRef.current = new GraphRenderRuntime(() => {
+      renderRef.current()
+    })
+  }
+
+  // Dispose runtime on unmount
+  useEffect(() => {
+    return () => {
+      runtimeRef.current?.dispose()
+      runtimeRef.current = null
+    }
+  }, [])
 
   // Drag state refs (hot path — no React state)
   const dragNodeRef = useRef<SimNode | null>(null)
@@ -119,9 +131,21 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     return map
   }, [fileToId])
 
+  // Build GraphModel from graph data + filter settings
+  const graphModel = useMemo(() => {
+    const filters: GraphFilters = {
+      showTags,
+      showAttachments,
+      showOrphans,
+      showExistingOnly,
+      searchQuery: '' // search is handled separately in render
+    }
+    return buildGlobalGraphModel(graph, filters)
+  }, [graph, showTags, showAttachments, showOrphans, showExistingOnly])
+
   // Simulation reheat handler
   const handleSimRestart = useCallback((alpha: number) => {
-    simRef.current?.alpha(alpha).restart()
+    runtimeRef.current?.simulation?.alpha(alpha).restart()
   }, [])
 
   // Integration hooks
@@ -173,13 +197,16 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     const edges = edgesRef.current
     if (!nodes || !edges) return
 
+    const runtime = runtimeRef.current
+    if (!runtime) return
+
     const t = transformRef.current
     const dpr = window.devicePixelRatio
     const w = canvas.width / dpr
     const h = canvas.height / dpr
 
-    // Update quadtree for hit testing
-    updateQuadtree(nodes)
+    // Rebuild quadtree if dirty (runtime manages dirty flag)
+    runtime.rebuildQuadtree(nodes)
 
     // Clear + deep space background (screen-space)
     ctx.save()
@@ -193,7 +220,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     ctx.scale(t.k, t.k)
 
     // Render graph content (graph-space)
-    renderGraph(ctx, nodes, edges, w, h, selectedNodeId, hoveredNodeId, {
+    renderGraph(ctx, runtime, nodes, edges, w, h, selectedNodeId, hoveredNodeId, {
       highlight: highlightHook.state,
       transform: t,
       canvasWidth: w,
@@ -210,12 +237,12 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     // Vignette overlay (screen-space post-effect)
     ctx.save()
     ctx.scale(dpr, dpr)
-    renderVignette(ctx, w, h)
+    renderVignette(ctx, runtime, w, h)
     ctx.restore()
 
     // Continue render loop while animations are active
     if (animation.hasActiveAnimations()) {
-      rafIdRef.current = requestAnimationFrame(render)
+      runtimeRef.current?.requestRender()
     }
   }, [
     selectedNodeId,
@@ -236,94 +263,58 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
   // Re-render on display-only changes (no sim recreation needed)
   useEffect(() => {
-    renderRef.current()
+    runtimeRef.current?.requestRender()
   }, [linkThickness, textFadeThreshold, showArrows, nodeSizeMultiplier, searchQuery])
 
   // -------------------------------------------------------------------------
-  // Graph data pipeline: filter, assign colors, diff, simulate
+  // Effect 1 — Topology change: creates new simulation
   // -------------------------------------------------------------------------
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const runtime = runtimeRef.current
+    if (!canvas || !runtime) return
 
-    const existingNodeIds = new Set(Object.values(fileToId))
-
-    // Start with all nodes, preserving existing positions
+    // Build SimNode[] from graphModel, preserving existing positions
     const prevNodeMap = new Map(prevNodesRef.current.map((n) => [n.id, n]))
-    let filteredNodes = graph.nodes.map((n) => {
+    const simNodes: SimNode[] = graphModel.nodes.map((n) => {
       const prev = prevNodeMap.get(n.id)
       return {
         ...n,
         x: prev?.x ?? Math.random() * canvas.clientWidth,
         y: prev?.y ?? Math.random() * canvas.clientHeight,
-        // Preserve pinned state
         fx: prev?.fx ?? null,
-        fy: prev?.fy ?? null
+        fy: prev?.fy ?? null,
+        _color: undefined
       }
-    }) as SimNode[]
+    })
 
-    let filteredEdges: SimEdge[] = graph.edges.map((e) => ({ ...e }))
-
-    // Filter by type toggles
-    if (!showTags) {
-      filteredNodes = filteredNodes.filter((n) => n.type !== 'tag')
-    }
-    if (!showAttachments) {
-      filteredNodes = filteredNodes.filter((n) => n.type !== 'attachment')
-    }
-
-    // Filter existing only
-    if (showExistingOnly) {
-      filteredNodes = filteredNodes.filter((n) => existingNodeIds.has(n.id))
-    }
-
-    // Filter orphans
-    if (!showOrphans) {
-      const connectedIds = new Set<string>()
-      for (const edge of filteredEdges) {
-        const srcId = typeof edge.source === 'string' ? edge.source : edge.source.id
-        const tgtId = typeof edge.target === 'string' ? edge.target : edge.target.id
-        connectedIds.add(srcId)
-        connectedIds.add(tgtId)
-      }
-      filteredNodes = filteredNodes.filter((n) => connectedIds.has(n.id))
-    }
+    const simEdges: SimEdge[] = graphModel.edges.map((e) => ({ ...e }))
 
     // Assign path from reverse lookup (for group rule matching)
-    for (const node of filteredNodes) {
+    for (const node of simNodes) {
       const path = idToPath.get(node.id)
       if (path) node.path = path
     }
 
     // Assign _color from group rules (top-to-bottom, first match wins)
-    for (const node of filteredNodes) {
+    for (const node of simNodes) {
       node._color = resolveGroupColor(groupRules, node) ?? undefined
     }
 
-    // Filter edges to only those connecting remaining nodes
-    const nodeIdSet = new Set(filteredNodes.map((n) => n.id))
-    filteredEdges = filteredEdges.filter((e) => {
-      const srcId = typeof e.source === 'string' ? e.source : e.source.id
-      const tgtId = typeof e.target === 'string' ? e.target : e.target.id
-      return nodeIdSet.has(srcId) && nodeIdSet.has(tgtId)
-    })
-
     // Diff for animations
-    const diff = animation.diffNodes(prevNodesRef.current, filteredNodes)
+    const diff = animation.diffNodes(prevNodesRef.current, simNodes)
     animation.detectRenames(diff.removed, diff.added)
 
     // Update refs
-    nodesRef.current = filteredNodes
-    edgesRef.current = filteredEdges
-    prevNodesRef.current = filteredNodes
+    nodesRef.current = simNodes
+    edgesRef.current = simEdges
+    prevNodesRef.current = simNodes
 
     if (diff.added.length > 0) animation.queueEnter(diff.added as SimNode[])
     if (diff.removed.length > 0) animation.queueExit(diff.removed as SimNode[])
 
-    let sim: ReturnType<typeof createSimulation> | null = null
-
-    if (filteredNodes.length > 0) {
+    if (simNodes.length > 0) {
       const simConfig: SimulationConfig = {
         centerForce,
         repelForce,
@@ -331,9 +322,9 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         linkDistance
       }
 
-      sim = createSimulation(
-        filteredNodes,
-        filteredEdges,
+      const sim = createSimulation(
+        simNodes,
+        simEdges,
         canvas.clientWidth,
         canvas.clientHeight,
         simConfig
@@ -342,40 +333,38 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       if (!isAnimating) sim.stop()
 
       sim.on('tick', () => {
-        nodesRef.current = filteredNodes
-        edgesRef.current = filteredEdges
-        renderRef.current()
+        nodesRef.current = simNodes
+        edgesRef.current = simEdges
+        runtime.markQuadtreeDirty()
+        runtime.requestRender()
       })
 
-      simRef.current = sim
+      runtime.simulation = sim
     } else {
-      renderRef.current()
+      runtime.simulation = null
+      runtime.requestRender()
     }
 
     return () => {
-      sim?.stop()
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current)
-        rafIdRef.current = null
-      }
+      // Runtime.simulation setter stops the old sim automatically
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    graph,
-    fileToId,
-    idToPath,
-    showOrphans,
-    showExistingOnly,
-    showTags,
-    showAttachments,
-    groupRules,
-    centerForce,
-    repelForce,
-    linkForceStrength,
-    linkDistance,
-    isAnimating,
-    animation
-  ])
+  }, [graphModel, idToPath, groupRules, isAnimating, animation])
+
+  // -------------------------------------------------------------------------
+  // Effect 2 — Force parameter change: updates simulation in place
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const sim = runtimeRef.current?.simulation
+    if (!sim) return
+    updateSimulationForces(sim, {
+      centerForce,
+      repelForce,
+      linkForce: linkForceStrength,
+      linkDistance
+    })
+  }, [centerForce, repelForce, linkForceStrength, linkDistance])
 
   // -------------------------------------------------------------------------
   // Zoom setup (scale 0.1–8 per spec)
@@ -429,14 +418,20 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       if (e.button !== 0) return // left-click only
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
-      const node = findNodeAt(nodesRef.current ?? [], coords.x, coords.y, nodeSizeMultiplier)
+      const node =
+        runtimeRef.current?.findNodeAt(
+          nodesRef.current ?? [],
+          coords.x,
+          coords.y,
+          nodeSizeMultiplier
+        ) ?? null
       if (node) {
         isDraggingRef.current = true
         dragNodeRef.current = node
         // Pin the node at its current position
         node.fx = node.x
         node.fy = node.y
-        simRef.current?.alphaTarget(0.3).restart()
+        runtimeRef.current?.simulation?.alphaTarget(0.3).restart()
         const canvas = canvasRef.current
         if (canvas) canvas.style.cursor = 'grabbing'
       }
@@ -453,11 +448,19 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       if (isDraggingRef.current && dragNodeRef.current) {
         dragNodeRef.current.fx = coords.x
         dragNodeRef.current.fy = coords.y
-        renderRef.current()
+        runtimeRef.current?.markQuadtreeDirty()
+        // Sim tick already handles requestRender, but force render if sim is stopped
+        runtimeRef.current?.requestRender()
         return
       }
 
-      const node = findNodeAt(nodesRef.current ?? [], coords.x, coords.y, nodeSizeMultiplier)
+      const node =
+        runtimeRef.current?.findNodeAt(
+          nodesRef.current ?? [],
+          coords.x,
+          coords.y,
+          nodeSizeMultiplier
+        ) ?? null
       highlightHook.handleHover(node?.id ?? null)
 
       const canvas = canvasRef.current
@@ -483,7 +486,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     if (isDraggingRef.current) {
       isDraggingRef.current = false
       dragNodeRef.current = null
-      simRef.current?.alphaTarget(0)
+      runtimeRef.current?.simulation?.alphaTarget(0)
       const canvas = canvasRef.current
       if (canvas) canvas.style.cursor = 'default'
     }
@@ -496,7 +499,13 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       setContextMenu(null)
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
-      const node = findNodeAt(nodesRef.current ?? [], coords.x, coords.y, nodeSizeMultiplier)
+      const node =
+        runtimeRef.current?.findNodeAt(
+          nodesRef.current ?? [],
+          coords.x,
+          coords.y,
+          nodeSizeMultiplier
+        ) ?? null
       if (node) {
         highlightHook.handleClick(node.id)
         onNodeClick(node.id)
@@ -511,13 +520,19 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
-      const node = findNodeAt(nodesRef.current ?? [], coords.x, coords.y, nodeSizeMultiplier)
+      const node =
+        runtimeRef.current?.findNodeAt(
+          nodesRef.current ?? [],
+          coords.x,
+          coords.y,
+          nodeSizeMultiplier
+        ) ?? null
       if (node) {
         // Double-click: unpin if pinned, otherwise open
         if (node.fx !== undefined && node.fx !== null) {
           node.fx = null
           node.fy = null
-          simRef.current?.alpha(0.3).restart()
+          runtimeRef.current?.simulation?.alpha(0.3).restart()
         } else {
           highlightHook.handleDoubleClick(node.id)
           setContentView('editor')
@@ -533,7 +548,13 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       e.preventDefault()
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
-      const node = findNodeAt(nodesRef.current ?? [], coords.x, coords.y, nodeSizeMultiplier)
+      const node =
+        runtimeRef.current?.findNodeAt(
+          nodesRef.current ?? [],
+          coords.x,
+          coords.y,
+          nodeSizeMultiplier
+        ) ?? null
       if (node) {
         setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id })
       }
@@ -631,7 +652,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
             left: tooltip.x + 12,
             top: tooltip.y - 8,
             backgroundColor: 'rgba(20, 20, 30, 0.92)',
-            backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: 6,
             padding: '6px 10px',
