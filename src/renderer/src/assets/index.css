@@ -1,5 +1,28 @@
 @import 'tailwindcss';
 
+/* ─── Entrance Animations ─── */
+
+@keyframes te-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes te-slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes te-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes te-pulse-ring {
+  0% { box-shadow: 0 0 0 0 var(--color-accent-focus); }
+  70% { box-shadow: 0 0 0 4px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -7,18 +30,43 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01' on, 'cv01' on;
   user-select: none;
   color: var(--color-text-primary);
   background: var(--color-bg-base);
 }
 
+/* Subtle atmospheric depth on the app chrome */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 0%, var(--color-accent-muted), transparent),
+    radial-gradient(ellipse 40% 40% at 85% 100%, rgba(100, 116, 139, 0.04), transparent);
+}
+
+/* Custom text selection using accent */
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+}
+
+::-moz-selection {
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+}
+
 :root {
-  --font-display: 'Inter', system-ui, sans-serif;
+  --font-display: 'DM Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --radius-card: 8px;
   --text-page-title: 20px;
   --text-section-heading: 15px;
   --text-body: 13px;
@@ -70,21 +118,41 @@ body {
   }
 }
 
-* { scrollbar-width: thin; scrollbar-color: var(--color-bg-elevated) transparent; }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-bg-elevated); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-border-default); }
+/* ─── Scrollbars ─── */
 
-.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-accent-focus); }
-.interactive-hover { transition: background-color var(--transition-hover); }
+* { scrollbar-width: thin; scrollbar-color: var(--color-bg-elevated) transparent; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-elevated);
+  border-radius: 99px;
+  transition: background 150ms ease-out;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-default); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ─── Focus & Interaction ─── */
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-focus);
+  animation: te-pulse-ring 0.6s ease-out;
+}
+
+.interactive-hover {
+  transition: background-color var(--transition-hover), box-shadow var(--transition-hover);
+}
 .interactive-hover:hover { background-color: var(--color-bg-elevated); }
+
+/* ─── Panel Cards ─── */
 
 .panel-card {
   background: var(--color-bg-surface);
   border-radius: var(--panel-radius);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
+  animation: te-fade-in 0.3s ease-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -99,10 +167,12 @@ body {
 /* ─── Editor Prose Typography ─── */
 
 .ProseMirror {
-  line-height: 1.7;
+  line-height: 1.75;
   font-size: 15px;
   max-width: 48rem;
   margin: 0 auto;
+  letter-spacing: 0.005em;
+  word-spacing: 0.02em;
 }
 
 /* Allow text selection within the editor */
@@ -113,31 +183,35 @@ body {
 /* ── Headings ── */
 
 .ProseMirror h1 {
-  font-size: 1.75em;
+  font-size: 1.8em;
   font-weight: 700;
-  margin-top: 2em;
-  margin-bottom: 0.5em;
-  letter-spacing: -0.02em;
+  margin-top: 2.2em;
+  margin-bottom: 0.6em;
+  letter-spacing: -0.025em;
   color: var(--color-text-primary);
-  border-bottom: 1px solid var(--color-border-default);
-  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.35em;
+  line-height: 1.2;
 }
 
 .ProseMirror h2 {
-  font-size: 1.4em;
+  font-size: 1.45em;
   font-weight: 600;
-  margin-top: 1.6em;
-  margin-bottom: 0.4em;
-  letter-spacing: -0.01em;
+  margin-top: 1.8em;
+  margin-bottom: 0.45em;
+  letter-spacing: -0.015em;
   color: var(--color-text-primary);
+  line-height: 1.25;
 }
 
 .ProseMirror h3 {
-  font-size: 1.15em;
+  font-size: 1.18em;
   font-weight: 600;
-  margin-top: 1.4em;
-  margin-bottom: 0.3em;
+  margin-top: 1.5em;
+  margin-bottom: 0.35em;
+  letter-spacing: -0.01em;
   color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .ProseMirror h4,
@@ -145,9 +219,11 @@ body {
 .ProseMirror h6 {
   font-size: 1em;
   font-weight: 600;
-  margin-top: 1.2em;
+  margin-top: 1.3em;
   margin-bottom: 0.3em;
+  letter-spacing: 0.01em;
   color: var(--color-text-secondary);
+  text-transform: none;
 }
 
 /* First heading flush to top */
@@ -178,12 +254,17 @@ body {
 /* ── Blockquotes ── */
 
 .ProseMirror blockquote {
-  border-left: 3px solid var(--color-accent-default);
-  padding-left: 1em;
+  border-left: 2px solid var(--color-accent-default);
+  padding-left: 1.2em;
   margin-left: 0;
   margin-right: 0;
   margin-bottom: 0.75em;
   color: var(--color-text-secondary);
+  background: linear-gradient(90deg, var(--color-accent-muted) 0%, transparent 70%);
+  padding-top: 0.4em;
+  padding-bottom: 0.4em;
+  border-radius: 0 var(--radius-inline) var(--radius-inline) 0;
+  font-style: italic;
 }
 
 .ProseMirror blockquote p:last-child {
@@ -269,18 +350,20 @@ body {
 /* ── Code blocks ── */
 
 .ProseMirror pre {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-bg-base);
   border: 1px solid var(--color-border-default);
+  border-left: 3px solid var(--color-accent-default);
   border-radius: var(--radius-container);
   padding: 1em 1.25em;
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: var(--text-mono-source);
-  line-height: 1.6;
+  line-height: 1.65;
   margin-bottom: 1em;
   white-space: pre;
   tab-size: 4;
   color: var(--color-text-secondary);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .ProseMirror pre code {
@@ -307,8 +390,15 @@ body {
 
 .ProseMirror hr {
   border: none;
-  border-top: 1px solid var(--color-border-default);
-  margin: 1.5em 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border-default) 20%,
+    var(--color-border-default) 80%,
+    transparent
+  );
+  margin: 2em 0;
 }
 
 /* ── Links ── */
@@ -328,14 +418,17 @@ body {
 .ProseMirror a[href^="wikilink:"] {
   color: var(--color-accent-default);
   background-color: var(--color-accent-muted);
-  padding: 0.05em 0.3em;
+  padding: 0.1em 0.35em;
   border-radius: var(--radius-inline);
   cursor: pointer;
+  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+  font-weight: 500;
 }
 
 .ProseMirror a[href^="wikilink:"]:hover {
   background-color: var(--color-accent-subtle);
   text-decoration: none;
+  box-shadow: 0 0 0 1px var(--color-accent-muted);
 }
 
 /* ── Images ── */
@@ -380,9 +473,74 @@ body {
 .properties-panel-tag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 8px;
-  border-radius: var(--radius-inline);
+  padding: 2px 8px;
+  border-radius: 99px;
   font-size: 11px;
+  font-weight: 500;
   background: var(--color-accent-muted);
   color: var(--color-accent-default);
+  transition: background-color 150ms ease-out;
+  letter-spacing: 0.01em;
+}
+
+.properties-panel-tag:hover {
+  background: var(--color-accent-subtle);
+}
+
+/* ─── Entrance Utilities ─── */
+
+.te-enter { animation: te-slide-up 0.25s ease-out both; }
+.te-enter-delay-1 { animation: te-slide-up 0.25s ease-out 0.05s both; }
+.te-enter-delay-2 { animation: te-slide-up 0.25s ease-out 0.1s both; }
+.te-enter-delay-3 { animation: te-slide-up 0.25s ease-out 0.15s both; }
+
+/* ─── Smooth Panel Transitions ─── */
+
+.te-panel-transition {
+  transition: width var(--transition-settings-slide),
+              height var(--transition-settings-slide),
+              opacity 200ms ease-out;
+}
+
+/* ─── Subtle Dividers ─── */
+
+.te-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle) 30%, var(--border-subtle) 70%, transparent);
+}
+
+/* ─── Active Indicator Dot ─── */
+
+.te-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-default);
+  box-shadow: 0 0 6px var(--color-accent-muted);
+}
+
+/* ─── Inline Code in Editor (non-ProseMirror contexts) ─── */
+
+code:not(.ProseMirror code) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+/* ─── Tooltip Enhancement ─── */
+
+[data-tooltip] {
+  position: relative;
+}
+
+/* ─── Button Press Feedback ─── */
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button {
+  transition: background-color var(--transition-hover),
+              color var(--transition-hover),
+              opacity var(--transition-hover),
+              transform 80ms ease-out;
 }

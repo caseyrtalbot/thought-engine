@@ -80,9 +80,9 @@ export const THEMES = {
   midnight: {
     label: 'Midnight',
     colors: {
-      bg: { base: '#0c0e14', surface: '#141620', elevated: '#1c1f2e' },
-      border: { default: '#252a3a', subtle: 'rgba(255, 255, 255, 0.08)' },
-      text: { primary: '#e2e8f0', secondary: '#64748b', muted: '#3b4563' }
+      bg: { base: '#0c0e14', surface: '#13151f', elevated: '#1b1e2c' },
+      border: { default: '#262b3a', subtle: 'rgba(255, 255, 255, 0.07)' },
+      text: { primary: '#e8ecf4', secondary: '#6b7a94', muted: '#3d4766' }
     }
   },
   slate: {

@@ -79,8 +79,8 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    display: 'Inter, system-ui, sans-serif',
-    body: 'Inter, system-ui, sans-serif',
+    display: '"DM Sans", Inter, system-ui, sans-serif',
+    body: '"DM Sans", Inter, system-ui, sans-serif',
     mono: '"JetBrains Mono", "Fira Code", monospace'
   },
   metadata: {
