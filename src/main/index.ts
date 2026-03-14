@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -6,6 +6,14 @@ import { registerFilesystemIpc } from './ipc/filesystem'
 import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
+
+const PROD_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:"
+].join('; ')
 
 let mainWindow: BrowserWindow | null = null
 
@@ -58,6 +66,17 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  if (!is.dev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [PROD_CSP]
+        }
+      })
+    })
+  }
 
   registerConfigIpc()
   registerWindowIpc()

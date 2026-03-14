@@ -10,8 +10,6 @@ import { quadtree, type Quadtree } from 'd3-quadtree'
 import type { GraphNode, RelationshipKind } from '@shared/types'
 import type { HighlightState } from './useGraphHighlight'
 
-export type { NodeSizeMode } from '../../store/graph-settings-store'
-
 // ---------------------------------------------------------------------------
 // Core types
 // ---------------------------------------------------------------------------
@@ -155,7 +153,7 @@ export function createSimulation(
 // Tag nodes are 0.7× the note size
 // ---------------------------------------------------------------------------
 
-export function computeNodeRadius(node: SimNode, multiplier: number = 1): number {
+function computeNodeRadius(node: SimNode, multiplier: number = 1): number {
   const base = Math.min(16, Math.max(3, Math.sqrt(Math.max(1, node.connectionCount)) * 3))
   const typeScale = node.type === 'tag' ? 0.7 : 1
   return base * typeScale * multiplier
@@ -220,10 +218,7 @@ function computeCullBounds(
 
 function isNodeInView(node: SimNode, bounds: CullBounds): boolean {
   return (
-    node.x >= bounds.minX &&
-    node.x <= bounds.maxX &&
-    node.y >= bounds.minY &&
-    node.y <= bounds.maxY
+    node.x >= bounds.minX && node.x <= bounds.maxX && node.y >= bounds.minY && node.y <= bounds.maxY
   )
 }
 
@@ -237,8 +232,7 @@ function getEdgeNodeId(endpoint: string | SimNode): string {
 
 function isEdgeConnected(edge: SimEdge, connectedSet: ReadonlySet<string>): boolean {
   return (
-    connectedSet.has(getEdgeNodeId(edge.source)) &&
-    connectedSet.has(getEdgeNodeId(edge.target))
+    connectedSet.has(getEdgeNodeId(edge.source)) && connectedSet.has(getEdgeNodeId(edge.target))
   )
 }
 
@@ -246,11 +240,7 @@ function isEdgeConnected(edge: SimEdge, connectedSet: ReadonlySet<string>): bool
 // Vignette (screen-space post-effect)
 // ---------------------------------------------------------------------------
 
-export function renderVignette(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number
-): void {
+export function renderVignette(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   const cx = w / 2
   const cy = h / 2
   const radius = Math.sqrt(cx * cx + cy * cy)
@@ -328,8 +318,14 @@ function drawArrowhead(
 
   ctx.beginPath()
   ctx.moveTo(tipX, tipY)
-  ctx.lineTo(tipX - ux * ARROW_SIZE + uy * ARROW_SIZE * 0.4, tipY - uy * ARROW_SIZE - ux * ARROW_SIZE * 0.4)
-  ctx.lineTo(tipX - ux * ARROW_SIZE - uy * ARROW_SIZE * 0.4, tipY - uy * ARROW_SIZE + ux * ARROW_SIZE * 0.4)
+  ctx.lineTo(
+    tipX - ux * ARROW_SIZE + uy * ARROW_SIZE * 0.4,
+    tipY - uy * ARROW_SIZE - ux * ARROW_SIZE * 0.4
+  )
+  ctx.lineTo(
+    tipX - ux * ARROW_SIZE - uy * ARROW_SIZE * 0.4,
+    tipY - uy * ARROW_SIZE + ux * ARROW_SIZE * 0.4
+  )
   ctx.closePath()
   ctx.fill()
 }
@@ -592,7 +588,7 @@ export function renderGraph(
     } else {
       const fadeRange = 0.5
       const excess = transform.k - textFadeThreshold
-      labelAlpha = Math.min(0.7, Math.max(0, excess / fadeRange * 0.7))
+      labelAlpha = Math.min(0.7, Math.max(0, (excess / fadeRange) * 0.7))
     }
 
     ctx.globalAlpha = labelAlpha

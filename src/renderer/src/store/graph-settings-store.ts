@@ -11,11 +11,15 @@ export interface GroupRule {
   color: string
 }
 
-export type NodeSizeMode = 'degree' | 'uniform' | 'content'
-
 const GROUP_COLOR_PALETTE = [
-  '#e8555a', '#4a9eff', '#4ade80', '#f59e0b',
-  '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'
+  '#e8555a',
+  '#4a9eff',
+  '#4ade80',
+  '#f59e0b',
+  '#a78bfa',
+  '#f472b6',
+  '#22d3ee',
+  '#fb923c'
 ] as const
 
 const DEFAULT_GROUP_RULES: GroupRule[] = [
@@ -130,9 +134,7 @@ export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => 
 
   updateGroupRule: (id, updates) => {
     set({
-      groupRules: get().groupRules.map((r) =>
-        r.id === id ? { ...r, ...updates } : r
-      )
+      groupRules: get().groupRules.map((r) => (r.id === id ? { ...r, ...updates } : r))
     })
   },
 
