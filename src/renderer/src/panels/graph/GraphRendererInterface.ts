@@ -1,6 +1,5 @@
-import type { SimNode, SimEdge, NodeSizeConfig } from './GraphRenderer'
+import type { SimNode, SimEdge, RenderOptions } from './GraphRenderer'
 import { renderGraph, findNodeAt } from './GraphRenderer'
-import type { HighlightState } from './useGraphHighlight'
 
 export interface RenderParams {
   ctx: CanvasRenderingContext2D
@@ -10,12 +9,7 @@ export interface RenderParams {
   height: number
   selectedId: string | null
   hoveredId: string | null
-  highlight: HighlightState
-  sizeConfig: NodeSizeConfig
-  transform: { x: number; y: number; k: number }
-  canvasWidth: number
-  canvasHeight: number
-  reducedMotion: boolean
+  options: RenderOptions
 }
 
 export interface GraphRendererInterface {
@@ -35,14 +29,7 @@ export class Canvas2DGraphRenderer implements GraphRendererInterface {
       params.height,
       params.selectedId,
       params.hoveredId,
-      {
-        highlight: params.highlight,
-        sizeConfig: params.sizeConfig,
-        transform: params.transform,
-        canvasWidth: params.canvasWidth,
-        canvasHeight: params.canvasHeight,
-        reducedMotion: params.reducedMotion
-      }
+      params.options
     )
   }
 
@@ -51,12 +38,10 @@ export class Canvas2DGraphRenderer implements GraphRendererInterface {
   }
 
   resize(_width: number, _height: number, _dpr: number): void {
-    // Canvas2D doesn't need to track dimensions internally.
-    // A future WebGL renderer would store these for viewport management.
+    // Canvas2D doesn't need to track dimensions internally
   }
 
   dispose(): void {
     // Canvas2D has no GPU resources to release
-    // GlowSpriteCache is module-scoped in GraphRenderer
   }
 }

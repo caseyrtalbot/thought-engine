@@ -1,6 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
 import type { SimNode, SimEdge } from './GraphRenderer'
-import { getArtifactColor, getComputedCssColor } from '../../design/tokens'
 
 interface GraphMinimapProps {
   nodes: readonly SimNode[]
@@ -8,14 +7,27 @@ interface GraphMinimapProps {
   transform: { x: number; y: number; k: number }
   canvasWidth: number
   canvasHeight: number
+  highlightedNodeIds: ReadonlySet<string>
   onPan: (x: number, y: number) => void
 }
 
-const MINIMAP_WIDTH = 120
-const MINIMAP_HEIGHT = 80
+const MINIMAP_WIDTH = 160
+const MINIMAP_HEIGHT = 120
 const MINIMAP_PADDING = 8
-const NODE_DOT_SIZE = 2
-const MINIMAP_FALLBACK_BG = 'rgba(12, 14, 20, 0.85)'
+
+const MINIMAP_BG = 'rgba(15, 15, 25, 0.85)'
+const MINIMAP_BORDER = 'rgba(255, 255, 255, 0.1)'
+const EDGE_COLOR = '#e2e8f0'
+const VIEWPORT_STROKE = 'rgba(255, 255, 255, 0.5)'
+const VIEWPORT_FILL = 'rgba(255, 255, 255, 0.1)'
+
+const DEFAULT_NOTE_COLOR = '#8a8a9e'
+const DEFAULT_TAG_COLOR = '#e6a237'
+
+const DOT_SIZE_NORMAL = 1.5
+const DOT_SIZE_HIGHLIGHTED = 2.5
+const DOT_ALPHA_NORMAL = 0.5
+const DOT_ALPHA_HIGHLIGHTED = 1.0
 
 interface GraphBounds {
   minX: number
@@ -54,12 +66,18 @@ function computeGraphBounds(nodes: readonly SimNode[]): GraphBounds {
   }
 }
 
+function getNodeDotColor(node: SimNode): string {
+  if (node._color) return node._color
+  return node.type === 'tag' ? DEFAULT_TAG_COLOR : DEFAULT_NOTE_COLOR
+}
+
 export function GraphMinimap({
   nodes,
   edges,
   transform,
   canvasWidth,
   canvasHeight,
+  highlightedNodeIds,
   onPan
 }: GraphMinimapProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -77,12 +95,8 @@ export function GraphMinimap({
 
     ctx.scale(dpr, dpr)
 
-    // Resolve theme colors for canvas (can't use CSS vars directly)
-    const bgColor = getComputedCssColor('--color-bg-base') || MINIMAP_FALLBACK_BG
-    const accentColor = getComputedCssColor('--color-accent-default') || '#00e5bf'
-
     // Fill background
-    ctx.fillStyle = bgColor
+    ctx.fillStyle = MINIMAP_BG
     ctx.fillRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT)
 
     if (nodes.length === 0) return
@@ -116,7 +130,7 @@ export function GraphMinimap({
 
     // Draw edges as faint lines
     ctx.globalAlpha = 0.15
-    ctx.strokeStyle = getComputedCssColor('--color-text-primary') || '#e2e8f0'
+    ctx.strokeStyle = EDGE_COLOR
     ctx.lineWidth = 0.5
     ctx.beginPath()
 
@@ -130,18 +144,21 @@ export function GraphMinimap({
     }
     ctx.stroke()
 
-    // Draw nodes as colored dots
-    ctx.globalAlpha = 0.7
-
+    // Draw nodes as colored dots (non-highlighted first, then highlighted on top)
     for (const node of nodes) {
       if (!node.x || !node.y) continue
 
+      const isHighlighted = highlightedNodeIds.has(node.id)
+      const dotSize = isHighlighted ? DOT_SIZE_HIGHLIGHTED : DOT_SIZE_NORMAL
+      const alpha = isHighlighted ? DOT_ALPHA_HIGHLIGHTED : DOT_ALPHA_NORMAL
+
       const mx = toMinimapX(node.x)
       const my = toMinimapY(node.y)
-      const color = getArtifactColor(node.type)
+      const color = getNodeDotColor(node)
 
+      ctx.globalAlpha = alpha
       ctx.fillStyle = color
-      ctx.fillRect(mx - NODE_DOT_SIZE / 2, my - NODE_DOT_SIZE / 2, NODE_DOT_SIZE, NODE_DOT_SIZE)
+      ctx.fillRect(mx - dotSize / 2, my - dotSize / 2, dotSize, dotSize)
     }
 
     ctx.globalAlpha = 1
@@ -164,18 +181,17 @@ export function GraphMinimap({
     ctx.clip()
 
     // Filled viewport rect
-    ctx.fillStyle = accentColor
-    ctx.globalAlpha = 0.15
-    ctx.fillRect(rectX, rectY, rectW, rectH)
+    ctx.fillStyle = VIEWPORT_FILL
     ctx.globalAlpha = 1
+    ctx.fillRect(rectX, rectY, rectW, rectH)
 
     // Stroked viewport border
-    ctx.strokeStyle = accentColor
-    ctx.globalAlpha = 0.5
+    ctx.strokeStyle = VIEWPORT_STROKE
+    ctx.globalAlpha = 1
     ctx.lineWidth = 1
     ctx.strokeRect(rectX, rectY, rectW, rectH)
     ctx.restore()
-  }, [nodes, edges, transform, canvasWidth, canvasHeight])
+  }, [nodes, edges, transform, canvasWidth, canvasHeight, highlightedNodeIds])
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -222,9 +238,10 @@ export function GraphMinimap({
       style={{
         width: MINIMAP_WIDTH,
         height: MINIMAP_HEIGHT,
-        border: '1px solid rgba(255, 255, 255, 0.08)'
+        border: `1px solid ${MINIMAP_BORDER}`,
+        borderRadius: 6
       }}
-      className="absolute bottom-3 left-3 cursor-crosshair rounded z-10"
+      className="absolute bottom-3 left-3 cursor-crosshair z-10"
     />
   )
 }

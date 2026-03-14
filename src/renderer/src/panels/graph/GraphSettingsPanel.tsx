@@ -1,11 +1,61 @@
 import { useState } from 'react'
 import { useGraphSettingsStore } from '../../store/graph-settings-store'
-import type { NodeSizeMode } from '../../store/graph-settings-store'
-import { colors } from '../../design/tokens'
-import { ARTIFACT_TYPES } from '@shared/types'
-import type { ArtifactType } from '@shared/types'
+import type { GroupRule } from '../../store/graph-settings-store'
 
-// ---- Helper components ----
+// ---------------------------------------------------------------------------
+// Theme constants (deep space / Obsidian graph view)
+// ---------------------------------------------------------------------------
+
+const ACCENT = '#7c5cbf'
+const ACCENT_BG = 'rgba(124, 92, 191, 0.2)'
+const PANEL_BG = 'rgba(20, 20, 30, 0.92)'
+const PANEL_BORDER = 'rgba(255, 255, 255, 0.08)'
+const INPUT_BG = 'rgba(255, 255, 255, 0.05)'
+const INPUT_BORDER = 'rgba(255, 255, 255, 0.1)'
+const TEXT_HEADER = 'rgba(255, 255, 255, 0.5)'
+const TEXT_LABEL = 'rgba(255, 255, 255, 0.6)'
+const TEXT_VALUE = 'rgba(255, 255, 255, 0.4)'
+const TRACK_BG = 'rgba(255, 255, 255, 0.15)'
+const DIVIDER = 'rgba(255, 255, 255, 0.08)'
+
+// ---------------------------------------------------------------------------
+// Shared slider styles injected once via <style>
+// ---------------------------------------------------------------------------
+
+const SLIDER_CSS = `
+  .te-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: ${TRACK_BG};
+    border-radius: 1px;
+    outline: none;
+    cursor: pointer;
+  }
+  .te-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    border: none;
+  }
+  .te-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    border: none;
+  }
+`
+
+// ---------------------------------------------------------------------------
+// Helper components
+// ---------------------------------------------------------------------------
 
 interface SliderRowProps {
   label: string
@@ -14,14 +64,29 @@ interface SliderRowProps {
   max: number
   step: number
   onChange: (value: number) => void
+  formatValue?: (v: number) => string
 }
 
-function SliderRow({ label, value, min, max, step, onChange }: SliderRowProps) {
+function SliderRow({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  formatValue
+}: SliderRowProps) {
+  const display = formatValue ? formatValue(value) : String(value)
   return (
-    <div className="flex items-center gap-2 py-1">
-      <span className="flex-1 text-xs truncate" style={{ color: colors.text.secondary }}>
-        {label}
-      </span>
+    <div className="flex flex-col gap-1 py-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs" style={{ color: TEXT_LABEL }}>
+          {label}
+        </span>
+        <span className="text-xs tabular-nums" style={{ color: TEXT_VALUE }}>
+          {display}
+        </span>
+      </div>
       <input
         type="range"
         min={min}
@@ -29,43 +94,31 @@ function SliderRow({ label, value, min, max, step, onChange }: SliderRowProps) {
         step={step}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-20 accent-violet-500"
+        className="te-slider"
       />
-      <span className="w-10 text-right text-xs tabular-nums" style={{ color: colors.text.muted }}>
-        {value}
-      </span>
     </div>
   )
 }
 
-interface ToggleRowProps {
+interface TogglePillProps {
   label: string
-  checked: boolean
-  onChange: (value: boolean) => void
+  active: boolean
+  onToggle: () => void
 }
 
-function ToggleRow({ label, checked, onChange }: ToggleRowProps) {
+function TogglePill({ label, active, onToggle }: TogglePillProps) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-xs" style={{ color: colors.text.secondary }}>
-        {label}
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className="relative w-8 h-4 rounded-full transition-colors duration-150 focus:outline-none"
-        style={{
-          backgroundColor: checked ? colors.accent.default : colors.border.default
-        }}
-      >
-        <span
-          className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-150"
-          style={{ transform: checked ? 'translateX(16px)' : 'translateX(0)' }}
-        />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onToggle}
+      className="px-3 py-1 rounded-full text-xs font-medium transition-colors duration-150 focus:outline-none"
+      style={{
+        backgroundColor: active ? ACCENT_BG : INPUT_BG,
+        color: active ? ACCENT : TEXT_VALUE
+      }}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -80,21 +133,23 @@ function SectionHeader({ title, isOpen, onToggle }: SectionHeaderProps) {
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-1.5 w-full py-1.5 text-left focus:outline-none"
+      className="flex items-center gap-1.5 w-full py-2 text-left focus:outline-none"
     >
-      <span
-        className="text-xs transition-transform duration-150"
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        className="transition-transform duration-150"
         style={{
-          color: colors.text.muted,
-          display: 'inline-block',
-          transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)'
+          transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+          color: TEXT_HEADER
         }}
       >
-        ▶
-      </span>
+        <path d="M3 1L7 5L3 9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      </svg>
       <span
-        className="text-xs font-semibold uppercase tracking-wider"
-        style={{ color: colors.text.muted }}
+        className="text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: TEXT_HEADER }}
       >
         {title}
       </span>
@@ -102,7 +157,59 @@ function SectionHeader({ title, isOpen, onToggle }: SectionHeaderProps) {
   )
 }
 
-// ---- Main panel ----
+function GroupRuleRow({
+  rule,
+  onUpdate,
+  onCycleColor,
+  onRemove
+}: {
+  rule: GroupRule
+  onUpdate: (id: string, updates: Partial<Omit<GroupRule, 'id'>>) => void
+  onCycleColor: (id: string) => void
+  onRemove: (id: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <input
+        type="text"
+        value={rule.query}
+        onChange={(e) => onUpdate(rule.id, { query: e.target.value })}
+        placeholder={'path:"folder" or tag:#name'}
+        className="flex-1 min-w-0 px-2 py-1 rounded text-xs focus:outline-none"
+        style={{
+          backgroundColor: INPUT_BG,
+          border: `1px solid ${INPUT_BORDER}`,
+          color: '#ffffff'
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => onCycleColor(rule.id)}
+        className="shrink-0 rounded-full cursor-pointer"
+        style={{
+          width: 12,
+          height: 12,
+          backgroundColor: rule.color
+        }}
+        title="Cycle color"
+        aria-label={`Cycle color for group rule: ${rule.query || 'empty'}`}
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(rule.id)}
+        className="shrink-0 text-xs leading-none hover:opacity-70 transition-opacity focus:outline-none"
+        style={{ color: TEXT_VALUE }}
+        aria-label={`Remove group rule: ${rule.query || 'empty'}`}
+      >
+        &times;
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main panel
+// ---------------------------------------------------------------------------
 
 interface GraphSettingsPanelProps {
   isOpen: boolean
@@ -118,33 +225,35 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
   })
 
   // Filters
+  const searchQuery = useGraphSettingsStore((s) => s.searchQuery)
+  const setSearchQuery = useGraphSettingsStore((s) => s.setSearchQuery)
   const showOrphans = useGraphSettingsStore((s) => s.showOrphans)
   const setShowOrphans = useGraphSettingsStore((s) => s.setShowOrphans)
   const showExistingOnly = useGraphSettingsStore((s) => s.showExistingOnly)
   const setShowExistingOnly = useGraphSettingsStore((s) => s.setShowExistingOnly)
   const showTags = useGraphSettingsStore((s) => s.showTags)
   const setShowTags = useGraphSettingsStore((s) => s.setShowTags)
+  const showAttachments = useGraphSettingsStore((s) => s.showAttachments)
+  const setShowAttachments = useGraphSettingsStore((s) => s.setShowAttachments)
 
   // Groups
-  const groups = useGraphSettingsStore((s) => s.groups)
-  const setGroupVisible = useGraphSettingsStore((s) => s.setGroupVisible)
-  const setGroupColor = useGraphSettingsStore((s) => s.setGroupColor)
+  const groupRules = useGraphSettingsStore((s) => s.groupRules)
+  const addGroupRule = useGraphSettingsStore((s) => s.addGroupRule)
+  const removeGroupRule = useGraphSettingsStore((s) => s.removeGroupRule)
+  const updateGroupRule = useGraphSettingsStore((s) => s.updateGroupRule)
+  const cycleGroupColor = useGraphSettingsStore((s) => s.cycleGroupColor)
 
   // Display
-  const nodeSizeMode = useGraphSettingsStore((s) => s.nodeSizeMode)
-  const setNodeSizeMode = useGraphSettingsStore((s) => s.setNodeSizeMode)
-  const baseNodeSize = useGraphSettingsStore((s) => s.baseNodeSize)
-  const setBaseNodeSize = useGraphSettingsStore((s) => s.setBaseNodeSize)
-  const linkOpacity = useGraphSettingsStore((s) => s.linkOpacity)
-  const setLinkOpacity = useGraphSettingsStore((s) => s.setLinkOpacity)
+  const nodeSizeMultiplier = useGraphSettingsStore((s) => s.nodeSizeMultiplier)
+  const setNodeSizeMultiplier = useGraphSettingsStore((s) => s.setNodeSizeMultiplier)
   const linkThickness = useGraphSettingsStore((s) => s.linkThickness)
   const setLinkThickness = useGraphSettingsStore((s) => s.setLinkThickness)
   const showArrows = useGraphSettingsStore((s) => s.showArrows)
   const setShowArrows = useGraphSettingsStore((s) => s.setShowArrows)
   const textFadeThreshold = useGraphSettingsStore((s) => s.textFadeThreshold)
   const setTextFadeThreshold = useGraphSettingsStore((s) => s.setTextFadeThreshold)
-  const showMinimap = useGraphSettingsStore((s) => s.showMinimap)
-  const setShowMinimap = useGraphSettingsStore((s) => s.setShowMinimap)
+  const isAnimating = useGraphSettingsStore((s) => s.isAnimating)
+  const setIsAnimating = useGraphSettingsStore((s) => s.setIsAnimating)
 
   // Forces
   const centerForce = useGraphSettingsStore((s) => s.centerForce)
@@ -156,10 +265,6 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
   const linkDistance = useGraphSettingsStore((s) => s.linkDistance)
   const setLinkDistance = useGraphSettingsStore((s) => s.setLinkDistance)
 
-  // Animation
-  const isAnimating = useGraphSettingsStore((s) => s.isAnimating)
-  const setIsAnimating = useGraphSettingsStore((s) => s.setIsAnimating)
-
   if (!isOpen) return null
 
   function toggleSection(key: string) {
@@ -167,232 +272,233 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
   }
 
   return (
-    <div
-      className="absolute right-0 top-0 bottom-0 z-20 flex flex-col overflow-hidden"
-      style={{
-        width: 260,
-        backgroundColor: colors.bg.surface,
-        borderLeft: `1px solid ${colors.border.default}`
-      }}
-    >
-      {/* Header */}
+    <>
+      <style>{SLIDER_CSS}</style>
       <div
-        className="flex items-center justify-between px-4 py-3 shrink-0"
-        style={{ borderBottom: `1px solid ${colors.border.default}` }}
+        className="absolute right-0 top-0 bottom-0 z-20 flex flex-col overflow-hidden"
+        style={{
+          width: 280,
+          backgroundColor: PANEL_BG,
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderLeft: `1px solid ${PANEL_BORDER}`
+        }}
       >
-        <span
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: colors.text.primary }}
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-4 py-3 shrink-0"
+          style={{ borderBottom: `1px solid ${DIVIDER}` }}
         >
-          Graph Settings
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center justify-center w-5 h-5 rounded hover:opacity-70 transition-opacity focus:outline-none"
-          style={{ color: colors.text.muted }}
-          aria-label="Close graph settings"
-        >
-          ✕
-        </button>
-      </div>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-widest"
+            style={{ color: TEXT_HEADER }}
+          >
+            Graph Settings
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center justify-center w-5 h-5 rounded hover:opacity-70 transition-opacity focus:outline-none"
+            style={{ color: TEXT_VALUE }}
+            aria-label="Close graph settings"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </button>
+        </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        {/* Filters section */}
-        <SectionHeader
-          title="Filters"
-          isOpen={openSections.filters}
-          onToggle={() => toggleSection('filters')}
-        />
-        {openSections.filters && (
-          <div className="pb-3">
-            <ToggleRow label="Show orphans" checked={showOrphans} onChange={setShowOrphans} />
-            <ToggleRow
-              label="Show existing only"
-              checked={showExistingOnly}
-              onChange={setShowExistingOnly}
-            />
-            <ToggleRow label="Show tags" checked={showTags} onChange={setShowTags} />
-          </div>
-        )}
-
-        <div className="my-1" style={{ height: 1, backgroundColor: colors.border.default }} />
-
-        {/* Groups section */}
-        <SectionHeader
-          title="Groups"
-          isOpen={openSections.groups}
-          onToggle={() => toggleSection('groups')}
-        />
-        {openSections.groups && (
-          <div className="pb-3">
-            {ARTIFACT_TYPES.map((type: ArtifactType) => {
-              const group = groups[type]
-              return (
-                <div key={type} className="flex items-center justify-between py-1">
-                  <span className="text-xs capitalize" style={{ color: colors.text.secondary }}>
-                    {type}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={group.color}
-                      onChange={(e) => setGroupColor(type, e.target.value)}
-                      className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
-                      title={`${type} color`}
-                    />
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={group.visible}
-                      onClick={() => setGroupVisible(type, !group.visible)}
-                      className="text-xs px-1.5 py-0.5 rounded transition-colors duration-150 focus:outline-none"
-                      style={{
-                        backgroundColor: group.visible
-                          ? colors.accent.muted
-                          : colors.border.default,
-                        color: group.visible ? colors.accent.default : colors.text.muted
-                      }}
-                    >
-                      {group.visible ? 'ON' : 'OFF'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="my-1" style={{ height: 1, backgroundColor: colors.border.default }} />
-
-        {/* Display section */}
-        <SectionHeader
-          title="Display"
-          isOpen={openSections.display}
-          onToggle={() => toggleSection('display')}
-        />
-        {openSections.display && (
-          <div className="pb-3">
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs" style={{ color: colors.text.secondary }}>
-                Node Size Mode
-              </span>
-              <select
-                value={nodeSizeMode}
-                onChange={(e) => setNodeSizeMode(e.target.value as NodeSizeMode)}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          {/* ---- Filters ---- */}
+          <SectionHeader
+            title="Filters"
+            isOpen={openSections.filters}
+            onToggle={() => toggleSection('filters')}
+          />
+          {openSections.filters && (
+            <div className="pb-3 space-y-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search files..."
+                className="w-full px-2.5 py-1.5 rounded text-xs focus:outline-none"
                 style={{
-                  backgroundColor: colors.bg.elevated,
-                  color: colors.text.primary,
-                  borderColor: colors.border.default
+                  backgroundColor: INPUT_BG,
+                  border: `1px solid ${INPUT_BORDER}`,
+                  color: '#ffffff'
                 }}
-                className="text-xs rounded px-2 py-0.5 border"
-              >
-                <option value="degree">Degree (connections)</option>
-                <option value="uniform">Uniform</option>
-                <option value="content">Content length</option>
-              </select>
+              />
+              <div className="flex flex-wrap gap-1.5">
+                <TogglePill label="Tags" active={showTags} onToggle={() => setShowTags(!showTags)} />
+                <TogglePill
+                  label="Attachments"
+                  active={showAttachments}
+                  onToggle={() => setShowAttachments(!showAttachments)}
+                />
+                <TogglePill
+                  label="Existing only"
+                  active={showExistingOnly}
+                  onToggle={() => setShowExistingOnly(!showExistingOnly)}
+                />
+                <TogglePill
+                  label="Orphans"
+                  active={showOrphans}
+                  onToggle={() => setShowOrphans(!showOrphans)}
+                />
+              </div>
             </div>
-            <SliderRow
-              label="Node size"
-              value={baseNodeSize}
-              min={1}
-              max={20}
-              step={1}
-              onChange={setBaseNodeSize}
-            />
-            <SliderRow
-              label="Link opacity"
-              value={linkOpacity}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={setLinkOpacity}
-            />
-            <SliderRow
-              label="Link thickness"
-              value={linkThickness}
-              min={0.5}
-              max={5}
-              step={0.5}
-              onChange={setLinkThickness}
-            />
-            <ToggleRow label="Show arrows" checked={showArrows} onChange={setShowArrows} />
-            <SliderRow
-              label="Text fade"
-              value={textFadeThreshold}
-              min={0.5}
-              max={4}
-              step={0.1}
-              onChange={setTextFadeThreshold}
-            />
-            <ToggleRow label="Show minimap" checked={showMinimap} onChange={setShowMinimap} />
-          </div>
-        )}
+          )}
 
-        <div className="my-1" style={{ height: 1, backgroundColor: colors.border.default }} />
+          <div style={{ height: 1, backgroundColor: DIVIDER }} />
 
-        {/* Forces section */}
-        <SectionHeader
-          title="Forces"
-          isOpen={openSections.forces}
-          onToggle={() => toggleSection('forces')}
-        />
-        {openSections.forces && (
-          <div className="pb-3">
-            <SliderRow
-              label="Center force"
-              value={centerForce}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={setCenterForce}
-            />
-            <SliderRow
-              label="Repel force"
-              value={repelForce}
-              min={-500}
-              max={0}
-              step={10}
-              onChange={setRepelForce}
-            />
-            <SliderRow
-              label="Link force"
-              value={linkForce}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={setLinkForce}
-            />
-            <SliderRow
-              label="Link distance"
-              value={linkDistance}
-              min={10}
-              max={200}
-              step={5}
-              onChange={setLinkDistance}
-            />
-          </div>
-        )}
+          {/* ---- Groups ---- */}
+          <SectionHeader
+            title="Groups"
+            isOpen={openSections.groups}
+            onToggle={() => toggleSection('groups')}
+          />
+          {openSections.groups && (
+            <div className="pb-3">
+              {groupRules.map((rule) => (
+                <GroupRuleRow
+                  key={rule.id}
+                  rule={rule}
+                  onUpdate={updateGroupRule}
+                  onCycleColor={cycleGroupColor}
+                  onRemove={removeGroupRule}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={addGroupRule}
+                className="mt-2 w-full py-1.5 rounded text-xs font-medium transition-opacity hover:opacity-90 focus:outline-none"
+                style={{ backgroundColor: ACCENT, color: '#ffffff' }}
+              >
+                New group
+              </button>
+            </div>
+          )}
+
+          <div style={{ height: 1, backgroundColor: DIVIDER }} />
+
+          {/* ---- Display ---- */}
+          <SectionHeader
+            title="Display"
+            isOpen={openSections.display}
+            onToggle={() => toggleSection('display')}
+          />
+          {openSections.display && (
+            <div className="pb-3">
+              {/* Show arrows toggle */}
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs" style={{ color: TEXT_LABEL }}>
+                  Show arrows
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showArrows}
+                  onClick={() => setShowArrows(!showArrows)}
+                  className="relative w-8 h-4 rounded-full transition-colors duration-150 focus:outline-none"
+                  style={{ backgroundColor: showArrows ? ACCENT : 'rgba(255,255,255,0.15)' }}
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-150"
+                    style={{ transform: showArrows ? 'translateX(16px)' : 'translateX(0)' }}
+                  />
+                </button>
+              </div>
+
+              <SliderRow
+                label="Text fade threshold"
+                value={textFadeThreshold}
+                min={0.5}
+                max={4}
+                step={0.1}
+                onChange={setTextFadeThreshold}
+              />
+              <SliderRow
+                label="Node size"
+                value={nodeSizeMultiplier}
+                min={0.5}
+                max={3}
+                step={0.1}
+                onChange={setNodeSizeMultiplier}
+                formatValue={(v) => `${v.toFixed(1)}x`}
+              />
+              <SliderRow
+                label="Link thickness"
+                value={linkThickness}
+                min={0.3}
+                max={3}
+                step={0.1}
+                onChange={setLinkThickness}
+                formatValue={(v) => `${v.toFixed(1)}px`}
+              />
+
+              {/* Animate button */}
+              <button
+                type="button"
+                onClick={() => setIsAnimating(!isAnimating)}
+                className="mt-2 w-full py-1.5 rounded text-xs font-medium transition-colors duration-150 focus:outline-none"
+                style={{
+                  backgroundColor: isAnimating ? ACCENT : INPUT_BG,
+                  color: isAnimating ? '#ffffff' : TEXT_LABEL
+                }}
+              >
+                {isAnimating ? 'Stop animation' : 'Start animation'}
+              </button>
+            </div>
+          )}
+
+          <div style={{ height: 1, backgroundColor: DIVIDER }} />
+
+          {/* ---- Forces ---- */}
+          <SectionHeader
+            title="Forces"
+            isOpen={openSections.forces}
+            onToggle={() => toggleSection('forces')}
+          />
+          {openSections.forces && (
+            <div className="pb-3">
+              <SliderRow
+                label="Center force"
+                value={centerForce}
+                min={0}
+                max={0.15}
+                step={0.01}
+                onChange={setCenterForce}
+              />
+              <SliderRow
+                label="Repel force"
+                value={repelForce}
+                min={-300}
+                max={-10}
+                step={5}
+                onChange={setRepelForce}
+              />
+              <SliderRow
+                label="Link force"
+                value={linkForce}
+                min={0}
+                max={1}
+                step={0.05}
+                onChange={setLinkForce}
+              />
+              <SliderRow
+                label="Link distance"
+                value={linkDistance}
+                min={20}
+                max={200}
+                step={5}
+                onChange={setLinkDistance}
+              />
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Footer */}
-      <div
-        className="px-4 py-3 shrink-0"
-        style={{ borderTop: `1px solid ${colors.border.default}` }}
-      >
-        <button
-          type="button"
-          onClick={() => setIsAnimating(!isAnimating)}
-          className="w-full py-2 rounded text-xs font-semibold transition-colors duration-150 focus:outline-none"
-          style={{
-            backgroundColor: isAnimating ? colors.accent.muted : colors.border.default,
-            color: isAnimating ? colors.accent.default : colors.text.secondary
-          }}
-        >
-          {isAnimating ? 'Stop Animation' : 'Start Animation'}
-        </button>
-      </div>
-    </div>
+    </>
   )
 }

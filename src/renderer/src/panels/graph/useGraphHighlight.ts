@@ -20,8 +20,8 @@ export interface HighlightState {
 // ---------------------------------------------------------------------------
 
 const EMPTY_SET: ReadonlySet<string> = new Set()
-const GLOW_FADE_IN_MS = 200
-const GLOW_FADE_OUT_MS = 300
+const GLOW_FADE_IN_MS = 0
+const GLOW_FADE_OUT_MS = 150
 
 // ---------------------------------------------------------------------------
 // Pure utility functions (exported for testing)
@@ -97,6 +97,8 @@ export function interpolateGlow(
   now: number
 ): GlowInterpolation {
   const duration = target > startValue ? GLOW_FADE_IN_MS : GLOW_FADE_OUT_MS
+  // Zero-duration = instant transition
+  if (duration <= 0) return { value: target, done: true }
   const elapsed = now - startTime
   const t = Math.min(1, elapsed / duration)
   const eased = easeOut(t)

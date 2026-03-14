@@ -1,37 +1,67 @@
 import { create } from 'zustand'
-import type { ArtifactType } from '@shared/types'
-import { ARTIFACT_COLORS } from '../design/tokens'
 
-export type NodeSizeMode = 'degree' | 'uniform' | 'content'
+// ---------------------------------------------------------------------------
+// Group rules: user-defined pattern → color mapping for node coloring.
+// Evaluated top-to-bottom, first match wins. Unmatched notes → default gray.
+// ---------------------------------------------------------------------------
 
-interface GroupConfig {
-  visible: boolean
+export interface GroupRule {
+  id: string
+  query: string // e.g., 'tag:#first-principles' or 'path:"Projects"'
   color: string
 }
 
+export type NodeSizeMode = 'degree' | 'uniform' | 'content'
+
+const GROUP_COLOR_PALETTE = [
+  '#e8555a', '#4a9eff', '#4ade80', '#f59e0b',
+  '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'
+] as const
+
+const DEFAULT_GROUP_RULES: GroupRule[] = [
+  { id: '1', query: 'tag:#first-principles', color: '#e8555a' },
+  { id: '2', query: 'path:"Projects"', color: '#4a9eff' },
+  { id: '3', query: 'path:"Books"', color: '#4ade80' },
+  { id: '4', query: 'tag:#daily', color: '#f59e0b' }
+]
+
 interface GraphSettingsState {
+  // Filters
+  searchQuery: string
   showOrphans: boolean
   showExistingOnly: boolean
   showTags: boolean
-  baseNodeSize: number
-  nodeSizeMode: NodeSizeMode
-  linkOpacity: number
+  showAttachments: boolean
+
+  // Groups (coloring)
+  groupRules: GroupRule[]
+
+  // Display
+  nodeSizeMultiplier: number
   linkThickness: number
   showArrows: boolean
   textFadeThreshold: number
   isAnimating: boolean
   showMinimap: boolean
+
+  // Forces
   centerForce: number
   repelForce: number
   linkForce: number
   linkDistance: number
-  groups: Record<ArtifactType, GroupConfig>
+
+  // Setters
+  setSearchQuery: (value: string) => void
   setShowOrphans: (value: boolean) => void
   setShowExistingOnly: (value: boolean) => void
   setShowTags: (value: boolean) => void
-  setBaseNodeSize: (value: number) => void
-  setNodeSizeMode: (value: NodeSizeMode) => void
-  setLinkOpacity: (value: number) => void
+  setShowAttachments: (value: boolean) => void
+  setGroupRules: (rules: GroupRule[]) => void
+  addGroupRule: () => void
+  removeGroupRule: (id: string) => void
+  updateGroupRule: (id: string, updates: Partial<Omit<GroupRule, 'id'>>) => void
+  cycleGroupColor: (id: string) => void
+  setNodeSizeMultiplier: (value: number) => void
   setLinkThickness: (value: number) => void
   setShowArrows: (value: boolean) => void
   setTextFadeThreshold: (value: number) => void
@@ -41,43 +71,87 @@ interface GraphSettingsState {
   setRepelForce: (value: number) => void
   setLinkForce: (value: number) => void
   setLinkDistance: (value: number) => void
-  setGroupVisible: (type: ArtifactType, visible: boolean) => void
-  setGroupColor: (type: ArtifactType, color: string) => void
 }
 
-const DEFAULT_GROUPS: Record<ArtifactType, GroupConfig> = {
-  gene: { visible: true, color: ARTIFACT_COLORS.gene },
-  constraint: { visible: true, color: ARTIFACT_COLORS.constraint },
-  research: { visible: true, color: ARTIFACT_COLORS.research },
-  output: { visible: true, color: ARTIFACT_COLORS.output },
-  note: { visible: true, color: ARTIFACT_COLORS.note },
-  index: { visible: true, color: ARTIFACT_COLORS.index }
-}
+let nextRuleId = 100
 
 export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => ({
-  showOrphans: false,
+  // Filters
+  searchQuery: '',
+  showOrphans: true,
   showExistingOnly: false,
   showTags: true,
-  baseNodeSize: 5,
-  nodeSizeMode: 'degree',
-  linkOpacity: 0.15,
-  linkThickness: 0.5,
+  showAttachments: true,
+
+  // Groups
+  groupRules: DEFAULT_GROUP_RULES,
+
+  // Display
+  nodeSizeMultiplier: 1,
+  linkThickness: 1,
   showArrows: false,
   textFadeThreshold: 1.2,
   isAnimating: true,
   showMinimap: true,
-  centerForce: 0.3,
-  repelForce: -80,
-  linkForce: 0.2,
-  linkDistance: 60,
-  groups: DEFAULT_GROUPS,
 
+  // Forces (Obsidian-style defaults)
+  centerForce: 0.05,
+  repelForce: -120,
+  linkForce: 0.7,
+  linkDistance: 50,
+
+  // Setters
+  setSearchQuery: (value) => set({ searchQuery: value }),
   setShowOrphans: (value) => set({ showOrphans: value }),
   setShowExistingOnly: (value) => set({ showExistingOnly: value }),
   setShowTags: (value) => set({ showTags: value }),
-  setBaseNodeSize: (value) => set({ baseNodeSize: value }),
-  setNodeSizeMode: (value) => set({ nodeSizeMode: value }),
-  setLinkOpacity: (value) => set({ linkOpacity: value }),
+  setShowAttachments: (value) => set({ showAttachments: value }),
+
+  setGroupRules: (rules) => set({ groupRules: rules }),
+
+  addGroupRule: () => {
+    const rules = get().groupRules
+    const colorIndex = rules.length % GROUP_COLOR_PALETTE.length
+    set({
+      groupRules: [
+        ...rules,
+        {
+          id: String(nextRuleId++),
+          query: '',
+          color: GROUP_COLOR_PALETTE[colorIndex]
+        }
+      ]
+    })
+  },
+
+  removeGroupRule: (id) => {
+    set({ groupRules: get().groupRules.filter((r) => r.id !== id) })
+  },
+
+  updateGroupRule: (id, updates) => {
+    set({
+      groupRules: get().groupRules.map((r) =>
+        r.id === id ? { ...r, ...updates } : r
+      )
+    })
+  },
+
+  cycleGroupColor: (id) => {
+    const rules = get().groupRules
+    const rule = rules.find((r) => r.id === id)
+    if (!rule) return
+    const currentIndex = GROUP_COLOR_PALETTE.indexOf(
+      rule.color as (typeof GROUP_COLOR_PALETTE)[number]
+    )
+    const nextIndex = (currentIndex + 1) % GROUP_COLOR_PALETTE.length
+    set({
+      groupRules: rules.map((r) =>
+        r.id === id ? { ...r, color: GROUP_COLOR_PALETTE[nextIndex] } : r
+      )
+    })
+  },
+
+  setNodeSizeMultiplier: (value) => set({ nodeSizeMultiplier: value }),
   setLinkThickness: (value) => set({ linkThickness: value }),
   setShowArrows: (value) => set({ showArrows: value }),
   setTextFadeThreshold: (value) => set({ textFadeThreshold: value }),
@@ -86,17 +160,48 @@ export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => 
   setCenterForce: (value) => set({ centerForce: value }),
   setRepelForce: (value) => set({ repelForce: value }),
   setLinkForce: (value) => set({ linkForce: value }),
-  setLinkDistance: (value) => set({ linkDistance: value }),
-
-  setGroupVisible: (type, visible) => {
-    const groups = { ...get().groups }
-    groups[type] = { ...groups[type], visible }
-    set({ groups })
-  },
-
-  setGroupColor: (type, color) => {
-    const groups = { ...get().groups }
-    groups[type] = { ...groups[type], color }
-    set({ groups })
-  }
+  setLinkDistance: (value) => set({ linkDistance: value })
 }))
+
+// ---------------------------------------------------------------------------
+// Group rule matching
+// ---------------------------------------------------------------------------
+
+export function matchGroupRule(
+  rule: GroupRule,
+  node: { type: string; tags?: string[]; path?: string }
+): boolean {
+  const q = rule.query.trim()
+  if (!q) return false
+
+  if (q.startsWith('tag:')) {
+    const tag = q.slice(4)
+    if (!tag) return false
+    // Match against node tags (with or without # prefix)
+    const normalized = tag.startsWith('#') ? tag.slice(1) : tag
+    return node.tags?.some((t) => t.toLowerCase() === normalized.toLowerCase()) ?? false
+  }
+
+  if (q.startsWith('path:')) {
+    const raw = q.slice(5).replace(/"/g, '')
+    if (!raw) return false
+    return node.path?.toLowerCase().includes(raw.toLowerCase()) ?? false
+  }
+
+  // Fallback: match type name
+  return node.type === q
+}
+
+/**
+ * Resolve the display color for a node by evaluating group rules top-to-bottom.
+ * Returns null if no rule matches (caller should use default colors).
+ */
+export function resolveGroupColor(
+  rules: readonly GroupRule[],
+  node: { type: string; tags?: string[]; path?: string }
+): string | null {
+  for (const rule of rules) {
+    if (matchGroupRule(rule, node)) return rule.color
+  }
+  return null
+}

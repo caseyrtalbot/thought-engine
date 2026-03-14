@@ -279,16 +279,16 @@ function EditorTab() {
 }
 
 function GraphTab() {
-  const baseNodeSize = useGraphSettingsStore((s) => s.baseNodeSize)
-  const linkOpacity = useGraphSettingsStore((s) => s.linkOpacity)
+  const nodeSizeMultiplier = useGraphSettingsStore((s) => s.nodeSizeMultiplier)
+  const linkThickness = useGraphSettingsStore((s) => s.linkThickness)
   const showArrows = useGraphSettingsStore((s) => s.showArrows)
   const centerForce = useGraphSettingsStore((s) => s.centerForce)
   const repelForce = useGraphSettingsStore((s) => s.repelForce)
   const linkForce = useGraphSettingsStore((s) => s.linkForce)
   const linkDistance = useGraphSettingsStore((s) => s.linkDistance)
 
-  const setBaseNodeSize = useGraphSettingsStore((s) => s.setBaseNodeSize)
-  const setLinkOpacity = useGraphSettingsStore((s) => s.setLinkOpacity)
+  const setNodeSizeMultiplier = useGraphSettingsStore((s) => s.setNodeSizeMultiplier)
+  const setLinkThickness = useGraphSettingsStore((s) => s.setLinkThickness)
   const setShowArrows = useGraphSettingsStore((s) => s.setShowArrows)
   const setCenterForce = useGraphSettingsStore((s) => s.setCenterForce)
   const setRepelForce = useGraphSettingsStore((s) => s.setRepelForce)
@@ -298,20 +298,32 @@ function GraphTab() {
   return (
     <div>
       <SectionHeading>Graph</SectionHeading>
-      <SettingRow label="Base Node Size">
-        <SliderInput value={baseNodeSize} min={1} max={20} step={1} onChange={setBaseNodeSize} />
+      <SettingRow label="Node Size">
+        <SliderInput
+          value={nodeSizeMultiplier}
+          min={0.5}
+          max={3}
+          step={0.1}
+          onChange={setNodeSizeMultiplier}
+        />
       </SettingRow>
-      <SettingRow label="Link Opacity">
-        <SliderInput value={linkOpacity} min={0} max={1} step={0.05} onChange={setLinkOpacity} />
+      <SettingRow label="Link Thickness">
+        <SliderInput
+          value={linkThickness}
+          min={0.3}
+          max={3}
+          step={0.1}
+          onChange={setLinkThickness}
+        />
       </SettingRow>
       <SettingRow label="Show Arrows">
         <Toggle value={showArrows} onChange={setShowArrows} />
       </SettingRow>
       <SettingRow label="Center Force">
-        <SliderInput value={centerForce} min={0} max={1} step={0.05} onChange={setCenterForce} />
+        <SliderInput value={centerForce} min={0} max={0.15} step={0.01} onChange={setCenterForce} />
       </SettingRow>
       <SettingRow label="Repel Force">
-        <SliderInput value={repelForce} min={-500} max={0} step={10} onChange={setRepelForce} />
+        <SliderInput value={repelForce} min={-300} max={-10} step={5} onChange={setRepelForce} />
       </SettingRow>
       <SettingRow label="Link Force">
         <SliderInput value={linkForce} min={0} max={1} step={0.05} onChange={setLinkForce} />

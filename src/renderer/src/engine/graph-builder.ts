@@ -18,7 +18,9 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
       title: a.title,
       type: a.type,
       signal: a.signal,
-      connectionCount: 0
+      connectionCount: 0,
+      tags: [...a.tags],
+      created: a.created
     })
   }
 
@@ -64,9 +66,7 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     const sorted = [source, target].sort()
     const pairKey = sorted.join('<->')
     for (const kind of ['connection', 'cluster', 'tension', 'appears_in'] as const) {
-      const key = kind === 'appears_in'
-        ? `${source}->${target}:${kind}`
-        : `${pairKey}:${kind}`
+      const key = kind === 'appears_in' ? `${source}->${target}:${kind}` : `${pairKey}:${kind}`
       if (edgeSet.has(key)) return true
       // Also check reverse direction for appears_in
       if (kind === 'appears_in') {

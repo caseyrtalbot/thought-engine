@@ -65,6 +65,9 @@ export interface GraphNode {
   type: ArtifactType
   signal: Signal
   connectionCount: number
+  tags?: string[]
+  path?: string
+  created?: string
   x?: number
   y?: number
 }

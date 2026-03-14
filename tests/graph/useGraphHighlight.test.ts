@@ -23,8 +23,24 @@ describe('buildAdjacencyList', () => {
   it('handles edges where source/target are SimNode objects', () => {
     const edges: SimEdge[] = [
       {
-        source: { id: 'a', title: 'A', type: 'note', signal: 'active', connectionCount: 1, x: 0, y: 0 },
-        target: { id: 'b', title: 'B', type: 'note', signal: 'active', connectionCount: 1, x: 0, y: 0 },
+        source: {
+          id: 'a',
+          title: 'A',
+          type: 'note',
+          signal: 'active',
+          connectionCount: 1,
+          x: 0,
+          y: 0
+        },
+        target: {
+          id: 'b',
+          title: 'B',
+          type: 'note',
+          signal: 'active',
+          connectionCount: 1,
+          x: 0,
+          y: 0
+        },
         kind: 'connection'
       }
     ]
@@ -72,9 +88,7 @@ describe('computeConnectedSet', () => {
   })
 
   it('returns singleton set for a node with no neighbors', () => {
-    const adjacency: Map<string, ReadonlySet<string>> = new Map([
-      ['a', new Set<string>()]
-    ])
+    const adjacency: Map<string, ReadonlySet<string>> = new Map([['a', new Set<string>()]])
     const result = computeConnectedSet('a', adjacency)
 
     expect(result.has('a')).toBe(true)
@@ -136,49 +150,40 @@ describe('easeOut', () => {
 // ---------------------------------------------------------------------------
 
 describe('interpolateGlow', () => {
-  it('returns startValue at elapsed=0', () => {
+  it('returns startValue at elapsed=0 for fade-out', () => {
     const now = 1000
-    const { value } = interpolateGlow(0, 1, now, now)
-    expect(value).toBe(0)
+    const { value } = interpolateGlow(1, 0, now, now)
+    expect(value).toBe(1)
   })
 
-  it('returns target when fully elapsed (fade-in, 200ms)', () => {
+  it('fade-in is instant (0ms duration)', () => {
     const startTime = 1000
-    const elapsed200 = startTime + 200
-    const { value, done } = interpolateGlow(0, 1, startTime, elapsed200)
+    // With GLOW_FADE_IN_MS=0, any elapsed time completes the animation
+    const { value, done } = interpolateGlow(0, 1, startTime, startTime)
     expect(value).toBe(1)
     expect(done).toBe(true)
   })
 
-  it('returns target when fully elapsed (fade-out, 300ms)', () => {
+  it('returns target when fully elapsed (fade-out, 150ms)', () => {
     const startTime = 1000
-    const elapsed300 = startTime + 300
-    const { value, done } = interpolateGlow(1, 0, startTime, elapsed300)
+    const elapsed150 = startTime + 150
+    const { value, done } = interpolateGlow(1, 0, startTime, elapsed150)
     expect(value).toBe(0)
     expect(done).toBe(true)
   })
 
-  it('interpolates partially for mid-transition (fade-in)', () => {
-    const startTime = 0
-    const halfTime = 100 // half of GLOW_FADE_IN_MS (200)
-    const { value, done } = interpolateGlow(0, 1, startTime, halfTime)
-    expect(value).toBeGreaterThan(0)
-    expect(value).toBeLessThan(1)
-    expect(done).toBe(false)
-  })
-
   it('interpolates partially for mid-transition (fade-out)', () => {
     const startTime = 0
-    const halfTime = 150 // half of GLOW_FADE_OUT_MS (300)
+    const halfTime = 75 // half of GLOW_FADE_OUT_MS (150)
     const { value, done } = interpolateGlow(1, 0, startTime, halfTime)
     expect(value).toBeGreaterThan(0)
     expect(value).toBeLessThan(1)
     expect(done).toBe(false)
   })
 
-  it('is not done before duration completes', () => {
+  it('fade-out is not done before duration completes', () => {
     const startTime = 0
-    const { done } = interpolateGlow(0, 1, startTime, 100)
+    const { done } = interpolateGlow(1, 0, startTime, 50)
     expect(done).toBe(false)
   })
 })
