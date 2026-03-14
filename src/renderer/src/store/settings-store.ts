@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import type { ThemeId, AccentColorId } from '../design/themes'
 
 interface SettingsState {
+  theme: ThemeId
+  accentColor: AccentColorId
   fontSize: number
   fontFamily: string
   defaultEditorMode: 'rich' | 'source'
@@ -13,6 +16,8 @@ interface SettingsState {
 }
 
 interface SettingsActions {
+  setTheme: (value: ThemeId) => void
+  setAccentColor: (value: AccentColorId) => void
   setFontSize: (value: number) => void
   setFontFamily: (value: string) => void
   setDefaultEditorMode: (value: 'rich' | 'source') => void
@@ -28,6 +33,8 @@ type SettingsStore = SettingsState & SettingsActions
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
+      theme: 'midnight',
+      accentColor: 'teal',
       fontSize: 13,
       fontFamily: 'Inter',
       defaultEditorMode: 'rich',
@@ -37,6 +44,8 @@ export const useSettingsStore = create<SettingsStore>()(
       terminalFontSize: 13,
       scrollbackLines: 10000,
 
+      setTheme: (value) => set({ theme: value }),
+      setAccentColor: (value) => set({ accentColor: value }),
       setFontSize: (value) => set({ fontSize: value }),
       setFontFamily: (value) => set({ fontFamily: value }),
       setDefaultEditorMode: (value) => set({ defaultEditorMode: value }),

@@ -52,6 +52,8 @@ body {
   --card-radius: 8px;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --neon-glow: 0 0 8px rgba(0, 229, 191, 0.12);
+  --color-accent-focus: rgba(0, 229, 191, 0.3);
+  --color-accent-subtle: rgba(0, 229, 191, 0.15);
 }
 
 @media (resolution < 2dppx) {
@@ -73,7 +75,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--color-bg-elevated); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-border-default); }
 
-.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(0, 229, 191, 0.3); }
+.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-accent-focus); }
 .interactive-hover { transition: background-color var(--transition-hover); }
 .interactive-hover:hover { background-color: var(--color-bg-elevated); }
 
@@ -342,7 +344,7 @@ body {
 }
 
 .ProseMirror a[href^="wikilink:"]:hover {
-  background-color: rgba(0, 229, 191, 0.15);
+  background-color: var(--color-accent-subtle);
   text-decoration: none;
 }
 

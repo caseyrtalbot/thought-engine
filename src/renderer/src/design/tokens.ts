@@ -2,29 +2,34 @@ import type { BuiltInArtifactType } from '@shared/types'
 
 export const colors = {
   bg: {
-    base: '#0c0e14',
-    surface: '#141620',
-    elevated: '#1c1f2e'
+    base: 'var(--color-bg-base)',
+    surface: 'var(--color-bg-surface)',
+    elevated: 'var(--color-bg-elevated)'
   },
   border: {
-    default: '#252a3a',
-    subtle: 'rgba(255, 255, 255, 0.08)'
+    default: 'var(--color-border-default)',
+    subtle: 'var(--border-subtle)'
   },
   text: {
-    primary: '#e2e8f0',
-    secondary: '#64748b',
-    muted: '#3b4563'
+    primary: 'var(--color-text-primary)',
+    secondary: 'var(--color-text-secondary)',
+    muted: 'var(--color-text-muted)'
   },
   accent: {
-    default: '#00e5bf',
-    hover: '#33eece',
-    muted: 'rgba(0, 229, 191, 0.10)'
+    default: 'var(--color-accent-default)',
+    hover: 'var(--color-accent-hover)',
+    muted: 'var(--color-accent-muted)'
   },
   semantic: {
     cluster: '#34D399',
     tension: '#F59E0B'
   }
 } as const
+
+/** Resolve a CSS custom property to its computed hex value (for Canvas 2D contexts). */
+export function getComputedCssColor(varName: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+}
 
 export const ARTIFACT_COLORS: Record<BuiltInArtifactType, string> = {
   gene: '#22d3ee',
@@ -59,6 +64,7 @@ function hashString(str: string): number {
 }
 
 export function getArtifactColor(type: string): string {
+  if (type === 'tag') return '#f59e0b'
   const builtIn = (ARTIFACT_COLORS as Record<string, string>)[type]
   if (builtIn) return builtIn
   return CUSTOM_TYPE_PALETTE[hashString(type) % CUSTOM_TYPE_PALETTE.length]

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react'
 import type { SimNode, SimEdge } from './GraphRenderer'
-import { getArtifactColor, colors } from '../../design/tokens'
+import { getArtifactColor, getComputedCssColor } from '../../design/tokens'
 
 interface GraphMinimapProps {
   nodes: readonly SimNode[]
@@ -15,9 +15,7 @@ const MINIMAP_WIDTH = 120
 const MINIMAP_HEIGHT = 80
 const MINIMAP_PADDING = 8
 const NODE_DOT_SIZE = 2
-const VIEWPORT_RECT_COLOR = 'rgba(0, 229, 191, 0.25)'
-const VIEWPORT_RECT_BORDER = 'rgba(0, 229, 191, 0.5)'
-const MINIMAP_BG = 'rgba(12, 14, 20, 0.85)'
+const MINIMAP_FALLBACK_BG = 'rgba(12, 14, 20, 0.85)'
 
 interface GraphBounds {
   minX: number
@@ -79,8 +77,12 @@ export function GraphMinimap({
 
     ctx.scale(dpr, dpr)
 
+    // Resolve theme colors for canvas (can't use CSS vars directly)
+    const bgColor = getComputedCssColor('--color-bg-base') || MINIMAP_FALLBACK_BG
+    const accentColor = getComputedCssColor('--color-accent-default') || '#00e5bf'
+
     // Fill background
-    ctx.fillStyle = MINIMAP_BG
+    ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT)
 
     if (nodes.length === 0) return
@@ -114,7 +116,7 @@ export function GraphMinimap({
 
     // Draw edges as faint lines
     ctx.globalAlpha = 0.15
-    ctx.strokeStyle = colors.text.primary
+    ctx.strokeStyle = getComputedCssColor('--color-text-primary') || '#e2e8f0'
     ctx.lineWidth = 0.5
     ctx.beginPath()
 
@@ -157,13 +159,14 @@ export function GraphMinimap({
     const rectH = (viewGraphMaxY - viewGraphMinY) * scale
 
     // Filled viewport rect
-    ctx.fillStyle = VIEWPORT_RECT_COLOR
+    ctx.fillStyle = accentColor
     ctx.globalAlpha = 0.15
     ctx.fillRect(rectX, rectY, rectW, rectH)
     ctx.globalAlpha = 1
 
     // Stroked viewport border
-    ctx.strokeStyle = VIEWPORT_RECT_BORDER
+    ctx.strokeStyle = accentColor
+    ctx.globalAlpha = 0.5
     ctx.lineWidth = 1
     ctx.strokeRect(rectX, rectY, rectW, rectH)
   }, [nodes, edges, transform, canvasWidth, canvasHeight])

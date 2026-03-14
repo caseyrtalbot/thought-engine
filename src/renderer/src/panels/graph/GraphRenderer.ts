@@ -7,7 +7,7 @@ import {
   type Simulation
 } from 'd3-force'
 import type { GraphNode, RelationshipKind } from '@shared/types'
-import { getArtifactColor, colors, animations } from '../../design/tokens'
+import { getArtifactColor, animations, getComputedCssColor } from '../../design/tokens'
 import { SIGNAL_OPACITY } from '@shared/types'
 import { GlowSpriteCache, drawGlowSprite } from './glowSprites'
 import type { HighlightState } from './useGraphHighlight'
@@ -111,17 +111,21 @@ const DEFAULT_RENDER_CONFIG: RenderConfig = {
 const DEFAULT_SIZE_CONFIG: NodeSizeConfig = { mode: 'degree', baseSize: 4 }
 
 const EDGE_COLOR_MAP: Record<string, { color: string; width: number; dash: number[] }> = {
-  connection: { color: colors.border.default, width: 1, dash: [] },
+  connection: { color: '#252a3a', width: 1, dash: [] },
   cluster: { color: '#2DD4BF66', width: 1.5, dash: [] },
   tension: { color: '#EF444466', width: 1, dash: [4, 4] },
-  appears_in: { color: '#3A3A3E', width: 1, dash: [] }
+  appears_in: { color: '#3A3A3E', width: 1, dash: [] },
+  wikilink: { color: '#64748b44', width: 0.75, dash: [2, 3] },
+  tag: { color: '#f59e0b33', width: 0.75, dash: [] }
 }
 
 const LINK_STRENGTH: Record<RelationshipKind, number> = {
   connection: 0.3,
   cluster: 0.6,
   tension: -0.2,
-  appears_in: 0.2
+  appears_in: 0.2,
+  wikilink: 0.15,
+  tag: 0.1
 }
 
 const HIGHLIGHT_EDGE_WIDTH = 1.5
@@ -272,10 +276,16 @@ export function renderGraph(
   hoveredId: string | null,
   options?: RenderOptions
 ): number {
+  // Resolve theme colors once per frame (canvas 2D needs raw values, not CSS vars)
+  const themeBg = getComputedCssColor('--color-bg-surface') || '#141620'
+  const themeBorder = getComputedCssColor('--color-border-default') || '#252a3a'
+  const themeAccent = getComputedCssColor('--color-accent-default') || '#00e5bf'
+  const themeText = getComputedCssColor('--color-text-primary') || '#e2e8f0'
+
   // Stage 1: Clear + background
   const t0 = performance.now()
   ctx.clearRect(0, 0, width, height)
-  ctx.fillStyle = colors.bg.surface
+  ctx.fillStyle = themeBg
   ctx.fillRect(0, 0, width, height)
 
   // Stage 2: Compute highlight context
@@ -300,7 +310,7 @@ export function renderGraph(
   // Stage 4: Edge LOD - if very zoomed out, draw all edges in a single pass
   if (transform.k < 0.2) {
     ctx.globalAlpha = 0.06
-    ctx.strokeStyle = colors.border.default
+    ctx.strokeStyle = themeBorder
     ctx.lineWidth = 1
     ctx.setLineDash([])
     ctx.beginPath()
@@ -326,7 +336,11 @@ export function renderGraph(
       if (!sourceInView && !targetInView) continue
 
       const kindKey = edge.kind as string
-      const edgeStyle = EDGE_COLOR_MAP[kindKey] ?? EDGE_COLOR_MAP.connection
+      const baseEdgeStyle = EDGE_COLOR_MAP[kindKey] ?? EDGE_COLOR_MAP.connection
+      const edgeStyle =
+        kindKey === 'connection' || !EDGE_COLOR_MAP[kindKey]
+          ? { ...baseEdgeStyle, color: themeBorder }
+          : baseEdgeStyle
 
       ctx.beginPath()
       ctx.moveTo(source.x, source.y)
@@ -335,7 +349,7 @@ export function renderGraph(
       if (highlightActive) {
         const connected = isEdgeConnected(edge, connectedSet)
         if (connected) {
-          ctx.strokeStyle = colors.accent.default
+          ctx.strokeStyle = themeAccent
           ctx.lineWidth = HIGHLIGHT_EDGE_WIDTH
           ctx.globalAlpha = HIGHLIGHT_EDGE_ALPHA
           ctx.setLineDash([])
@@ -395,21 +409,43 @@ export function renderGraph(
         ctx.shadowBlur = HOVER_SHADOW_BLUR
       }
 
-      // Draw circle
-      ctx.beginPath()
-      ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
+      // Draw node shape
       ctx.fillStyle = color
       ctx.globalAlpha = isDimmed ? DIM_ALPHA : opacity
-      ctx.fill()
+
+      if (node.type === 'tag') {
+        // Diamond shape for tag nodes
+        ctx.beginPath()
+        ctx.moveTo(node.x, node.y - r)
+        ctx.lineTo(node.x + r, node.y)
+        ctx.lineTo(node.x, node.y + r)
+        ctx.lineTo(node.x - r, node.y)
+        ctx.closePath()
+        ctx.fill()
+      } else {
+        // Circle for all other nodes
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
+        ctx.fill()
+      }
       ctx.globalAlpha = 1
 
       // Selected: outer ring
       if (isSelected) {
-        ctx.strokeStyle = colors.accent.default
+        ctx.strokeStyle = themeAccent
         ctx.lineWidth = 2
         ctx.globalAlpha = SELECTED_RING_ALPHA
         ctx.beginPath()
-        ctx.arc(node.x, node.y, r + SELECTED_RING_OFFSET, 0, Math.PI * 2)
+        if (node.type === 'tag') {
+          const outerR = r + SELECTED_RING_OFFSET
+          ctx.moveTo(node.x, node.y - outerR)
+          ctx.lineTo(node.x + outerR, node.y)
+          ctx.lineTo(node.x, node.y + outerR)
+          ctx.lineTo(node.x - outerR, node.y)
+          ctx.closePath()
+        } else {
+          ctx.arc(node.x, node.y, r + SELECTED_RING_OFFSET, 0, Math.PI * 2)
+        }
         ctx.stroke()
         ctx.globalAlpha = 1
       }
@@ -449,7 +485,7 @@ export function renderGraph(
     }
 
     ctx.globalAlpha = labelAlpha
-    ctx.fillStyle = colors.text.primary
+    ctx.fillStyle = themeText
     ctx.fillText(node.title, node.x, node.y - r - 6)
     ctx.globalAlpha = 1
   }
@@ -473,7 +509,12 @@ export function findNodeAt(nodes: SimNode[], x: number, y: number): SimNode | nu
     const r = nodeRadius(node.connectionCount)
     const dx = x - (node.x || 0)
     const dy = y - (node.y || 0)
-    if (dx * dx + dy * dy < r * r) return node
+    if (node.type === 'tag') {
+      // Diamond hit-test: point is inside if |dx|/r + |dy|/r <= 1
+      if (Math.abs(dx) / r + Math.abs(dy) / r <= 1) return node
+    } else {
+      if (dx * dx + dy * dy < r * r) return node
+    }
   }
   return null
 }

@@ -11,12 +11,12 @@ import {
 } from '../../src/renderer/src/design/tokens'
 
 describe('design tokens', () => {
-  it('has all background layers', () => {
-    expect(colors.bg.base).toBe('#0c0e14')
-    expect(colors.bg.surface).toBe('#141620')
-    expect(colors.bg.elevated).toBe('#1c1f2e')
-    expect(colors.border.default).toBe('#252a3a')
-    expect(colors.border.subtle).toBe('rgba(255, 255, 255, 0.08)')
+  it('has all background layers as CSS variable references', () => {
+    expect(colors.bg.base).toBe('var(--color-bg-base)')
+    expect(colors.bg.surface).toBe('var(--color-bg-surface)')
+    expect(colors.bg.elevated).toBe('var(--color-bg-elevated)')
+    expect(colors.border.default).toBe('var(--color-border-default)')
+    expect(colors.border.subtle).toBe('var(--border-subtle)')
   })
 
   it('has artifact type colors for all types', () => {

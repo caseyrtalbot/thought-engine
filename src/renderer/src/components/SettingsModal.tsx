@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { colors } from '../design/tokens'
+import { useColors } from '../design/Theme'
 import { useSettingsStore } from '../store/settings-store'
 import { useGraphSettingsStore } from '../store/graph-settings-store'
 import { useVaultStore } from '../store/vault-store'
 import { FontPicker } from './FontPicker'
+import { THEMES, ACCENT_COLORS, THEME_ORDER, ACCENT_ORDER } from '../design/themes'
 
 // ---- Types ----
 
@@ -23,6 +24,7 @@ interface SettingRowProps {
 }
 
 function SettingRow({ label, children }: SettingRowProps) {
+  const colors = useColors()
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <span className="text-xs flex-shrink-0 w-44" style={{ color: colors.text.secondary }}>
@@ -42,6 +44,7 @@ interface SliderInputProps {
 }
 
 function SliderInput({ value, min, max, step, onChange }: SliderInputProps) {
+  const colors = useColors()
   return (
     <div className="flex items-center gap-2">
       <input
@@ -70,6 +73,7 @@ interface ToggleProps {
 }
 
 function Toggle({ value, onChange }: ToggleProps) {
+  const colors = useColors()
   return (
     <button
       type="button"
@@ -105,6 +109,7 @@ interface SelectInputProps {
 }
 
 function SelectInput({ value, options, onChange }: SelectInputProps) {
+  const colors = useColors()
   return (
     <select
       value={value}
@@ -129,6 +134,7 @@ function SelectInput({ value, options, onChange }: SelectInputProps) {
 // ---- Section heading ----
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
+  const colors = useColors()
   return (
     <h3
       className="text-[11px] uppercase tracking-widest mb-3 mt-1"
@@ -142,24 +148,94 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 // ---- Tab content panels ----
 
 function AppearanceTab() {
+  const colors = useColors()
+  const theme = useSettingsStore((s) => s.theme)
+  const accentColor = useSettingsStore((s) => s.accentColor)
   const fontSize = useSettingsStore((s) => s.fontSize)
   const fontFamily = useSettingsStore((s) => s.fontFamily)
+  const setTheme = useSettingsStore((s) => s.setTheme)
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor)
   const setFontSize = useSettingsStore((s) => s.setFontSize)
   const setFontFamily = useSettingsStore((s) => s.setFontFamily)
 
   return (
     <div>
-      <SectionHeading>Appearance</SectionHeading>
+      <SectionHeading>Theme</SectionHeading>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        {THEME_ORDER.map((id) => {
+          const t = THEMES[id]
+          const isSelected = theme === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTheme(id)}
+              className="rounded-lg p-2 text-left transition-all"
+              style={{
+                border: `1.5px solid ${isSelected ? colors.accent.default : t.colors.border.default}`,
+                backgroundColor: t.colors.bg.base
+              }}
+            >
+              <div className="flex gap-px mb-1.5 rounded overflow-hidden h-3">
+                <div
+                  className="flex-1 rounded-sm"
+                  style={{
+                    backgroundColor: t.colors.bg.surface,
+                    border: `1px solid ${t.colors.border.default}`
+                  }}
+                />
+                <div
+                  className="flex-1 rounded-sm"
+                  style={{ backgroundColor: t.colors.bg.elevated }}
+                />
+                <div
+                  className="flex-1 rounded-sm"
+                  style={{
+                    backgroundColor: t.colors.bg.base,
+                    border: `1px solid ${t.colors.border.default}`
+                  }}
+                />
+              </div>
+              <span
+                className="text-[10px] font-medium block"
+                style={{ color: t.colors.text.primary }}
+              >
+                {t.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <SectionHeading>Accent Color</SectionHeading>
+      <div className="flex gap-2.5 mb-5">
+        {ACCENT_ORDER.map((id) => {
+          const a = ACCENT_COLORS[id]
+          const isSelected = accentColor === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setAccentColor(id)}
+              title={a.label}
+              className="w-6 h-6 rounded-full transition-all flex-shrink-0"
+              style={{
+                backgroundColor: a.value,
+                outline: isSelected ? `2px solid ${a.value}` : '2px solid transparent',
+                outlineOffset: '2px',
+                transform: isSelected ? 'scale(1.15)' : undefined
+              }}
+            />
+          )
+        })}
+      </div>
+
+      <SectionHeading>Typography</SectionHeading>
       <SettingRow label="Font Size">
         <SliderInput value={fontSize} min={10} max={24} step={1} onChange={setFontSize} />
       </SettingRow>
       <SettingRow label="Font Family">
         <FontPicker value={fontFamily} onChange={setFontFamily} />
-      </SettingRow>
-      <SettingRow label="Theme">
-        <span className="text-xs" style={{ color: colors.text.muted }}>
-          Dark (only)
-        </span>
       </SettingRow>
     </div>
   )
@@ -248,6 +324,7 @@ function GraphTab() {
 }
 
 function TerminalTab() {
+  const colors = useColors()
   const terminalShell = useSettingsStore((s) => s.terminalShell)
   const terminalFontSize = useSettingsStore((s) => s.terminalFontSize)
   const scrollbackLines = useSettingsStore((s) => s.scrollbackLines)
@@ -296,6 +373,7 @@ function TerminalTab() {
 }
 
 function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
+  const colors = useColors()
   const vaultPath = useVaultStore((s) => s.vaultPath)
 
   const handleReindex = () => {
@@ -371,6 +449,7 @@ function renderTabContent(tab: TabId, onChangeVault?: () => void) {
 // ---- Main modal ----
 
 export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalProps) {
+  const colors = useColors()
   const [currentTab, setCurrentTab] = useState<TabId>('appearance')
   const firstTabRef = useRef<HTMLButtonElement>(null)
 
