@@ -10,6 +10,7 @@ import { EdgeLayer } from './EdgeLayer'
 import { ConnectionDragOverlay } from './ConnectionDragOverlay'
 import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
+import { CanvasToolbar } from './CanvasToolbar'
 
 export function CanvasView() {
   const nodes = useCanvasStore((s) => s.nodes)
@@ -114,6 +115,20 @@ export function CanvasView() {
 
   return (
     <div className="h-full relative">
+      <CanvasToolbar
+        canUndo={commandStack.current.canUndo()}
+        canRedo={commandStack.current.canRedo()}
+        onUndo={() => commandStack.current.undo()}
+        onRedo={() => commandStack.current.redo()}
+        onAddCard={() => {
+          const vp = useCanvasStore.getState().viewport
+          const node = createCanvasNode('text', {
+            x: -vp.x / vp.zoom + 200,
+            y: -vp.y / vp.zoom + 200
+          })
+          addNodeWithUndo(node)
+        }}
+      />
       <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
         <EdgeLayer />
         {nodes.map((node) => {
