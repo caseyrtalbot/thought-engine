@@ -161,29 +161,45 @@ export function TerminalPanel() {
     }
   }, [removeSession])
 
-  // Auto-fit on resize (debounced to prevent spurious prompt redraws)
+  // Auto-fit on resize (throttled: updates during drag without flooding PTY)
   useEffect(() => {
     const container = activeContainerRef.current
     if (!container) return
 
-    let timerId: ReturnType<typeof setTimeout> | null = null
+    let lastFit = 0
+    let trailingId: ReturnType<typeof setTimeout> | null = null
+    const INTERVAL = 100
+
+    const doFit = () => {
+      if (!activeSessionId) return
+      const instance = instancesRef.current.get(activeSessionId)
+      if (!instance) return
+
+      instance.fitAddon.fit()
+      const { cols, rows } = instance.terminal
+      window.api.terminal.resize(activeSessionId, cols, rows)
+    }
 
     const observer = new ResizeObserver(() => {
-      if (timerId) clearTimeout(timerId)
-      timerId = setTimeout(() => {
-        if (!activeSessionId) return
-        const instance = instancesRef.current.get(activeSessionId)
-        if (!instance) return
+      const now = Date.now()
 
-        instance.fitAddon.fit()
-        const { cols, rows } = instance.terminal
-        window.api.terminal.resize(activeSessionId, cols, rows)
-      }, 80)
+      // Leading edge: fire immediately if enough time has passed
+      if (now - lastFit >= INTERVAL) {
+        lastFit = now
+        doFit()
+      }
+
+      // Trailing edge: always schedule a final fit after events settle
+      if (trailingId) clearTimeout(trailingId)
+      trailingId = setTimeout(() => {
+        lastFit = Date.now()
+        doFit()
+      }, INTERVAL)
     })
 
     observer.observe(container)
     return () => {
-      if (timerId) clearTimeout(timerId)
+      if (trailingId) clearTimeout(trailingId)
       observer.disconnect()
     }
   }, [activeSessionId])
