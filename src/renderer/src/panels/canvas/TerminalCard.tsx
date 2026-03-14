@@ -108,7 +108,9 @@ export function TerminalCard({ node }: TerminalCardProps) {
         termRef.current?.write(data)
       }
     })
-    return unsub
+    return () => {
+      unsub()
+    }
   }, [])
 
   // Listen for terminal exit
@@ -119,27 +121,48 @@ export function TerminalCard({ node }: TerminalCardProps) {
         setSessionDead(true)
       }
     })
-    return unsub
+    return () => {
+      unsub()
+    }
   }, [])
 
-  // Auto-fit on card resize
+  // Auto-fit on card resize (throttled to avoid flooding PTY during drag)
   useEffect(() => {
     const container = termContainerRef.current
     if (!container) return
 
-    const observer = new ResizeObserver(() => {
-      if (fitRef.current && termRef.current) {
-        fitRef.current.fit()
-        const sessionId = sessionIdRef.current
-        if (sessionId) {
-          const { cols, rows } = termRef.current
-          window.api.terminal.resize(sessionId, cols, rows)
-        }
+    let lastFit = 0
+    let trailingId: ReturnType<typeof setTimeout> | null = null
+    const INTERVAL = 100
+
+    const doFit = () => {
+      if (!fitRef.current || !termRef.current) return
+      fitRef.current.fit()
+      const sessionId = sessionIdRef.current
+      if (sessionId) {
+        const { cols, rows } = termRef.current
+        window.api.terminal.resize(sessionId, cols, rows)
       }
+    }
+
+    const observer = new ResizeObserver(() => {
+      const now = Date.now()
+      if (now - lastFit >= INTERVAL) {
+        lastFit = now
+        doFit()
+      }
+      if (trailingId) clearTimeout(trailingId)
+      trailingId = setTimeout(() => {
+        lastFit = Date.now()
+        doFit()
+      }, INTERVAL)
     })
 
     observer.observe(container)
-    return () => observer.disconnect()
+    return () => {
+      if (trailingId) clearTimeout(trailingId)
+      observer.disconnect()
+    }
   }, [])
 
   // Focus management

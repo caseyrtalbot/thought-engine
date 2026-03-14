@@ -58,7 +58,9 @@ export function NoteCard({ node }: NoteCardProps) {
           .catch(() => {})
       }
     })
-    return unsub
+    return () => {
+      unsub()
+    }
   }, [filePath])
 
   return (
