@@ -1,5 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react'
 import type { SimNode } from './GraphRenderer'
+import type { GraphRenderRuntime } from './graph-runtime'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -63,9 +64,7 @@ export function detectRenames(
 ): readonly RenameEntry[] {
   const addedIds = new Set(added.map((n) => n.id))
 
-  return removed
-    .filter((n) => addedIds.has(n.id))
-    .map((n) => ({ id: n.id, oldX: n.x, oldY: n.y }))
+  return removed.filter((n) => addedIds.has(n.id)).map((n) => ({ id: n.id, oldX: n.x, oldY: n.y }))
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +94,8 @@ interface PendingChange {
  */
 export function useGraphAnimation(
   onRestart: (alpha: number) => void,
-  reducedMotion: boolean
+  reducedMotion: boolean,
+  runtime?: GraphRenderRuntime | null
 ): {
   queueEnter: (nodes: SimNode[]) => void
   queueExit: (nodes: SimNode[]) => void
@@ -172,13 +172,29 @@ export function useGraphAnimation(
   const queueExit = useCallback(
     (nodes: SimNode[]) => {
       if (nodes.length === 0) return
-      pendingRef.current = {
-        ...pendingRef.current,
-        exiting: [...pendingRef.current.exiting, ...nodes]
+      if (reducedMotion) return
+
+      for (const node of nodes) {
+        // Push to runtime for retained overlay rendering
+        if (runtime) {
+          runtime.addRetainedExit(node, EXIT_DURATION)
+        }
+
+        // Also track in local batch for animation state queries
+        const batch = batchRef.current
+        batch.exitNodes.set(node.id, {
+          id: node.id,
+          progress: 0,
+          type: 'exit',
+          startTime: performance.now()
+        })
       }
-      scheduleFlush()
+
+      if (runtime) {
+        runtime.requestRender()
+      }
     },
-    [scheduleFlush]
+    [reducedMotion, runtime]
   )
 
   /**
@@ -222,9 +238,21 @@ export function useGraphAnimation(
         return { opacity, scale }
       }
 
+      // Also check runtime.retainedExits for nodes being drawn by the overlay pass
+      if (runtime) {
+        const retained = runtime.retainedExits.get(nodeId)
+        if (retained) {
+          const elapsed = now - retained.startTime
+          const t = Math.min(elapsed / retained.duration, 1)
+          const opacity = 1 - t
+          const scale = 1 - t * 0.5
+          return { opacity, scale }
+        }
+      }
+
       return { opacity: 1, scale: 1 }
     },
-    []
+    [runtime]
   )
 
   const hasActiveAnimations = useCallback((): boolean => {

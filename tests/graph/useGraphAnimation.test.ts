@@ -51,6 +51,31 @@ describe('diffNodes', () => {
 })
 
 // ---------------------------------------------------------------------------
+// retained exits
+// ---------------------------------------------------------------------------
+
+describe('retained exits', () => {
+  it('diffNodes identifies removed nodes for retained exit', () => {
+    const prev = [{ id: 'a' }, { id: 'b' }, { id: 'c' }] as any[]
+    const next = [{ id: 'a' }, { id: 'c' }] as any[]
+    const diff = diffNodes(prev, next)
+    expect(diff.removed).toHaveLength(1)
+    expect(diff.removed[0].id).toBe('b')
+  })
+
+  it('removed nodes retain last known position', () => {
+    const prev = [
+      { id: 'a', x: 100, y: 200 },
+      { id: 'b', x: 300, y: 400 }
+    ] as any[]
+    const next = [{ id: 'a', x: 100, y: 200 }] as any[]
+    const diff = diffNodes(prev, next)
+    expect(diff.removed[0].x).toBe(300)
+    expect(diff.removed[0].y).toBe(400)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // detectRenames
 // ---------------------------------------------------------------------------
 
