@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useCanvasViewport } from './use-canvas-viewport'
+import { useCanvasSelection } from './use-canvas-selection'
 import { colors } from '../../design/tokens'
 
 interface CanvasSurfaceProps {
@@ -13,6 +14,7 @@ export function CanvasSurface({ children, onDoubleClick, onBackgroundClick }: Ca
   const containerRef = useRef<HTMLDivElement>(null)
   const viewport = useCanvasStore((s) => s.viewport)
   const { onWheel, onPointerDown } = useCanvasViewport(containerRef)
+  const { rect, onSelectionStart } = useCanvasSelection()
 
   // Attach wheel listener with { passive: false } to allow preventDefault
   useEffect(() => {
@@ -68,7 +70,10 @@ export function CanvasSurface({ children, onDoubleClick, onBackgroundClick }: Ca
         backgroundPosition: `${viewport.x % (dotSpacing * viewport.zoom)}px ${viewport.y % (dotSpacing * viewport.zoom)}px`,
         cursor: 'default'
       }}
-      onPointerDown={onPointerDown}
+      onPointerDown={(e) => {
+        onPointerDown(e)
+        onSelectionStart(e)
+      }}
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}
     >
@@ -85,6 +90,20 @@ export function CanvasSurface({ children, onDoubleClick, onBackgroundClick }: Ca
       >
         {children}
       </div>
+
+      {rect && (
+        <div
+          className="fixed border pointer-events-none"
+          style={{
+            left: Math.min(rect.startX, rect.endX),
+            top: Math.min(rect.startY, rect.endY),
+            width: Math.abs(rect.endX - rect.startX),
+            height: Math.abs(rect.endY - rect.startY),
+            borderColor: colors.accent.default,
+            backgroundColor: colors.accent.muted
+          }}
+        />
+      )}
     </div>
   )
 }
