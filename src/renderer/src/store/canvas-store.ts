@@ -151,6 +151,6 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   toCanvasFile: () => {
     const { nodes, edges, viewport } = get()
-    return { nodes, edges, viewport }
+    return { nodes: [...nodes], edges: [...edges], viewport: { ...viewport } }
   }
 }))

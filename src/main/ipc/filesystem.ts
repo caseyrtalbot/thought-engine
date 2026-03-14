@@ -1,6 +1,6 @@
 import { dialog, shell } from 'electron'
 import { FileService } from '../services/file-service'
-import { teConfigPath, teStatePath } from '../utils/paths'
+import { teConfigPath, teStatePath, assertWithinVault } from '../utils/paths'
 import { typedHandle } from '../typed-ipc'
 import type { VaultConfig, VaultState } from '../../shared/types'
 
@@ -67,21 +67,37 @@ export function registerFilesystemIpc(): void {
   })
 
   typedHandle('vault:read-config', async (args) => {
-    const content = await fileService.readFile(teConfigPath(args.vaultPath))
-    return JSON.parse(content) as VaultConfig
+    const configPath = teConfigPath(args.vaultPath)
+    assertWithinVault(args.vaultPath, configPath)
+    const content = await fileService.readFile(configPath)
+    try {
+      return JSON.parse(content) as VaultConfig
+    } catch {
+      throw new Error('Vault config is corrupted. Delete .thought-engine/config.json to reset.')
+    }
   })
 
   typedHandle('vault:write-config', async (args) => {
-    await fileService.writeFile(teConfigPath(args.vaultPath), JSON.stringify(args.config, null, 2))
+    const configPath = teConfigPath(args.vaultPath)
+    assertWithinVault(args.vaultPath, configPath)
+    await fileService.writeFile(configPath, JSON.stringify(args.config, null, 2))
   })
 
   typedHandle('vault:read-state', async (args) => {
-    const content = await fileService.readFile(teStatePath(args.vaultPath))
-    return JSON.parse(content) as VaultState
+    const statePath = teStatePath(args.vaultPath)
+    assertWithinVault(args.vaultPath, statePath)
+    const content = await fileService.readFile(statePath)
+    try {
+      return JSON.parse(content) as VaultState
+    } catch {
+      throw new Error('Vault state is corrupted. Delete .thought-engine/state.json to reset.')
+    }
   })
 
   typedHandle('vault:write-state', async (args) => {
-    await fileService.writeFile(teStatePath(args.vaultPath), JSON.stringify(args.state, null, 2))
+    const statePath = teStatePath(args.vaultPath)
+    assertWithinVault(args.vaultPath, statePath)
+    await fileService.writeFile(statePath, JSON.stringify(args.state, null, 2))
   })
 
   typedHandle('vault:list-commands', async (args) => {

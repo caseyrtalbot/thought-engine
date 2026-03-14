@@ -19,38 +19,8 @@ import { useGraphKeyboard } from './useGraphKeyboard'
 import { GraphMinimap } from './GraphMinimap'
 import { GraphContextMenu } from './GraphContextMenu'
 import { GraphSettingsPanel } from './GraphSettingsPanel'
-
-// ---------------------------------------------------------------------------
-// Accessibility: reduced motion preference
-// ---------------------------------------------------------------------------
-
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-  useEffect(() => {
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
-    mql.addEventListener('change', handler)
-    return () => mql.removeEventListener('change', handler)
-  }, [])
-  return reduced
-}
-
-// ---------------------------------------------------------------------------
-// Tooltip state
-// ---------------------------------------------------------------------------
-
-interface TooltipState {
-  x: number
-  y: number
-  label: string
-  connectionCount: number
-}
-
-// ---------------------------------------------------------------------------
-// GraphPanel
-// ---------------------------------------------------------------------------
+import { GraphTooltip, type TooltipState } from './GraphTooltip'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
 
 interface GraphPanelProps {
   onNodeClick: (id: string) => void
@@ -206,9 +176,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     enabled: isFocused
   })
 
-  // -------------------------------------------------------------------------
-  // Render callback
-  // -------------------------------------------------------------------------
+  // -- Render callback --
 
   const render = useCallback(() => {
     const canvas = canvasRef.current
@@ -295,9 +263,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     highlightHook.state
   ])
 
-  // -------------------------------------------------------------------------
-  // Effect 1 — Topology change: creates new simulation
-  // -------------------------------------------------------------------------
+  // -- Effect 1: Topology change -- creates new simulation --
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -326,8 +292,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       if (path) node.path = path
     }
 
-    // Assign _color from group rules (top-to-bottom, first match wins)
-    // and mark visited nodes
+    // Assign _color from group rules and mark visited nodes
     for (const node of simNodes) {
       node._color = resolveGroupColor(groupRules, node) ?? undefined
       node._visited = visitedRef.current.has(node.id)
@@ -371,7 +336,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         runtime.requestRender()
       })
 
-      // When simulation settles, stop it completely so nodes are static
       sim.on('end', () => {
         runtime.requestRender()
       })
@@ -388,9 +352,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphModel, idToPath, groupRules, isAnimating, animation])
 
-  // -------------------------------------------------------------------------
-  // Effect 2 — Force parameter change: updates simulation in place
-  // -------------------------------------------------------------------------
+  // -- Effect 2: Force parameter change -- updates simulation in place --
 
   useEffect(() => {
     const sim = runtimeRef.current?.simulation
@@ -403,9 +365,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     })
   }, [centerForce, repelForce, linkForceStrength, linkDistance])
 
-  // -------------------------------------------------------------------------
-  // Zoom setup (scale 0.1–8 per spec)
-  // -------------------------------------------------------------------------
+  // -- Zoom setup (scale 0.1-8) --
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -414,9 +374,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     const zb = zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([0.1, 8])
       .filter((event) => {
-        // Suppress d3's default drag when we're node-dragging
         if (isDraggingRef.current) return false
-        // Suppress d3 pan when mousedown is on a node (let our drag handler take it)
         if (event.type === 'mousedown' || event.type === 'touchstart') {
           const rect = canvas.getBoundingClientRect()
           const t = transformRef.current
@@ -428,7 +386,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
             gy,
             nodeSizeMultiplierRef.current
           )
-          if (hit) return false // let our mouseDown handle it
+          if (hit) return false
         }
         return true
       })
@@ -437,7 +395,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       })
       .on('zoom', (event) => {
         transformRef.current = event.transform
-        // Use ref to avoid recreating this effect when render changes
         renderRef.current()
       })
       .on('end', () => {
@@ -450,13 +407,10 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     return () => {
       select(canvas).on('.zoom', null)
     }
-    // Intentionally stable — uses renderRef for render, not the render callback
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Coordinate transform helper
-  // -------------------------------------------------------------------------
+  // -- Coordinate transform helper --
 
   const toGraphCoords = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -469,13 +423,11 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     }
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Mouse event handlers with drag-to-pin support
-  // -------------------------------------------------------------------------
+  // -- Mouse event handlers with drag-to-pin support --
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (e.button !== 0) return // left-click only
+      if (e.button !== 0) return
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
       const node =
@@ -490,10 +442,8 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         dragNodeRef.current = node
         dragStartTimeRef.current = Date.now()
         dragMovedRef.current = false
-        // Pin the node at its current position
         node.fx = node.x
         node.fy = node.y
-        // Gentle reheat -- keep neighbors calm while dragging
         runtimeRef.current?.simulation?.alphaTarget(0.02).restart()
         const canvas = canvasRef.current
         if (canvas) canvas.style.cursor = 'grabbing'
@@ -504,19 +454,16 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      // Skip hover lookups while d3-zoom is panning
       if (isPanningRef.current) return
 
       const coords = toGraphCoords(e.clientX, e.clientY)
       if (!coords) return
 
-      // Drag-to-pin: move pinned node
       if (isDraggingRef.current && dragNodeRef.current) {
         dragMovedRef.current = true
         dragNodeRef.current.fx = coords.x
         dragNodeRef.current.fy = coords.y
         runtimeRef.current?.markQuadtreeDirty()
-        // Sim tick already handles requestRender, but force render if sim is stopped
         runtimeRef.current?.requestRender()
         return
       }
@@ -529,7 +476,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
           nodeSizeMultiplier
         ) ?? null
 
-      // Update hover ref and highlight hook (bypasses React re-render)
       hoveredNodeIdRef.current = node?.id ?? null
       highlightHook.handleHover(node?.id ?? null)
       runtimeRef.current?.requestRender()
@@ -537,7 +483,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       const canvas = canvasRef.current
       if (canvas) canvas.style.cursor = node ? 'grab' : 'default'
 
-      // Tooltip
       if (node) {
         const rect = canvas?.getBoundingClientRect()
         setTooltip({
@@ -561,23 +506,19 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       dragNodeRef.current = null
       const canvas = canvasRef.current
 
-      // Always flag so handleClick doesn't fire after ANY drag gesture
       wasJustDraggingRef.current = true
       requestAnimationFrame(() => {
         wasJustDraggingRef.current = false
       })
 
-      // Click = mousedown + mouseup with NO mousemove in between
       const isClick = !dragMovedRef.current
       if (isClick && draggedNode) {
-        // Unpin immediately for clicks
         if (draggedNode) {
           draggedNode.fx = null
           draggedNode.fy = null
         }
         runtimeRef.current?.simulation?.alphaTarget(0)
 
-        // Track as visited
         visitedRef.current.add(draggedNode.id)
         localStorage.setItem('graph-visited', JSON.stringify([...visitedRef.current]))
         draggedNode._visited = true
@@ -586,12 +527,10 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         onNodeClick(draggedNode.id)
         if (canvas) canvas.style.cursor = 'grab'
       } else {
-        // Real drag: spring-back — unpin and let sim gently settle
         if (draggedNode) {
           draggedNode.fx = null
           draggedNode.fy = null
         }
-        // Gentle spring-back: low alpha so node drifts back smoothly
         const sim = runtimeRef.current?.simulation
         if (sim) {
           sim.alphaTarget(0).alpha(0.05).restart()
@@ -603,7 +542,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      // Don't select if we were dragging
       if (isDraggingRef.current || wasJustDraggingRef.current) return
       setContextMenu(null)
       const coords = toGraphCoords(e.clientX, e.clientY)
@@ -616,7 +554,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
           nodeSizeMultiplier
         ) ?? null
       if (node) {
-        // Track as visited
         visitedRef.current.add(node.id)
         localStorage.setItem('graph-visited', JSON.stringify([...visitedRef.current]))
         node._visited = true
@@ -642,7 +579,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
           nodeSizeMultiplier
         ) ?? null
       if (node) {
-        // Double-click: unpin if pinned, otherwise open
         if (node.fx !== undefined && node.fx !== null) {
           node.fx = null
           node.fy = null
@@ -676,9 +612,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     [toGraphCoords, nodeSizeMultiplier]
   )
 
-  // -------------------------------------------------------------------------
-  // Minimap pan handler
-  // -------------------------------------------------------------------------
+  // -- Minimap pan handler --
 
   const handleMinimapPan = useCallback((graphX: number, graphY: number) => {
     const canvas = canvasRef.current
@@ -694,9 +628,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
     select(canvas).call(zb.transform, newTransform)
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Resize observer
-  // -------------------------------------------------------------------------
+  // -- Resize observer --
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -709,26 +641,17 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       const h = entry.contentRect.height
       canvas.width = w * dpr
       canvas.height = h * dpr
-      // Use ref to avoid re-creating this observer on render changes
       renderRef.current()
     })
     observer.observe(canvas)
     return () => observer.disconnect()
-    // Intentionally stable — uses renderRef, not render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Minimap: highlighted node IDs (focal + neighbors during hover)
-  // -------------------------------------------------------------------------
-
+  // Highlighted node IDs for minimap (focal + neighbors during hover)
   const highlightedNodeIds = useMemo<ReadonlySet<string>>(() => {
     return highlightHook.state.mode !== 'idle' ? highlightHook.state.connectedSet : new Set()
   }, [highlightHook.state])
-
-  // -------------------------------------------------------------------------
-  // JSX
-  // -------------------------------------------------------------------------
 
   const isEmpty = !graph.nodes.length
 
@@ -761,28 +684,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         </div>
       )}
 
-      {/* Floating tooltip */}
-      {tooltip && !isDraggingRef.current && (
-        <div
-          className="absolute pointer-events-none z-30"
-          style={{
-            left: tooltip.x + 12,
-            top: tooltip.y - 8,
-            backgroundColor: 'rgba(20, 20, 30, 0.92)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            borderRadius: 6,
-            padding: '6px 10px',
-            maxWidth: 240
-          }}
-        >
-          <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 500 }}>
-            {tooltip.label}
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 2 }}>
-            {tooltip.connectionCount} connection{tooltip.connectionCount !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
+      {tooltip && !isDraggingRef.current && <GraphTooltip tooltip={tooltip} />}
 
       {showMinimap && !isEmpty && (
         <GraphMinimap
@@ -815,7 +717,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
 
       <GraphSettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* Gear icon — top-right, matches Obsidian */}
       <button
         type="button"
         onClick={() => setSettingsOpen((prev) => !prev)}

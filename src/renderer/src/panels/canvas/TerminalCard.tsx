@@ -96,6 +96,10 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
     return () => {
       cancelled = true
+      const sid = sessionIdRef.current
+      if (sid) {
+        window.api.terminal.kill(sid)
+      }
       term?.dispose()
       termRef.current = null
       fitRef.current = null
@@ -187,6 +191,10 @@ export function TerminalCard({ node }: TerminalCardProps) {
   }, [node.id, removeNode])
 
   const handleRestart = useCallback(async () => {
+    const oldSession = sessionIdRef.current
+    if (oldSession) {
+      window.api.terminal.kill(oldSession)
+    }
     const cwd = vaultPath || '/'
     const newSessionId = await window.api.terminal.create(cwd)
     sessionIdRef.current = newSessionId

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { diffNodes, detectRenames } from '../../src/renderer/src/panels/graph/useGraphAnimation'
-import type { SimNode } from '../../src/renderer/src/panels/graph/GraphRenderer'
+import type { SimNode } from '../../src/renderer/src/panels/graph/graph-config'
 
 function makeNode(id: string, title: string = id, x: number = 0, y: number = 0): SimNode {
   return { id, title, type: 'note', signal: 'untested', connectionCount: 0, x, y }

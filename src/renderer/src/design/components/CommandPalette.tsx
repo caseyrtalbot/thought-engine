@@ -198,6 +198,8 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
   return (
     <div
       data-testid="command-palette"
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
@@ -218,6 +220,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
             value={query}
             onChange={handleQueryChange}
             placeholder="Search notes... (> for commands)"
+            aria-label="Command palette"
             className="w-full bg-transparent outline-none text-sm"
             style={{
               color: colors.text.primary,
@@ -229,7 +232,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
           />
         </div>
 
-        <div ref={listRef} className="max-h-80 overflow-y-auto py-2">
+        <div ref={listRef} role="listbox" className="max-h-80 overflow-y-auto py-2">
           {filtered.length === 0 && (
             <div className="px-4 py-6 text-center text-sm" style={{ color: colors.text.muted }}>
               No results found
@@ -260,6 +263,8 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
                   return (
                     <button
                       key={item.id}
+                      role="option"
+                      aria-selected={isSelected}
                       data-selected={isSelected}
                       className="w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors"
                       style={{
@@ -270,7 +275,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
                       onClick={() => handleSelect(item)}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
                     >
-                      <HighlightedLabel label={item.label} indices={(item as any).matchIndices} />
+                      <HighlightedLabel label={item.label} indices={item.matchIndices} />
 
                       {item.shortcut && (
                         <span

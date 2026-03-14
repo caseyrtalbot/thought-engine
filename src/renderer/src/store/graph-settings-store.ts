@@ -83,8 +83,6 @@ interface GraphSettingsState {
   setEnableRadial: (value: boolean) => void
 }
 
-let nextRuleId = 100
-
 export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => ({
   // Filters
   graphMode: 'global',
@@ -131,7 +129,7 @@ export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => 
       groupRules: [
         ...rules,
         {
-          id: String(nextRuleId++),
+          id: String(Date.now()),
           query: '',
           color: GROUP_COLOR_PALETTE[colorIndex]
         }

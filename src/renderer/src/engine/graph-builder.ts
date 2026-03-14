@@ -136,13 +136,21 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     }
   }
 
-  // Count connections per node
+  // Count connections per node (immutably)
+  const connectionCounts = new Map<string, number>()
   for (const edge of edges) {
-    const sourceNode = nodes.get(edge.source)
-    const targetNode = nodes.get(edge.target)
-    if (sourceNode) sourceNode.connectionCount++
-    if (targetNode && edge.kind !== 'appears_in') targetNode.connectionCount++
+    if (nodes.has(edge.source)) {
+      connectionCounts.set(edge.source, (connectionCounts.get(edge.source) ?? 0) + 1)
+    }
+    if (nodes.has(edge.target) && edge.kind !== 'appears_in') {
+      connectionCounts.set(edge.target, (connectionCounts.get(edge.target) ?? 0) + 1)
+    }
   }
 
-  return { nodes: Array.from(nodes.values()), edges }
+  const finalNodes = Array.from(nodes.values()).map((node) => ({
+    ...node,
+    connectionCount: connectionCounts.get(node.id) ?? 0
+  }))
+
+  return { nodes: finalNodes, edges }
 }

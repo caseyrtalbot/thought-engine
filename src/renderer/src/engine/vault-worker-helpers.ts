@@ -29,8 +29,15 @@ export function createWorkerHelpers() {
     clearErrorsForPath(path)
     const result = parseArtifact(content, path)
     if (result.ok) {
-      artifacts.set(result.value.id, result.value)
-      fileToId.set(path, result.value.id)
+      let id = result.value.id
+      if (artifacts.has(id)) {
+        let suffix = 2
+        while (artifacts.has(`${id}-${suffix}`)) suffix++
+        id = `${id}-${suffix}`
+      }
+      const artifact = id !== result.value.id ? { ...result.value, id } : result.value
+      artifacts.set(id, artifact)
+      fileToId.set(path, id)
     } else {
       errors.push({ filename: path, error: result.error })
     }

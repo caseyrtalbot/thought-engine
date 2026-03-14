@@ -5,7 +5,7 @@ import {
   easeOut,
   interpolateGlow
 } from '../../src/renderer/src/panels/graph/useGraphHighlight'
-import type { SimEdge } from '../../src/renderer/src/panels/graph/GraphRenderer'
+import type { SimEdge } from '../../src/renderer/src/panels/graph/graph-config'
 
 // ---------------------------------------------------------------------------
 // buildAdjacencyList

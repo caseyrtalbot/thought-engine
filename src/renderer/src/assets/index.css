@@ -329,7 +329,6 @@ body {
   color: var(--color-accent-default);
   background-color: var(--color-accent-muted);
   padding: 0.05em 0.3em;
-  border-radius: var(--color-border-default);
   border-radius: var(--radius-inline);
   cursor: pointer;
 }

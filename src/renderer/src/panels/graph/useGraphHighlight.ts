@@ -1,19 +1,8 @@
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react'
 import { useGraphStore } from '../../store/graph-store'
-import type { SimNode, SimEdge } from './graph-config'
+import type { SimNode, SimEdge, HighlightMode, HighlightState } from './graph-config'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type HighlightMode = 'idle' | 'hover' | 'click'
-
-export interface HighlightState {
-  mode: HighlightMode
-  focusedNodeId: string | null
-  connectedSet: ReadonlySet<string>
-  glowIntensity: number
-}
+export type { HighlightMode, HighlightState }
 
 // ---------------------------------------------------------------------------
 // Constants

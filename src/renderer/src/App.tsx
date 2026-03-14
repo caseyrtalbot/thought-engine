@@ -22,10 +22,17 @@ import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { StatusBar } from './components/StatusBar'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
-import type { ArtifactType } from '@shared/types'
+import type { Artifact, ArtifactType, KnowledgeGraph } from '@shared/types'
 import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile } from '@shared/canvas-types'
+
+interface WorkerResult {
+  artifacts: Artifact[]
+  graph: KnowledgeGraph
+  errors: ReadonlyArray<{ filename: string; error: string }>
+  fileToId: Record<string, string>
+}
 
 function ContentArea() {
   const contentView = useGraphStore((s) => s.contentView)
@@ -436,12 +443,12 @@ export default function App() {
   const setFiles = useVaultStore((s) => s.setFiles)
 
   const onWorkerResult = useCallback(
-    (result: { artifacts: any[]; graph: any; errors: any[]; fileToId: Record<string, string> }) => {
+    (result: WorkerResult) => {
       setWorkerResult(result)
       const files = useVaultStore.getState().files
       const updatedFiles = files.map((f) => {
         const id = result.fileToId[f.path]
-        const artifact = id ? result.artifacts.find((a: any) => a.id === id) : undefined
+        const artifact = id ? result.artifacts.find((a) => a.id === id) : undefined
         return artifact ? { ...f, title: artifact.title, modified: artifact.modified } : f
       })
       setFiles(updatedFiles)

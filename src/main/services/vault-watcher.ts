@@ -57,6 +57,7 @@ export class VaultWatcher {
       .on('add', handleEvent('add'))
       .on('change', handleEvent('change'))
       .on('unlink', handleEvent('unlink'))
+      .on('error', (err) => console.error('Vault watcher error:', err))
   }
 
   async stop(): Promise<void> {

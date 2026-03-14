@@ -17,8 +17,15 @@ export class VaultIndex {
     this.graphCache = null
     const result = parseArtifact(content, filename)
     if (result.ok) {
-      this.artifacts.set(result.value.id, result.value)
-      this.fileToId.set(filename, result.value.id)
+      let id = result.value.id
+      if (this.artifacts.has(id)) {
+        let suffix = 2
+        while (this.artifacts.has(`${id}-${suffix}`)) suffix++
+        id = `${id}-${suffix}`
+      }
+      const artifact = id !== result.value.id ? { ...result.value, id } : result.value
+      this.artifacts.set(id, artifact)
+      this.fileToId.set(filename, id)
     } else {
       this.errors.push({ filename, error: result.error })
     }
