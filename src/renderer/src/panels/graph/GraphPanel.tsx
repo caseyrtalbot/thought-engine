@@ -561,6 +561,12 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       dragNodeRef.current = null
       const canvas = canvasRef.current
 
+      // Always flag so handleClick doesn't fire after ANY drag gesture
+      wasJustDraggingRef.current = true
+      requestAnimationFrame(() => {
+        wasJustDraggingRef.current = false
+      })
+
       // Click = mousedown + mouseup with NO mousemove in between
       const isClick = !dragMovedRef.current
       if (isClick && draggedNode) {
@@ -579,12 +585,6 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
         highlightHook.handleClick(draggedNode.id)
         onNodeClick(draggedNode.id)
         if (canvas) canvas.style.cursor = 'grab'
-
-        // Flag so handleClick doesn't fire again on the same gesture
-        wasJustDraggingRef.current = true
-        requestAnimationFrame(() => {
-          wasJustDraggingRef.current = false
-        })
       } else {
         // Real drag: spring-back — unpin and let sim gently settle
         if (draggedNode) {
