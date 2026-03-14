@@ -31,6 +31,8 @@ const DEFAULT_GROUP_RULES: GroupRule[] = [
 
 interface GraphSettingsState {
   // Filters
+  graphMode: 'global' | 'local'
+  localGraphDepth: number
   searchQuery: string
   showOrphans: boolean
   showExistingOnly: boolean
@@ -55,6 +57,8 @@ interface GraphSettingsState {
   linkDistance: number
 
   // Setters
+  setGraphMode: (mode: 'global' | 'local') => void
+  setLocalGraphDepth: (depth: number) => void
   setSearchQuery: (value: string) => void
   setShowOrphans: (value: boolean) => void
   setShowExistingOnly: (value: boolean) => void
@@ -81,6 +85,8 @@ let nextRuleId = 100
 
 export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => ({
   // Filters
+  graphMode: 'global',
+  localGraphDepth: 2,
   searchQuery: '',
   showOrphans: true,
   showExistingOnly: false,
@@ -105,6 +111,8 @@ export const useGraphSettingsStore = create<GraphSettingsState>()((set, get) => 
   linkDistance: 50,
 
   // Setters
+  setGraphMode: (mode) => set({ graphMode: mode }),
+  setLocalGraphDepth: (depth) => set({ localGraphDepth: depth }),
   setSearchQuery: (value) => set({ searchQuery: value }),
   setShowOrphans: (value) => set({ showOrphans: value }),
   setShowExistingOnly: (value) => set({ showExistingOnly: value }),

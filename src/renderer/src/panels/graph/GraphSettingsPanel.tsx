@@ -67,15 +67,7 @@ interface SliderRowProps {
   formatValue?: (v: number) => string
 }
 
-function SliderRow({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  formatValue
-}: SliderRowProps) {
+function SliderRow({ label, value, min, max, step, onChange, formatValue }: SliderRowProps) {
   const display = formatValue ? formatValue(value) : String(value)
   return (
     <div className="flex flex-col gap-1 py-1.5">
@@ -225,6 +217,10 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
   })
 
   // Filters
+  const graphMode = useGraphSettingsStore((s) => s.graphMode)
+  const setGraphMode = useGraphSettingsStore((s) => s.setGraphMode)
+  const localGraphDepth = useGraphSettingsStore((s) => s.localGraphDepth)
+  const setLocalGraphDepth = useGraphSettingsStore((s) => s.setLocalGraphDepth)
   const searchQuery = useGraphSettingsStore((s) => s.searchQuery)
   const setSearchQuery = useGraphSettingsStore((s) => s.setSearchQuery)
   const showOrphans = useGraphSettingsStore((s) => s.showOrphans)
@@ -318,6 +314,32 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
           />
           {openSections.filters && (
             <div className="pb-3 space-y-2">
+              {/* Graph Mode */}
+              <div className="flex gap-2 mb-3">
+                <TogglePill
+                  label="Global"
+                  active={graphMode === 'global'}
+                  onToggle={() => setGraphMode('global')}
+                />
+                <TogglePill
+                  label="Local"
+                  active={graphMode === 'local'}
+                  onToggle={() => setGraphMode('local')}
+                />
+              </div>
+
+              {graphMode === 'local' && (
+                <SliderRow
+                  label="Depth"
+                  value={localGraphDepth}
+                  min={1}
+                  max={5}
+                  step={1}
+                  formatValue={(v) => `${v} hops`}
+                  onChange={setLocalGraphDepth}
+                />
+              )}
+
               <input
                 type="text"
                 value={searchQuery}
@@ -331,7 +353,11 @@ export function GraphSettingsPanel({ isOpen, onClose }: GraphSettingsPanelProps)
                 }}
               />
               <div className="flex flex-wrap gap-1.5">
-                <TogglePill label="Tags" active={showTags} onToggle={() => setShowTags(!showTags)} />
+                <TogglePill
+                  label="Tags"
+                  active={showTags}
+                  onToggle={() => setShowTags(!showTags)}
+                />
                 <TogglePill
                   label="Attachments"
                   active={showAttachments}
