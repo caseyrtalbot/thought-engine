@@ -1,19 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { CanvasSurface } from './CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
-import { createCanvasNode, type CanvasNode } from '@shared/canvas-types'
+import { createCanvasNode, type CanvasNode, type CanvasNodeType } from '@shared/canvas-types'
 import { CanvasContextMenu } from './CanvasContextMenu'
-import { TextCard } from './TextCard'
-import { NoteCard } from './NoteCard'
-import { TerminalCard } from './TerminalCard'
+import { LazyCards } from './card-registry'
+import { CardShellSkeleton } from './CardShellSkeleton'
+import { CardLodPreview } from './CardLodPreview'
 import { EdgeLayer } from './EdgeLayer'
 import { ConnectionDragOverlay } from './ConnectionDragOverlay'
 import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
 import { CanvasToolbar } from './CanvasToolbar'
+import { CanvasMinimap } from './CanvasMinimap'
+import { GraphImportPalette } from './GraphImportPalette'
+import { inferLanguage, type DragFileData } from './file-drop-utils'
+import { useViewportCulling } from './use-canvas-culling'
+import { getLodLevel } from './use-canvas-lod'
 
 export function CanvasView() {
   const nodes = useCanvasStore((s) => s.nodes)
+  const viewport = useCanvasStore((s) => s.viewport)
   const clearSelection = useCanvasStore((s) => s.clearSelection)
   const addNode = useCanvasStore((s) => s.addNode)
   const filePath = useCanvasStore((s) => s.filePath)
@@ -21,6 +27,31 @@ export function CanvasView() {
   const toCanvasFile = useCanvasStore((s) => s.toCanvasFile)
   const markSaved = useCanvasStore((s) => s.markSaved)
   const commandStack = useRef(new CommandStack())
+
+  // Track container size for viewport culling
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
+  const [importOpen, setImportOpen] = useState(false)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) {
+        setContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        })
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Performance: only render nodes visible in the viewport
+  const visibleNodes = useViewportCulling(nodes, viewport, containerSize)
+  const lod = getLodLevel(viewport.zoom)
 
   const addNodeWithUndo = useCallback(
     (node: CanvasNode) => {
@@ -31,6 +62,10 @@ export function CanvasView() {
     },
     [addNode]
   )
+
+  const handleImportExecute = useCallback((execute: () => void, undo: () => void) => {
+    commandStack.current.execute({ execute, undo })
+  }, [])
 
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -52,16 +87,94 @@ export function CanvasView() {
   }, [clearSelection])
 
   const handleAddCard = useCallback(
-    (type: 'text' | 'note' | 'terminal') => {
+    (type: CanvasNodeType, overrides?: Partial<Pick<CanvasNode, 'content' | 'metadata'>>) => {
       if (!contextMenu) return
-      const node = createCanvasNode(type, {
-        x: contextMenu.canvasX,
-        y: contextMenu.canvasY
-      })
+      const node = createCanvasNode(
+        type,
+        { x: contextMenu.canvasX, y: contextMenu.canvasY },
+        overrides
+      )
       addNodeWithUndo(node)
       setContextMenu(null)
     },
     [contextMenu, addNodeWithUndo]
+  )
+
+  const handleFileDrop = useCallback(
+    async (canvasX: number, canvasY: number, dataJson: string) => {
+      let files: DragFileData[]
+      try {
+        const parsed = JSON.parse(dataJson)
+        // Support both single file and array
+        files = Array.isArray(parsed) ? parsed : [parsed]
+      } catch {
+        return
+      }
+
+      const STACK_OFFSET = 20
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const x = canvasX + i * STACK_OFFSET
+        const y = canvasY + i * STACK_OFFSET
+
+        if (file.type === 'note') {
+          // Vault note: content is the file path
+          const node = createCanvasNode('note', { x, y }, { content: file.path })
+          addNodeWithUndo(node)
+        } else if (file.type === 'image') {
+          // Image: metadata.src is the file path
+          const node = createCanvasNode(
+            'image',
+            { x, y },
+            {
+              metadata: { src: file.path, alt: file.path.split('/').pop() ?? '' }
+            }
+          )
+          addNodeWithUndo(node)
+        } else if (file.type === 'code') {
+          // Code file: read content, set language
+          try {
+            const content = await window.api.fs.readFile(file.path)
+            const language = inferLanguage(file.path)
+            const filename = file.path.split('/').pop() ?? ''
+            const node = createCanvasNode(
+              'code',
+              { x, y },
+              {
+                content,
+                metadata: { language, filename }
+              }
+            )
+            addNodeWithUndo(node)
+          } catch {
+            // Fallback: create empty code card with filename
+            const node = createCanvasNode(
+              'code',
+              { x, y },
+              {
+                metadata: {
+                  language: inferLanguage(file.path),
+                  filename: file.path.split('/').pop()
+                }
+              }
+            )
+            addNodeWithUndo(node)
+          }
+        } else {
+          // Text fallback
+          try {
+            const content = await window.api.fs.readFile(file.path)
+            const node = createCanvasNode('text', { x, y }, { content })
+            addNodeWithUndo(node)
+          } catch {
+            const node = createCanvasNode('text', { x, y })
+            addNodeWithUndo(node)
+          }
+        }
+      }
+    },
+    [addNodeWithUndo]
   )
 
   useEffect(() => {
@@ -97,6 +210,15 @@ export function CanvasView() {
       } else if (e.key === 'z' && e.shiftKey) {
         e.preventDefault()
         commandStack.current.redo()
+      } else if (e.key === 'g') {
+        // Only handle when canvas is active (not when user is in editor/terminal)
+        if (
+          !containerRef.current?.contains(document.activeElement) &&
+          document.activeElement !== document.body
+        )
+          return
+        e.preventDefault()
+        setImportOpen(true)
       }
     }
     window.addEventListener('keydown', handler)
@@ -114,7 +236,7 @@ export function CanvasView() {
   }, [filePath, isDirty, toCanvasFile, markSaved])
 
   return (
-    <div className="h-full relative">
+    <div ref={containerRef} className="h-full relative">
       <CanvasToolbar
         canUndo={commandStack.current.canUndo()}
         canRedo={commandStack.current.canRedo()}
@@ -128,32 +250,45 @@ export function CanvasView() {
           })
           addNodeWithUndo(node)
         }}
+        onOpenImport={() => setImportOpen(true)}
       />
-      <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
+      <CanvasSurface
+        onDoubleClick={handleDoubleClick}
+        onBackgroundClick={handleBackgroundClick}
+        onFileDrop={handleFileDrop}
+      >
         <EdgeLayer />
-        {nodes.map((node) => {
-          switch (node.type) {
-            case 'text':
-              return <TextCard key={node.id} node={node} />
-            case 'note':
-              return <NoteCard key={node.id} node={node} />
-            case 'terminal':
-              return <TerminalCard key={node.id} node={node} />
-            default:
-              return null
+        {visibleNodes.map((node) => {
+          if (lod === 'dot' || lod === 'preview') {
+            return <CardLodPreview key={node.id} node={node} lod={lod} />
           }
+          const Card = LazyCards[node.type]
+          if (!Card) return null
+          return (
+            <Suspense key={node.id} fallback={<CardShellSkeleton node={node} />}>
+              <Card node={node} />
+            </Suspense>
+          )
         })}
       </CanvasSurface>
 
       <ConnectionDragOverlay />
 
+      <CanvasMinimap containerWidth={containerSize.width} containerHeight={containerSize.height} />
+
+      <GraphImportPalette
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImportExecute}
+        containerWidth={containerSize.width}
+        containerHeight={containerSize.height}
+      />
+
       {contextMenu && (
         <CanvasContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          onAddCard={() => handleAddCard('text')}
-          onAddNote={() => handleAddCard('note')}
-          onAddTerminal={() => handleAddCard('terminal')}
+          onAddCard={handleAddCard}
           onClose={() => setContextMenu(null)}
         />
       )}

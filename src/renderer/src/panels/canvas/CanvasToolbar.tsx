@@ -7,16 +7,22 @@ interface CanvasToolbarProps {
   onUndo: () => void
   onRedo: () => void
   onAddCard: () => void
+  onOpenImport: () => void
 }
 
-export function CanvasToolbar({ canUndo, canRedo, onUndo, onRedo, onAddCard }: CanvasToolbarProps) {
+export function CanvasToolbar({
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onAddCard,
+  onOpenImport
+}: CanvasToolbarProps) {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
 
-  const zoomIn = () =>
-    setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
-  const zoomOut = () =>
-    setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
+  const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
+  const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
   const resetZoom = () => setViewport({ x: 0, y: 0, zoom: 1 })
 
   const zoomPercent = Math.round(viewport.zoom * 100)
@@ -64,6 +70,23 @@ export function CanvasToolbar({ canUndo, canRedo, onUndo, onRedo, onAddCard }: C
           <line x1="2" y1="7" x2="12" y2="7" />
         </svg>
       </button>
+      <button onClick={onOpenImport} style={btnStyle} title="Import from graph">
+        <svg
+          width={14}
+          height={14}
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <circle cx="3" cy="3" r="1.5" />
+          <circle cx="11" cy="3" r="1.5" />
+          <circle cx="7" cy="11" r="1.5" />
+          <line x1="4.2" y1="3.8" x2="5.8" y2="9.8" />
+          <line x1="9.8" y1="3.8" x2="8.2" y2="9.8" />
+          <line x1="4.5" y1="3" x2="9.5" y2="3" />
+        </svg>
+      </button>
 
       <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
 
@@ -83,11 +106,7 @@ export function CanvasToolbar({ canUndo, canRedo, onUndo, onRedo, onAddCard }: C
 
       <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
 
-      <button
-        onClick={onUndo}
-        style={canUndo ? btnStyle : disabledStyle}
-        title="Undo (Cmd+Z)"
-      >
+      <button onClick={onUndo} style={canUndo ? btnStyle : disabledStyle} title="Undo (Cmd+Z)">
         <svg
           width={14}
           height={14}
