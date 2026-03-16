@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
 import type { Artifact } from '@shared/types'
-import { colors, transitions } from '../../design/tokens'
-import { getArtifactColor } from '../../design/tokens'
+import { colors, transitions, getArtifactColor } from '../../design/tokens'
 import { serializeFrontmatter } from './markdown-utils'
 
 // ── Types ──
@@ -151,7 +150,6 @@ interface PropertyRowProps {
 
 function PropertyRow({ propKey, value, onChangeValue, onRemove }: PropertyRowProps) {
   const isTagField = propKey.toLowerCase() === 'tags'
-  const icon = getPropertyIcon(propKey)
 
   const labelStyle = {
     color: colors.text.muted,
@@ -162,21 +160,22 @@ function PropertyRow({ propKey, value, onChangeValue, onRemove }: PropertyRowPro
   }
 
   if (isTagField) {
-    const tagArray = Array.isArray(value)
-      ? value.map(String)
-      : typeof value === 'string'
-        ? value
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : []
+    let tagArray: string[] = []
+    if (Array.isArray(value)) {
+      tagArray = value.map(String)
+    } else if (typeof value === 'string') {
+      tagArray = value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
     return (
       <div className="flex items-start gap-3 py-1 group">
         <span className="shrink-0" style={{ ...labelStyle, minWidth: 80 }}>
           {propKey}
         </span>
         <div className="flex-1">
-          <TagInput tags={tagArray} onChange={(tags) => onChangeValue(tags)} />
+          <TagInput tags={tagArray} onChange={onChangeValue} />
         </div>
         <button
           type="button"
@@ -356,15 +355,7 @@ export function FrontmatterHeader({
 
   const dispatchChange = (updated: Record<string, string | string[]>) => {
     if (!onFrontmatterChange) return
-    const clean: Record<string, string | readonly string[]> = {}
-    for (const [k, v] of Object.entries(updated)) {
-      if (Array.isArray(v)) {
-        clean[k] = v
-      } else {
-        clean[k] = String(v)
-      }
-    }
-    const raw = serializeFrontmatter(clean)
+    const raw = serializeFrontmatter(updated)
     onFrontmatterChange(raw)
   }
 
@@ -374,9 +365,8 @@ export function FrontmatterHeader({
   }
 
   const handlePropertyRemove = (key: string) => {
-    const updated = { ...properties }
-    delete updated[key]
-    dispatchChange(updated)
+    const { [key]: _, ...remaining } = properties
+    dispatchChange(remaining)
   }
 
   const handleAddProperty = (key: string) => {
@@ -459,42 +449,7 @@ export function FrontmatterHeader({
               ))}
 
             {/* Relationship blocks */}
-            {artifact &&
-              (artifact.connections.length > 0 ||
-                artifact.clusters_with.length > 0 ||
-                artifact.tensions_with.length > 0 ||
-                artifact.appears_in.length > 0) && (
-                <div className="space-y-1.5 pt-2 mt-2">
-                  {artifact.connections.length > 0 && (
-                    <RelationshipRow
-                      label="Connections"
-                      ids={artifact.connections}
-                      onNavigate={onNavigate}
-                    />
-                  )}
-                  {artifact.clusters_with.length > 0 && (
-                    <RelationshipRow
-                      label="Clusters with"
-                      ids={artifact.clusters_with}
-                      onNavigate={onNavigate}
-                    />
-                  )}
-                  {artifact.tensions_with.length > 0 && (
-                    <RelationshipRow
-                      label="Tensions with"
-                      ids={artifact.tensions_with}
-                      onNavigate={onNavigate}
-                    />
-                  )}
-                  {artifact.appears_in.length > 0 && (
-                    <RelationshipRow
-                      label="Appears in"
-                      ids={artifact.appears_in}
-                      onNavigate={onNavigate}
-                    />
-                  )}
-                </div>
-              )}
+            {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
 
             <div className="mt-2">
               <AddPropertyButton existingKeys={Object.keys(properties)} onAdd={handleAddProperty} />
@@ -502,6 +457,33 @@ export function FrontmatterHeader({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Relationship Section ──
+
+const RELATIONSHIP_FIELDS = [
+  { key: 'connections', label: 'Connections' },
+  { key: 'clusters_with', label: 'Clusters with' },
+  { key: 'tensions_with', label: 'Tensions with' },
+  { key: 'appears_in', label: 'Appears in' }
+] as const
+
+interface RelationshipSectionProps {
+  artifact: Artifact
+  onNavigate?: (id: string) => void
+}
+
+function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps) {
+  const rows = RELATIONSHIP_FIELDS.filter(({ key }) => artifact[key].length > 0)
+  if (rows.length === 0) return null
+
+  return (
+    <div className="space-y-1.5 pt-2 mt-2">
+      {rows.map(({ key, label }) => (
+        <RelationshipRow key={key} label={label} ids={artifact[key]} onNavigate={onNavigate} />
+      ))}
     </div>
   )
 }

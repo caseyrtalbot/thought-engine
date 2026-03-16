@@ -7,9 +7,17 @@ export type ArtifactId = string & { readonly __brand: 'ArtifactId' }
 export type FilePath = string & { readonly __brand: 'FilePath' }
 export type SessionId = string & { readonly __brand: 'SessionId' }
 
-export const artifactId = (id: string): ArtifactId => id as ArtifactId
-export const filePath = (path: string): FilePath => path as FilePath
-export const sessionId = (id: string): SessionId => id as SessionId
+export function artifactId(id: string): ArtifactId {
+  return id as ArtifactId
+}
+
+export function filePath(path: string): FilePath {
+  return path as FilePath
+}
+
+export function sessionId(id: string): SessionId {
+  return id as SessionId
+}
 
 // ---------------------------------------------------------------------------
 

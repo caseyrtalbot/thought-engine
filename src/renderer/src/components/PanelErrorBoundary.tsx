@@ -47,7 +47,7 @@ export class PanelErrorBoundary extends Component<Props, State> {
               style={{
                 backgroundColor: colors.accent.muted,
                 color: colors.accent.default,
-                border: `1px solid ${colors.border.default}`,
+                border: `1px solid ${colors.border.default}`
               }}
             >
               Retry
@@ -67,7 +67,7 @@ export class PanelErrorBoundary extends Component<Props, State> {
                 style={{
                   backgroundColor: colors.bg.base,
                   color: colors.text.secondary,
-                  fontFamily: '"JetBrains Mono", monospace',
+                  fontFamily: '"JetBrains Mono", monospace'
                 }}
               >
                 {this.state.error.message}

@@ -55,6 +55,21 @@ function pushHistory(
   return { stack: [...truncated, path], index: truncated.length }
 }
 
+/**
+ * Save current content if dirty. Fire-and-forget so callers stay synchronous.
+ * Used internally by store actions before switching away from the active file.
+ */
+function flushIfDirty(state: {
+  isDirty: boolean
+  activeNotePath: string | null
+  content: string
+}): void {
+  if (!state.isDirty || !state.activeNotePath || !state.content) return
+  window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
+    useEditorStore.setState({ isDirty: true })
+  })
+}
+
 export const useEditorStore = create<EditorStore>((set, get) => ({
   activeNoteId: null,
   activeNotePath: null,
@@ -74,11 +89,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }
 
     const state = get()
-    if (state.isDirty && state.activeNotePath && state.content) {
-      window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
-    }
+    flushIfDirty(state)
     const title = titleFromPath(path)
     const tabs = state.openTabs.some((t) => t.path === path)
       ? state.openTabs
@@ -104,12 +115,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   openTab: (path, title) => {
     const state = get()
-    // Flush pending save for current file before switching
-    if (state.isDirty && state.activeNotePath && state.content) {
-      window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
-    }
+    flushIfDirty(state)
     const resolvedTitle = title ?? titleFromPath(path)
     const tabs = state.openTabs.some((t) => t.path === path)
       ? state.openTabs
@@ -128,11 +134,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   closeTab: (path) => {
     const state = get()
-    // Flush any pending save for the file being closed
-    if (state.activeNotePath === path && state.isDirty && state.content) {
-      window.api.fs.writeFile(path, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
+    if (state.activeNotePath === path) {
+      flushIfDirty(state)
     }
     const tabs = state.openTabs.filter((t) => t.path !== path)
 
@@ -153,12 +156,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   switchTab: (path) => {
     const state = get()
-    // Flush any pending save for the current file before switching
-    if (state.isDirty && state.activeNotePath && state.content) {
-      window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
-    }
+    flushIfDirty(state)
     if (state.activeNotePath === path) return
     const history = pushHistory(state.historyStack, state.historyIndex, path)
 
@@ -173,11 +171,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   goBack: () => {
     const state = get()
-    if (state.isDirty && state.activeNotePath && state.content) {
-      window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
-    }
+    flushIfDirty(state)
     if (state.historyIndex <= 0) return
     const newIndex = state.historyIndex - 1
     const path = state.historyStack[newIndex]
@@ -192,11 +186,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   goForward: () => {
     const state = get()
-    if (state.isDirty && state.activeNotePath && state.content) {
-      window.api.fs.writeFile(state.activeNotePath, state.content).catch(() => {
-        useEditorStore.setState({ isDirty: true })
-      })
-    }
+    flushIfDirty(state)
     if (state.historyIndex >= state.historyStack.length - 1) return
     const newIndex = state.historyIndex + 1
     const path = state.historyStack[newIndex]
@@ -212,10 +202,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
 /** Immediately save current content if dirty. Fire-and-forget for responsiveness. */
 export function flushPendingSave(): void {
-  const { isDirty, content, activeNotePath } = useEditorStore.getState()
-  if (!isDirty || !activeNotePath || !content) return
+  const state = useEditorStore.getState()
+  if (!state.isDirty || !state.activeNotePath || !state.content) return
   window.api.fs
-    .writeFile(activeNotePath, content)
+    .writeFile(state.activeNotePath, state.content)
     .then(() => useEditorStore.getState().markSaved())
     .catch(() => {
       useEditorStore.setState({ isDirty: true })

@@ -1,11 +1,7 @@
 import type { Artifact, KnowledgeGraph } from '@shared/types'
+import type { ParseError } from './types'
 import { parseArtifact } from './parser'
 import { buildGraph } from './graph-builder'
-
-interface ParseError {
-  filename: string
-  error: string
-}
 
 export class VaultIndex {
   private artifacts = new Map<string, Artifact>()

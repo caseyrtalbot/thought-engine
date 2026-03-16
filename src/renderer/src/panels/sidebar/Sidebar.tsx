@@ -1,14 +1,13 @@
 import { useState, useCallback } from 'react'
+
+import { colors } from '../../design/tokens'
+import { FileContextMenu } from './FileContextMenu'
+import { FileTree } from './FileTree'
 import { SearchBar } from './SearchBar'
 import { WorkspaceFilter } from './WorkspaceFilter'
-import { FileTree } from './FileTree'
-import { FileContextMenu } from './FileContextMenu'
-import type { FileContextMenuState } from './FileContextMenu'
-import type { FlatTreeNode } from './buildFileTree'
 import type { ArtifactType } from '@shared/types'
-import { colors } from '../../design/tokens'
-
-const hoverBgStyle = { '--color-bg-elevated': colors.bg.elevated } as React.CSSProperties
+import type { FlatTreeNode } from './buildFileTree'
+import type { FileContextMenuState } from './FileContextMenu'
 
 type SortMode = 'modified' | 'name' | 'type'
 
@@ -52,12 +51,11 @@ function ActionBar({
   return (
     <div
       className="flex items-center gap-1 px-2 py-1 border-b text-xs"
-      style={{ borderColor: 'var(--border-subtle)', color: colors.text.secondary }}
+      style={{ borderColor: colors.border.subtle, color: colors.text.secondary }}
     >
       <button
         onClick={onNewFile}
         className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
-        style={hoverBgStyle}
         title="New file"
       >
         + File
@@ -65,7 +63,6 @@ function ActionBar({
       <button
         onClick={onNewFolder}
         className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
-        style={hoverBgStyle}
         title="Open a different vault"
       >
         Open Vault
@@ -131,26 +128,22 @@ export function Sidebar({
   const handleRenameConfirm = useCallback(
     (newName: string) => {
       if (!renamingPath) return
-      onFileAction?.({ actionId: 'rename-confirm', path: renamingPath, isDirectory: false })
-      // The actual rename is handled by the parent via the newName
-      // We pass it through a slightly different mechanism
+      const node = nodes.find((n) => n.path === renamingPath)
+      const isDirectory = node?.isDirectory ?? false
+      onFileAction?.({ actionId: 'rename-confirm', path: renamingPath, isDirectory })
       const parentDir = renamingPath.split('/').slice(0, -1).join('/')
       const newPath = `${parentDir}/${newName}`
       window.api.fs
         .renameFile(renamingPath, newPath)
-        .then(() => {
-          setRenamingPath(null)
-        })
-        .catch(() => {
-          setRenamingPath(null)
-        })
+        .then(() => setRenamingPath(null))
+        .catch(() => setRenamingPath(null))
     },
-    [renamingPath, onFileAction]
+    [renamingPath, nodes, onFileAction]
   )
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+      <div className="p-2 border-b" style={{ borderColor: colors.border.subtle }}>
         <SearchBar onSearch={onSearch} />
       </div>
       <ActionBar

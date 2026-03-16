@@ -9,7 +9,19 @@ interface ToolbarButtonProps {
   children: React.ReactNode
 }
 
-function ToolbarButton({ onClick, active = false, disabled = false, title, children }: ToolbarButtonProps) {
+function resolveButtonColor(active: boolean, disabled: boolean): string {
+  if (active) return colors.accent.default
+  if (disabled) return colors.text.muted
+  return colors.text.secondary
+}
+
+function ToolbarButton({
+  onClick,
+  active = false,
+  disabled = false,
+  title,
+  children
+}: ToolbarButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -18,11 +30,11 @@ function ToolbarButton({ onClick, active = false, disabled = false, title, child
       className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors"
       style={{
         backgroundColor: active ? colors.accent.muted : 'transparent',
-        color: active ? colors.accent.default : disabled ? colors.text.muted : colors.text.secondary,
+        color: resolveButtonColor(active, disabled),
         transition: transitions.default,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
-        borderRadius: 4,
+        borderRadius: 4
       }}
     >
       {children}
@@ -31,12 +43,7 @@ function ToolbarButton({ onClick, active = false, disabled = false, title, child
 }
 
 function ToolbarSeparator() {
-  return (
-    <div
-      className="w-px h-4 mx-1"
-      style={{ backgroundColor: colors.border.default }}
-    />
-  )
+  return <div className="w-px h-4 mx-1" style={{ backgroundColor: colors.border.default }} />
 }
 
 interface EditorToolbarProps {
@@ -54,7 +61,7 @@ export function EditorToolbar({ editor, mode, onToggleMode }: EditorToolbarProps
         backgroundColor: colors.accent.muted,
         color: colors.accent.default,
         transition: transitions.default,
-        borderRadius: 4,
+        borderRadius: 4
       }}
     >
       {mode === 'rich' ? 'Rich' : 'Source'}
@@ -68,7 +75,7 @@ export function EditorToolbar({ editor, mode, onToggleMode }: EditorToolbarProps
         style={{
           height: 36,
           backgroundColor: colors.bg.surface,
-          borderBottom: `1px solid ${colors.border.default}`,
+          borderBottom: `1px solid ${colors.border.default}`
         }}
       >
         {modeToggle}
@@ -82,7 +89,7 @@ export function EditorToolbar({ editor, mode, onToggleMode }: EditorToolbarProps
       style={{
         height: 36,
         backgroundColor: colors.bg.surface,
-        borderBottom: `1px solid ${colors.border.default}`,
+        borderBottom: `1px solid ${colors.border.default}`
       }}
     >
       {/* History */}

@@ -21,12 +21,8 @@ export class FileService {
 
   async listFiles(dir: string, pattern?: string): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true })
-    let files = entries.filter((e) => e.isFile()).map((e) => join(dir, e.name))
-
-    if (pattern === '*.md') {
-      files = files.filter((f) => extname(f) === '.md')
-    }
-
+    const files = entries.filter((e) => e.isFile()).map((e) => join(dir, e.name))
+    if (pattern === '*.md') return files.filter((f) => extname(f) === '.md')
     return files
   }
 

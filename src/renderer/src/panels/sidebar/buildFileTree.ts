@@ -7,14 +7,7 @@ export interface FlatTreeNode {
   itemCount: number
 }
 
-interface DirEntry {
-  name: string
-  path: string
-  parentPath: string
-  depth: number
-}
-
-interface FileEntry {
+interface TreeEntry {
   name: string
   path: string
   parentPath: string
@@ -30,8 +23,8 @@ export function buildFileTree(filePaths: string[], vaultRoot: string): FlatTreeN
   const root = vaultRoot.endsWith('/') ? vaultRoot.slice(0, -1) : vaultRoot
 
   // Collect phase: register all directories and files
-  const dirs = new Map<string, DirEntry>()
-  const files: FileEntry[] = []
+  const dirs = new Map<string, TreeEntry>()
+  const files: TreeEntry[] = []
 
   for (const filePath of filePaths) {
     // Strip vault root prefix to get relative path segments

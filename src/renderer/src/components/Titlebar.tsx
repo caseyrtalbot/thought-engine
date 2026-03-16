@@ -39,6 +39,7 @@ export function Titlebar({ vaultName, onOpenSettings }: TitlebarProps) {
       <div className="flex-1" />
       {/* Settings gear */}
       <button
+        type="button"
         onClick={onOpenSettings}
         className="p-1.5 rounded transition-opacity"
         style={

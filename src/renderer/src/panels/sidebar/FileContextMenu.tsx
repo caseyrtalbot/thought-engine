@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+
 import { colors, transitions } from '../../design/tokens'
 
 export interface ContextMenuAction {
@@ -130,9 +131,7 @@ export function FileContextMenu({ state, onClose, onAction }: FileContextMenuPro
           >
             <span>{action.label}</span>
             {action.shortcut && (
-              <span style={{ color: colors.text.muted, fontSize: '11px' }}>
-                {action.shortcut}
-              </span>
+              <span style={{ color: colors.text.muted, fontSize: '11px' }}>{action.shortcut}</span>
             )}
           </button>
           {action.separator && (
@@ -171,8 +170,6 @@ function useAdjustedPosition(
 
   return pos
 }
-
-// ── Inline rename input ──
 
 interface RenameInputProps {
   initialValue: string

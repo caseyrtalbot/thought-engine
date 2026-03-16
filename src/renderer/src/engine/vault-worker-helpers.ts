@@ -1,20 +1,16 @@
 import { parseArtifact } from './parser'
 import { buildGraph } from './graph-builder'
-import type { Artifact, KnowledgeGraph } from '@shared/types'
+import type { Artifact } from '@shared/types'
+import type { ParseError, WorkerResult } from './types'
 
-interface ParseError {
-  filename: string
-  error: string
+interface WorkerHelpers {
+  addFile: (path: string, content: string) => void
+  removeFile: (path: string) => void
+  buildResult: () => WorkerResult
+  clearAll: () => void
 }
 
-interface WorkerResult {
-  artifacts: Artifact[]
-  graph: KnowledgeGraph
-  errors: ParseError[]
-  fileToId: Record<string, string>
-}
-
-export function createWorkerHelpers() {
+export function createWorkerHelpers(): WorkerHelpers {
   const artifacts = new Map<string, Artifact>()
   const fileToId = new Map<string, string>()
   const errors: ParseError[] = []

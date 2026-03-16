@@ -45,7 +45,11 @@ function applyThemeCssVars(colors: ResolvedColors): void {
   }
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+interface ThemeProviderProps {
+  children: ReactNode
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
   const theme = useSettingsStore((s) => s.theme)
   const accentColor = useSettingsStore((s) => s.accentColor)
 
@@ -63,7 +67,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useTheme() {
+export function useTheme(): ThemeContextType {
   return useContext(ThemeContext)
 }
 

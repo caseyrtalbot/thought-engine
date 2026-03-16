@@ -5,16 +5,21 @@ vi.mock('../parser', () => ({
   parseArtifact: vi.fn((content: string, path: string) => {
     if (content === 'INVALID') return { ok: false, error: `Parse error in ${path}` }
     return { ok: true, value: { id: `id-${path}`, title: path, modified: '2026-01-01' } }
-  }),
+  })
 }))
 
 vi.mock('../graph-builder', () => ({
-  buildGraph: vi.fn((artifacts: any[]) => ({ nodes: artifacts.map((a: any) => ({ id: a.id })), edges: [] })),
+  buildGraph: vi.fn((artifacts: any[]) => ({
+    nodes: artifacts.map((a: any) => ({ id: a.id })),
+    edges: []
+  }))
 }))
 
 describe('vault-worker helpers', () => {
   let helpers: ReturnType<typeof createWorkerHelpers>
-  beforeEach(() => { helpers = createWorkerHelpers() })
+  beforeEach(() => {
+    helpers = createWorkerHelpers()
+  })
 
   it('addFile stores artifact on successful parse', () => {
     helpers.addFile('test.md', '# Hello')

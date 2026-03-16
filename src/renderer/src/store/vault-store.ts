@@ -1,10 +1,6 @@
 import { create } from 'zustand'
 import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
-
-interface ParseError {
-  readonly filename: string
-  readonly error: string
-}
+import type { ParseError, WorkerResult } from '@engine/types'
 
 interface VaultFile {
   readonly path: string
@@ -32,12 +28,7 @@ interface VaultStore {
   setFiles: (files: VaultFile[]) => void
   setActiveWorkspace: (workspace: string | null) => void
   loadVault: (vaultPath: string) => Promise<void>
-  setWorkerResult: (result: {
-    artifacts: Artifact[]
-    graph: KnowledgeGraph
-    errors: ParseError[]
-    fileToId: Record<string, string>
-  }) => void
+  setWorkerResult: (result: WorkerResult) => void
   getBacklinks: (targetId: string) => Artifact[]
 }
 

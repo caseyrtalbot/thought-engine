@@ -35,21 +35,24 @@ export interface ResolvedColors {
 
 // ── Color math ──────────────────────────────────────────────────────────
 
+function parseHex(hex: string): [number, number, number] {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16)
+  ]
+}
+
 function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
+  const [r, g, b] = parseHex(hex)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 function lightenHex(hex: string, factor: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const lr = Math.min(255, Math.round(r + (255 - r) * factor))
-  const lg = Math.min(255, Math.round(g + (255 - g) * factor))
-  const lb = Math.min(255, Math.round(b + (255 - b) * factor))
-  return `#${lr.toString(16).padStart(2, '0')}${lg.toString(16).padStart(2, '0')}${lb.toString(16).padStart(2, '0')}`
+  const [r, g, b] = parseHex(hex)
+  const lighten = (c: number): number => Math.min(255, Math.round(c + (255 - c) * factor))
+  const toHex = (n: number): string => n.toString(16).padStart(2, '0')
+  return `#${toHex(lighten(r))}${toHex(lighten(g))}${toHex(lighten(b))}`
 }
 
 export function computeAccentVariants(hex: string): {

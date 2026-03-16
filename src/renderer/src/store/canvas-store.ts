@@ -92,16 +92,16 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   addNode: (node) => set((s) => ({ nodes: [...s.nodes, node], isDirty: true })),
 
   removeNode: (id) =>
-    set((s) => ({
-      nodes: s.nodes.filter((n) => n.id !== id),
-      edges: s.edges.filter((e) => e.fromNode !== id && e.toNode !== id),
-      selectedNodeIds: (() => {
-        const next = new Set(s.selectedNodeIds)
-        next.delete(id)
-        return next
-      })(),
-      isDirty: true
-    })),
+    set((s) => {
+      const selectedNodeIds = new Set(s.selectedNodeIds)
+      selectedNodeIds.delete(id)
+      return {
+        nodes: s.nodes.filter((n) => n.id !== id),
+        edges: s.edges.filter((e) => e.fromNode !== id && e.toNode !== id),
+        selectedNodeIds,
+        isDirty: true
+      }
+    }),
 
   moveNode: (id, position) =>
     set((s) => ({

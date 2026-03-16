@@ -261,16 +261,13 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
     )
   }
 
-  const filePath = activeNotePath ?? ''
-  const resolvedVaultPath = vaultPath ?? ''
-
   return (
     <div className="h-full flex flex-col">
       <TabBar tabs={openTabs} activePath={activeNotePath} onSwitch={switchTab} onClose={closeTab} />
 
       <EditorBreadcrumb
-        filePath={filePath}
-        vaultPath={resolvedVaultPath}
+        filePath={activeNotePath}
+        vaultPath={vaultPath ?? ''}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={goBack}

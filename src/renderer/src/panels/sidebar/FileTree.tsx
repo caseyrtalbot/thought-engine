@@ -1,9 +1,10 @@
 import { FileText, FolderClosed, FolderOpen } from 'lucide-react'
+
+import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
 import { colors, getArtifactColor } from '../../design/tokens'
+import { RenameInput } from './FileContextMenu'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
-import { RenameInput } from './FileContextMenu'
-import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
 
 export interface FileTreeProps {
   nodes: FlatTreeNode[]
@@ -20,16 +21,27 @@ export interface FileTreeProps {
   onRenameCancel?: () => void
 }
 
-// Walk up the parentPath chain; return true if any ancestor is collapsed.
+/** Build a path-keyed lookup of directory nodes for O(1) ancestor traversal. */
+function buildDirIndex(nodes: FlatTreeNode[]): Map<string, FlatTreeNode> {
+  const index = new Map<string, FlatTreeNode>()
+  for (const node of nodes) {
+    if (node.isDirectory) {
+      index.set(node.path, node)
+    }
+  }
+  return index
+}
+
+/** Walk up the parentPath chain; return true if no ancestor is collapsed. */
 function isVisible(
   node: FlatTreeNode,
   collapsedPaths: Set<string>,
-  allNodes: FlatTreeNode[]
+  dirIndex: Map<string, FlatTreeNode>
 ): boolean {
   let currentParent = node.parentPath
 
   while (currentParent) {
-    const parentNode = allNodes.find((n) => n.isDirectory && n.path === currentParent)
+    const parentNode = dirIndex.get(currentParent)
     if (!parentNode) break
     if (collapsedPaths.has(parentNode.path)) return false
     currentParent = parentNode.parentPath
@@ -85,7 +97,8 @@ export function FileTree({
   onRenameConfirm,
   onRenameCancel
 }: FileTreeProps) {
-  const visibleNodes = nodes.filter((n) => isVisible(n, collapsedPaths, nodes))
+  const dirIndex = buildDirIndex(nodes)
+  const visibleNodes = nodes.filter((n) => isVisible(n, collapsedPaths, dirIndex))
 
   return (
     <div data-testid="file-tree" className="text-sm select-none px-1 py-1">
@@ -222,11 +235,12 @@ function FileRow({
   const { base, ext } = splitName(node.name)
 
   // Icon color: artifact type color when available, accent when on canvas, muted otherwise
-  const iconColor = artifactType
-    ? getArtifactColor(artifactType)
-    : isOnCanvas
-      ? colors.accent.default
-      : colors.text.muted
+  let iconColor = colors.text.muted
+  if (artifactType) {
+    iconColor = getArtifactColor(artifactType)
+  } else if (isOnCanvas) {
+    iconColor = colors.accent.default
+  }
 
   // Canvas glow on the icon
   const canvasGlow = isOnCanvas ? `drop-shadow(0 0 4px ${colors.accent.default})` : undefined
@@ -277,7 +291,7 @@ function FileRow({
           filter: canvasGlow,
           transition: 'filter 150ms ease-out, color 150ms ease-out'
         }}
-        title={isOnCanvas ? 'on canvas' : artifactType ?? undefined}
+        title={isOnCanvas ? 'on canvas' : (artifactType ?? undefined)}
       >
         <FileText size={14} strokeWidth={1.5} />
       </span>
@@ -290,9 +304,7 @@ function FileRow({
       ) : (
         <span className="truncate flex-1">
           {base}
-          {ext && (
-            <span style={{ color: colors.text.muted, opacity: 0.4 }}>{ext}</span>
-          )}
+          {ext && <span style={{ color: colors.text.muted, opacity: 0.4 }}>{ext}</span>}
         </span>
       )}
       {canvasConnectionCount >= 2 && (

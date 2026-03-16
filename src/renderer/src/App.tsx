@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useVaultWorker } from './engine/useVaultWorker'
+import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
 import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
@@ -22,17 +23,10 @@ import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { StatusBar } from './components/StatusBar'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
-import type { Artifact, ArtifactType, KnowledgeGraph } from '@shared/types'
+import type { ArtifactType } from '@shared/types'
 import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile } from '@shared/canvas-types'
-
-interface WorkerResult {
-  artifacts: Artifact[]
-  graph: KnowledgeGraph
-  errors: ReadonlyArray<{ filename: string; error: string }>
-  fileToId: Record<string, string>
-}
 
 function ContentArea() {
   const contentView = useViewStore((s) => s.contentView)
@@ -126,10 +120,6 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
     },
     [files, openTab, setContentView]
   )
-
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query)
-  }, [])
 
   const handleToggleDirectory = useCallback((path: string) => {
     setCollapsedPaths((prev) => {
@@ -241,7 +231,7 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
       onCanvasPaths={onCanvasPaths}
       canvasConnectionCounts={canvasConnectionCounts}
       sortMode={sortMode}
-      onSearch={handleSearch}
+      onSearch={setSearchQuery}
       onWorkspaceSelect={setActiveWorkspace}
       onFileSelect={handleFileSelect}
       onToggleDirectory={handleToggleDirectory}
@@ -335,25 +325,35 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         const { openTab: storeOpenTab } = useEditorStore.getState()
         storeOpenTab(path)
         setContentView('editor')
-      } else if (item.id === 'cmd:toggle-view') {
-        toggleView()
-      } else if (item.id === 'cmd:toggle-mode') {
-        toggleSourceMode()
-      } else if (item.id === 'cmd:toggle-terminal') {
-        toggleTerminal()
-      } else if (item.id === 'cmd:open-settings') {
-        setSettingsOpen(true)
-      } else if (item.id === 'cmd:reindex-vault') {
-        // TODO: trigger vault re-index
-      } else if (item.id === 'cmd:new-canvas') {
-        if (vaultPath) {
-          const filename = defaultCanvasFilename([])
-          const canvasPath = `${vaultPath}/${filename}`
-          const data = createCanvasFile()
-          await saveCanvas(canvasPath, data)
-          useCanvasStore.getState().loadCanvas(canvasPath, data)
-          setContentView('canvas')
-        }
+        return
+      }
+
+      switch (item.id) {
+        case 'cmd:toggle-view':
+          toggleView()
+          break
+        case 'cmd:toggle-mode':
+          toggleSourceMode()
+          break
+        case 'cmd:toggle-terminal':
+          toggleTerminal()
+          break
+        case 'cmd:open-settings':
+          setSettingsOpen(true)
+          break
+        case 'cmd:reindex-vault':
+          // TODO: trigger vault re-index
+          break
+        case 'cmd:new-canvas':
+          if (vaultPath) {
+            const filename = defaultCanvasFilename([])
+            const canvasPath = `${vaultPath}/${filename}`
+            const data = createCanvasFile()
+            await saveCanvas(canvasPath, data)
+            useCanvasStore.getState().loadCanvas(canvasPath, data)
+            setContentView('canvas')
+          }
+          break
       }
     },
     [setContentView, toggleView, toggleSourceMode, toggleTerminal, setSettingsOpen, vaultPath]
@@ -499,11 +499,8 @@ export default function App() {
   }, [orchestrateLoad])
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      flushPendingSave()
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('beforeunload', flushPendingSave)
+    return () => window.removeEventListener('beforeunload', flushPendingSave)
   }, [])
 
   useEffect(() => {
@@ -516,21 +513,19 @@ export default function App() {
         updateFile(data.path, await window.api.fs.readFile(data.path))
       }
     })
-    return () => {
-      unsub()
-    }
+    return unsub
   }, [updateFile, removeFile])
+
+  function renderContent() {
+    if (isLoading) return <LoadingSkeleton />
+    if (vaultPath) return <WorkspaceShell onLoadVault={orchestrateLoad} />
+    return <WelcomeScreen onVaultSelected={orchestrateLoad} />
+  }
 
   return (
     <ThemeProvider>
       <GoogleFontLoader />
-      {isLoading ? (
-        <LoadingSkeleton />
-      ) : vaultPath ? (
-        <WorkspaceShell onLoadVault={orchestrateLoad} />
-      ) : (
-        <WelcomeScreen onVaultSelected={orchestrateLoad} />
-      )}
+      {renderContent()}
     </ThemeProvider>
   )
 }

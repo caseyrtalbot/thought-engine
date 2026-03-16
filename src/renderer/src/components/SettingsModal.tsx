@@ -5,8 +5,6 @@ import { useVaultStore } from '../store/vault-store'
 import { FontPicker } from './FontPicker'
 import { THEMES, ACCENT_COLORS, THEME_ORDER, ACCENT_ORDER } from '../design/themes'
 
-// ---- Types ----
-
 type TabId = 'appearance' | 'editor' | 'terminal' | 'vault'
 
 interface SettingsModalProps {
@@ -14,8 +12,6 @@ interface SettingsModalProps {
   onClose: () => void
   onChangeVault?: () => void
 }
-
-// ---- Helper components ----
 
 interface SettingRowProps {
   label: string
@@ -130,8 +126,6 @@ function SelectInput({ value, options, onChange }: SelectInputProps) {
   )
 }
 
-// ---- Section heading ----
-
 function SectionHeading({ children }: { children: React.ReactNode }) {
   const colors = useColors()
   return (
@@ -143,8 +137,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
     </h3>
   )
 }
-
-// ---- Tab content panels ----
 
 function AppearanceTab() {
   const colors = useColors()
@@ -375,8 +367,6 @@ function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
   )
 }
 
-// ---- Tab config ----
-
 const TABS: { id: TabId; label: string }[] = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'editor', label: 'Editor' },
@@ -396,8 +386,6 @@ function renderTabContent(tab: TabId, onChangeVault?: () => void) {
       return <VaultTab onChangeVault={onChangeVault} />
   }
 }
-
-// ---- Main modal ----
 
 export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalProps) {
   const colors = useColors()
