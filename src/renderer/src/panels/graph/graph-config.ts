@@ -87,8 +87,7 @@ export const LINK_STRENGTH: Record<RelationshipKind, number> = {
   cluster: 0.6,
   tension: -0.2,
   appears_in: 0.2,
-  concept: 0.15,
-  tag: 0.1
+  'co-occurrence': 0.15
 }
 
 export const LARGE_GRAPH_THRESHOLD = 200

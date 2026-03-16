@@ -63,8 +63,7 @@ export const RELATIONSHIP_KINDS = [
   'cluster',
   'tension',
   'appears_in',
-  'concept',
-  'tag'
+  'co-occurrence'
 ] as const
 export type RelationshipKind = (typeof RELATIONSHIP_KINDS)[number]
 
