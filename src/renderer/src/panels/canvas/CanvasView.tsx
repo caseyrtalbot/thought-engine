@@ -12,7 +12,6 @@ import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasMinimap } from './CanvasMinimap'
-import { GraphImportPalette } from './GraphImportPalette'
 import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
@@ -31,7 +30,6 @@ export function CanvasView() {
   // Track container size for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
-  const [importOpen, setImportOpen] = useState(false)
 
   useEffect(() => {
     const el = containerRef.current
@@ -62,10 +60,6 @@ export function CanvasView() {
     },
     [addNode]
   )
-
-  const handleImportExecute = useCallback((execute: () => void, undo: () => void) => {
-    commandStack.current.execute({ execute, undo })
-  }, [])
 
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -210,15 +204,6 @@ export function CanvasView() {
       } else if (e.key === 'z' && e.shiftKey) {
         e.preventDefault()
         commandStack.current.redo()
-      } else if (e.key === 'g') {
-        // Only handle when canvas is active (not when user is in editor/terminal)
-        if (
-          !containerRef.current?.contains(document.activeElement) &&
-          document.activeElement !== document.body
-        )
-          return
-        e.preventDefault()
-        setImportOpen(true)
       }
     }
     window.addEventListener('keydown', handler)
@@ -250,7 +235,6 @@ export function CanvasView() {
           })
           addNodeWithUndo(node)
         }}
-        onOpenImport={() => setImportOpen(true)}
       />
       <CanvasSurface
         onDoubleClick={handleDoubleClick}
@@ -275,14 +259,6 @@ export function CanvasView() {
       <ConnectionDragOverlay />
 
       <CanvasMinimap containerWidth={containerSize.width} containerHeight={containerSize.height} />
-
-      <GraphImportPalette
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImport={handleImportExecute}
-        containerWidth={containerSize.width}
-        containerHeight={containerSize.height}
-      />
 
       {contextMenu && (
         <CanvasContextMenu

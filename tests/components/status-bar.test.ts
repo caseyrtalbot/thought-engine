@@ -33,23 +33,3 @@ describe('StatusBar word count', () => {
     expect(countWords('hello\nworld\tfoo')).toBe(3)
   })
 })
-
-// ─── sortNodesAlphabetically (graph keyboard) ─────────────────────────────────
-
-describe('sortNodesAlphabetically (graph keyboard)', () => {
-  it('sorts nodes alphabetically by title', async () => {
-    const { sortNodesAlphabetically } = await import('../../src/renderer/src/panels/graph/useGraphKeyboard')
-    const nodes = [
-      { id: 'c1', title: 'Constraint', x: 100, y: 200 },
-      { id: 'g1', title: 'Alpha Gene', x: 0, y: 0 },
-      { id: 'n1', title: 'Zeta Note', x: 300, y: 300 },
-    ]
-    const sorted = sortNodesAlphabetically(nodes)
-    expect(sorted.map((n) => n.title)).toEqual(['Alpha Gene', 'Constraint', 'Zeta Note'])
-  })
-
-  it('returns empty array for empty input', async () => {
-    const { sortNodesAlphabetically } = await import('../../src/renderer/src/panels/graph/useGraphKeyboard')
-    expect(sortNodesAlphabetically([])).toEqual([])
-  })
-})

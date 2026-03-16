@@ -5,7 +5,6 @@ import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
 import { EditorPanel } from './panels/editor/EditorPanel'
-import { GraphPanel } from './panels/graph/GraphPanel'
 import { SkillsPanel } from './panels/skills/SkillsPanel'
 import { CanvasView } from './panels/canvas/CanvasView'
 import { ActivityBar } from './components/ActivityBar'
@@ -16,7 +15,7 @@ import { useKeyboard } from './hooks/useKeyboard'
 import { useCanvasFilePaths, useCanvasConnectionCounts } from './hooks/useCanvasAwareness'
 import { useVaultStore } from './store/vault-store'
 import { useEditorStore, flushPendingSave } from './store/editor-store'
-import { useGraphStore } from './store/graph-store'
+import { useViewStore } from './store/view-store'
 import { colors } from './design/tokens'
 import { Titlebar } from './components/Titlebar'
 import { SettingsModal } from './components/SettingsModal'
@@ -36,17 +35,8 @@ interface WorkerResult {
 }
 
 function ContentArea() {
-  const contentView = useGraphStore((s) => s.contentView)
+  const contentView = useViewStore((s) => s.contentView)
   const setActiveNote = useEditorStore((s) => s.setActiveNote)
-  const setContentView = useGraphStore((s) => s.setContentView)
-
-  const handleNodeClick = useCallback(
-    (id: string) => {
-      setActiveNote(id, null)
-      setContentView('editor')
-    },
-    [setActiveNote, setContentView]
-  )
 
   const handleNavigate = useCallback(
     (id: string) => {
@@ -57,7 +47,6 @@ function ContentArea() {
 
   return (
     <div className="h-full panel-card">
-      {contentView === 'graph' && <GraphPanel onNodeClick={handleNodeClick} />}
       {contentView === 'editor' && <EditorPanel onNavigate={handleNavigate} />}
       {contentView === 'canvas' && <CanvasView />}
       {contentView === 'skills' && <SkillsPanel />}
@@ -76,7 +65,7 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
   const artifacts = useVaultStore((s) => s.artifacts)
   const fileToId = useVaultStore((s) => s.fileToId)
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
-  const setContentView = useGraphStore((s) => s.setContentView)
+  const setContentView = useViewStore((s) => s.setContentView)
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<'modified' | 'name' | 'type'>('modified')
   const [searchQuery, setSearchQuery] = useState('')
@@ -277,7 +266,6 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   },
   { id: 'cmd:open-settings', label: 'Open Settings', category: 'command' },
   { id: 'cmd:reindex-vault', label: 'Re-index Vault', category: 'command' },
-  { id: 'cmd:zoom-to-fit', label: 'Zoom to Fit Graph', category: 'command' },
   { id: 'cmd:activate-claude', label: 'Activate Claude', category: 'command' },
   { id: 'cmd:new-canvas', label: 'New Canvas', category: 'command' }
 ]
@@ -288,15 +276,14 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const [showTerminal, setShowTerminal] = useState(false)
   const files = useVaultStore((s) => s.files)
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const contentView = useGraphStore((s) => s.contentView)
-  const setContentView = useGraphStore((s) => s.setContentView)
+  const contentView = useViewStore((s) => s.contentView)
+  const setContentView = useViewStore((s) => s.setContentView)
   const mode = useEditorStore((s) => s.mode)
   const setMode = useEditorStore((s) => s.setMode)
   const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
   const toggleView = useCallback(() => {
-    if (contentView === 'editor') setContentView('graph')
-    else if (contentView === 'graph') setContentView('canvas')
+    if (contentView === 'editor') setContentView('canvas')
     else if (contentView === 'canvas') setContentView('skills')
     else setContentView('editor')
   }, [contentView, setContentView])
@@ -358,8 +345,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         setSettingsOpen(true)
       } else if (item.id === 'cmd:reindex-vault') {
         // TODO: trigger vault re-index
-      } else if (item.id === 'cmd:zoom-to-fit') {
-        // TODO: trigger graph zoom-to-fit
       } else if (item.id === 'cmd:new-canvas') {
         if (vaultPath) {
           const filename = defaultCanvasFilename([])
@@ -484,11 +469,12 @@ export default function App() {
       await loadVault(path)
       const state = useVaultStore.getState().state
       if (state) {
-        if (state.contentView)
-          useGraphStore
-            .getState()
-            .setContentView(state.contentView as 'editor' | 'graph' | 'skills' | 'canvas')
-        if (state.selectedNodeId) useGraphStore.getState().setSelectedNode(state.selectedNodeId)
+        if (state.contentView) {
+          const view = state.contentView as string
+          if (view === 'editor' || view === 'canvas' || view === 'skills') {
+            useViewStore.getState().setContentView(view)
+          }
+        }
         if (state.lastOpenNote)
           useEditorStore.getState().setActiveNote(state.lastOpenNote, state.lastOpenNote)
       }

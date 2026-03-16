@@ -1,7 +1,6 @@
-import { useGraphStore } from '../store/graph-store'
+import { useViewStore } from '../store/view-store'
 import { colors } from '../design/tokens'
-
-type ContentView = 'editor' | 'graph' | 'skills' | 'canvas'
+import type { ContentView } from '../store/view-store'
 
 interface ActivityItem {
   view: ContentView
@@ -29,7 +28,7 @@ const EditorIcon = (
   </svg>
 )
 
-const GraphIcon = (
+const CanvasIcon = (
   <svg
     width={ICON_SIZE}
     height={ICON_SIZE}
@@ -40,13 +39,10 @@ const GraphIcon = (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <circle cx="6" cy="6" r="2.5" />
-    <circle cx="18" cy="8" r="2.5" />
-    <circle cx="8" cy="18" r="2.5" />
-    <circle cx="18" cy="18" r="2.5" />
-    <line x1="8.2" y1="7.2" x2="15.8" y2="7.2" />
-    <line x1="7.5" y1="8.2" x2="7.5" y2="15.8" />
-    <line x1="10.2" y1="17" x2="15.8" y2="17.5" />
+    <rect x="3" y="3" width="7" height="5" rx="1" />
+    <rect x="14" y="16" width="7" height="5" rx="1" />
+    <path d="M10 5.5h4a2 2 0 0 1 2 2v4" />
+    <path d="M14 18.5h-4a2 2 0 0 1-2-2v-4" />
   </svg>
 )
 
@@ -66,39 +62,24 @@ const SkillsIcon = (
   </svg>
 )
 
-const CanvasIcon = (
-  <svg
-    width={ICON_SIZE}
-    height={ICON_SIZE}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="3" width="7" height="5" rx="1" />
-    <rect x="14" y="16" width="7" height="5" rx="1" />
-    <path d="M10 5.5h4a2 2 0 0 1 2 2v4" />
-    <path d="M14 18.5h-4a2 2 0 0 1-2-2v-4" />
-  </svg>
-)
-
 const ITEMS: ActivityItem[] = [
   { view: 'editor', label: 'Editor', icon: EditorIcon },
-  { view: 'graph', label: 'Graph', icon: GraphIcon },
   { view: 'canvas', label: 'Canvas', icon: CanvasIcon },
   { view: 'skills', label: 'Skills', icon: SkillsIcon }
 ]
 
 export function ActivityBar() {
-  const contentView = useGraphStore((s) => s.contentView)
-  const setContentView = useGraphStore((s) => s.setContentView)
+  const contentView = useViewStore((s) => s.contentView)
+  const setContentView = useViewStore((s) => s.setContentView)
 
   return (
     <div
       className="flex flex-col items-center shrink-0 py-3 gap-1"
-      style={{ width: 48, backgroundColor: colors.bg.base }}
+      style={{
+        width: 48,
+        backgroundColor: colors.bg.base,
+        borderRight: `1px solid ${colors.border.default}`
+      }}
     >
       {ITEMS.map(({ view, label, icon }) => {
         const isActive = contentView === view

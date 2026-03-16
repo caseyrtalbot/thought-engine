@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useColors } from '../design/Theme'
 import { useSettingsStore } from '../store/settings-store'
-import { useGraphSettingsStore } from '../store/graph-settings-store'
 import { useVaultStore } from '../store/vault-store'
 import { FontPicker } from './FontPicker'
 import { THEMES, ACCENT_COLORS, THEME_ORDER, ACCENT_ORDER } from '../design/themes'
 
 // ---- Types ----
 
-type TabId = 'appearance' | 'editor' | 'graph' | 'terminal' | 'vault'
+type TabId = 'appearance' | 'editor' | 'terminal' | 'vault'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -278,63 +277,6 @@ function EditorTab() {
   )
 }
 
-function GraphTab() {
-  const nodeSizeMultiplier = useGraphSettingsStore((s) => s.nodeSizeMultiplier)
-  const linkThickness = useGraphSettingsStore((s) => s.linkThickness)
-  const showArrows = useGraphSettingsStore((s) => s.showArrows)
-  const centerForce = useGraphSettingsStore((s) => s.centerForce)
-  const repelForce = useGraphSettingsStore((s) => s.repelForce)
-  const linkForce = useGraphSettingsStore((s) => s.linkForce)
-  const linkDistance = useGraphSettingsStore((s) => s.linkDistance)
-
-  const setNodeSizeMultiplier = useGraphSettingsStore((s) => s.setNodeSizeMultiplier)
-  const setLinkThickness = useGraphSettingsStore((s) => s.setLinkThickness)
-  const setShowArrows = useGraphSettingsStore((s) => s.setShowArrows)
-  const setCenterForce = useGraphSettingsStore((s) => s.setCenterForce)
-  const setRepelForce = useGraphSettingsStore((s) => s.setRepelForce)
-  const setLinkForce = useGraphSettingsStore((s) => s.setLinkForce)
-  const setLinkDistance = useGraphSettingsStore((s) => s.setLinkDistance)
-
-  return (
-    <div>
-      <SectionHeading>Graph</SectionHeading>
-      <SettingRow label="Node Size">
-        <SliderInput
-          value={nodeSizeMultiplier}
-          min={0.5}
-          max={3}
-          step={0.1}
-          onChange={setNodeSizeMultiplier}
-        />
-      </SettingRow>
-      <SettingRow label="Link Thickness">
-        <SliderInput
-          value={linkThickness}
-          min={0.3}
-          max={3}
-          step={0.1}
-          onChange={setLinkThickness}
-        />
-      </SettingRow>
-      <SettingRow label="Show Arrows">
-        <Toggle value={showArrows} onChange={setShowArrows} />
-      </SettingRow>
-      <SettingRow label="Center Force">
-        <SliderInput value={centerForce} min={0} max={0.15} step={0.01} onChange={setCenterForce} />
-      </SettingRow>
-      <SettingRow label="Repel Force">
-        <SliderInput value={repelForce} min={-300} max={-10} step={5} onChange={setRepelForce} />
-      </SettingRow>
-      <SettingRow label="Link Force">
-        <SliderInput value={linkForce} min={0} max={1} step={0.05} onChange={setLinkForce} />
-      </SettingRow>
-      <SettingRow label="Link Distance">
-        <SliderInput value={linkDistance} min={10} max={200} step={5} onChange={setLinkDistance} />
-      </SettingRow>
-    </div>
-  )
-}
-
 function TerminalTab() {
   const colors = useColors()
   const terminalShell = useSettingsStore((s) => s.terminalShell)
@@ -438,7 +380,6 @@ function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
 const TABS: { id: TabId; label: string }[] = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'editor', label: 'Editor' },
-  { id: 'graph', label: 'Graph' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'vault', label: 'Vault' }
 ]
@@ -449,8 +390,6 @@ function renderTabContent(tab: TabId, onChangeVault?: () => void) {
       return <AppearanceTab />
     case 'editor':
       return <EditorTab />
-    case 'graph':
-      return <GraphTab />
     case 'terminal':
       return <TerminalTab />
     case 'vault':

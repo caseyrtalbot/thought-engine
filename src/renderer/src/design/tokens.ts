@@ -70,7 +70,7 @@ export function getArtifactColor(type: string): string {
 
 export const spacing = {
   unit: 4,
-  panelGap: 4,
+  panelGap: 0,
   contentPadX: 32,
   contentPadY: 24,
   sidebarWidth: 260,
@@ -79,8 +79,8 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    display: '"DM Sans", Inter, system-ui, sans-serif',
-    body: '"DM Sans", Inter, system-ui, sans-serif',
+    display: '"Inter", system-ui, sans-serif',
+    body: '"Inter", system-ui, sans-serif',
     mono: '"JetBrains Mono", "Fira Code", monospace'
   },
   metadata: {
@@ -118,28 +118,20 @@ export const typeScale = {
   minSize: '12px'
 } as const
 
-export const borderRadius = { container: 6, inline: 4, card: 8, round: '50%' } as const
+export const borderRadius = { container: 6, inline: 4, card: 0, round: '50%' } as const
 
 /* ── Visual Language ──────────────────────────────────────────────────────
- * Named tokens for the floating-card panel aesthetic.
- * Use these in CSS via var(--panel-gap), var(--panel-radius), var(--border-subtle).
- *
- * Panels render as cards inset from the app chrome and each other by --panel-gap.
- * Depth comes from background-contrast (surface on base), not drop shadows.
+ * Edge-to-edge panel aesthetic with thin perpendicular divider lines.
+ * Panels sit flush, separated by 1px lines. Depth via background contrast.
  * Tab bars use --border-subtle for their 1px bottom separator.
  */
 export const visualLanguage = {
-  panelGap: 4,
-  cardRadius: 8,
+  panelGap: 0,
+  cardRadius: 0,
   borderSubtle: 'rgba(255, 255, 255, 0.08)'
 } as const
 
 export const animations = {
-  graphNodeHoverGlow: '200ms ease-out',
-  graphNetworkReveal: '200ms ease-out',
-  graphNetworkDim: '300ms ease-out',
-  graphNodeEnter: '400ms ease-out',
-  graphNodeExit: '200ms ease-out',
   spatialTransition: '250ms ease-out'
 } as const
 

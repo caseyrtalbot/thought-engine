@@ -109,8 +109,7 @@ export interface VaultState {
   idCounters: Record<string, number>
   lastOpenNote: string | null
   panelLayout: { sidebarWidth: number; terminalWidth: number }
-  contentView: 'graph' | 'editor' | 'skills'
-  graphViewport: { x: number; y: number; k: number }
+  contentView: 'editor' | 'canvas' | 'skills'
   terminalSessions: string[]
   fileTreeCollapseState: Record<string, boolean>
   selectedNodeId: string | null

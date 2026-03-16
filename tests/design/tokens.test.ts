@@ -55,13 +55,13 @@ describe('extended design tokens', () => {
   it('has border-radius constants', () => {
     expect(borderRadius.container).toBe(6)
     expect(borderRadius.inline).toBe(4)
-    expect(borderRadius.card).toBe(8)
+    expect(borderRadius.card).toBe(0)
     expect(borderRadius.round).toBe('50%')
   })
 
   it('has visual language tokens', () => {
-    expect(visualLanguage.panelGap).toBe(4)
-    expect(visualLanguage.cardRadius).toBe(8)
+    expect(visualLanguage.panelGap).toBe(0)
+    expect(visualLanguage.cardRadius).toBe(0)
     expect(visualLanguage.borderSubtle).toBe('rgba(255, 255, 255, 0.08)')
   })
 
@@ -75,11 +75,6 @@ describe('extended design tokens', () => {
   })
 
   it('has animation timing constants', () => {
-    expect(animations.graphNodeHoverGlow).toBe('200ms ease-out')
-    expect(animations.graphNetworkReveal).toBe('200ms ease-out')
-    expect(animations.graphNetworkDim).toBe('300ms ease-out')
-    expect(animations.graphNodeEnter).toBe('400ms ease-out')
-    expect(animations.graphNodeExit).toBe('200ms ease-out')
     expect(animations.spatialTransition).toBe('250ms ease-out')
   })
 
