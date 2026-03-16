@@ -398,6 +398,7 @@ export function GraphPanel({ onNodeClick }: GraphPanelProps) {
       })
 
     select(canvas).call(zb)
+    select(canvas).on('dblclick.zoom', null) // Disable d3-zoom double-click zoom
     zoomBehaviorRef.current = zb
 
     return () => {
