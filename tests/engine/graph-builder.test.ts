@@ -32,6 +32,24 @@ describe('buildGraph', () => {
     expect(graph.nodes[0].type).toBe('gene')
   })
 
+  it('does not create tag nodes', () => {
+    const artifacts = [
+      makeArtifact({ id: 'g1', title: 'G1', type: 'gene', tags: ['strategy'] })
+    ]
+    const graph = buildGraph(artifacts)
+    expect(graph.nodes).toHaveLength(1)
+    expect(graph.nodes.find((n) => n.type === 'tag')).toBeUndefined()
+  })
+
+  it('does not create ghost nodes', () => {
+    const artifacts = [
+      makeArtifact({ id: 'g1', title: 'G1', type: 'gene', concepts: ['Nonexistent'] })
+    ]
+    const graph = buildGraph(artifacts)
+    expect(graph.nodes).toHaveLength(1)
+    expect(graph.nodes.find((n) => n.id.startsWith('ghost:'))).toBeUndefined()
+  })
+
   it('creates connection edges', () => {
     const artifacts = [
       makeArtifact({ id: 'g1', title: 'G1', type: 'gene', connections: ['g2'] }),
@@ -45,12 +63,8 @@ describe('buildGraph', () => {
   it('creates cluster, tension, and appears_in edges', () => {
     const artifacts = [
       makeArtifact({
-        id: 'g1',
-        title: 'G1',
-        type: 'gene',
-        clusters_with: ['g2'],
-        tensions_with: ['c1'],
-        appears_in: ['i1']
+        id: 'g1', title: 'G1', type: 'gene',
+        clusters_with: ['g2'], tensions_with: ['c1'], appears_in: ['i1']
       }),
       makeArtifact({ id: 'g2', title: 'G2', type: 'gene' }),
       makeArtifact({ id: 'c1', title: 'C1', type: 'constraint' }),
@@ -63,14 +77,13 @@ describe('buildGraph', () => {
     expect(kinds).toContain('appears_in')
   })
 
-  it('creates ghost nodes for missing references', () => {
-    const artifacts = [makeArtifact({ id: 'g1', title: 'G1', type: 'gene', connections: ['g99'] })]
+  it('deduplicates edges', () => {
+    const artifacts = [
+      makeArtifact({ id: 'g1', title: 'G1', type: 'gene', connections: ['g2'] }),
+      makeArtifact({ id: 'g2', title: 'G2', type: 'gene', connections: ['g1'] })
+    ]
     const graph = buildGraph(artifacts)
-    expect(graph.nodes).toHaveLength(2)
-    const ghost = graph.nodes.find((n) => n.id === 'g99')
-    expect(ghost).toBeDefined()
-    expect(ghost!.title).toBe('g99')
-    expect(ghost!.type).toBe('note')
+    expect(graph.edges).toHaveLength(1)
   })
 
   it('counts connections correctly for node sizing', () => {
@@ -84,155 +97,89 @@ describe('buildGraph', () => {
     expect(g1!.connectionCount).toBe(2)
   })
 
-  it('deduplicates edges', () => {
+  // --- Co-occurrence edge tests ---
+
+  it('creates co-occurrence edges between files sharing a tag', () => {
     const artifacts = [
-      makeArtifact({ id: 'g1', title: 'G1', type: 'gene', connections: ['g2'] }),
-      makeArtifact({ id: 'g2', title: 'G2', type: 'gene', connections: ['g1'] })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', tags: ['rare-tag'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', tags: ['rare-tag'] })
     ]
     const graph = buildGraph(artifacts)
-    const connectionEdges = graph.edges.filter((e) => e.kind === 'connection')
-    expect(connectionEdges).toHaveLength(1)
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges).toHaveLength(1)
+    expect(coEdges[0].source).not.toBe(coEdges[0].target)
   })
 
-  // --- Concept node edge tests ---
-
-  it('creates concept edges by resolving title to ID', () => {
+  it('creates co-occurrence edges between files sharing a concept', () => {
     const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        concepts: ['Gene Two']
-      }),
-      makeArtifact({ id: 'g2', title: 'Gene Two', type: 'gene' })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', concepts: ['strategy'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', concepts: ['strategy'] })
     ]
     const graph = buildGraph(artifacts)
-    const conceptEdges = graph.edges.filter((e) => e.kind === 'concept')
-    expect(conceptEdges).toHaveLength(1)
-    expect(conceptEdges[0]).toEqual({ source: 'g1', target: 'g2', kind: 'concept' })
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges).toHaveLength(1)
   })
 
-  it('creates ghost nodes for unresolved concepts', () => {
+  it('deduplicates tag and concept with same word into one term', () => {
     const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        concepts: ['Missing Note']
-      })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', tags: ['strategy'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', concepts: ['Strategy'] })
     ]
     const graph = buildGraph(artifacts)
-    const ghost = graph.nodes.find((n) => n.id === 'ghost:missing note')
-    expect(ghost).toBeDefined()
-    expect(ghost!.title).toBe('Missing Note')
-    const conceptEdges = graph.edges.filter((e) => e.kind === 'concept')
-    expect(conceptEdges).toHaveLength(1)
-    expect(conceptEdges[0].target).toBe('ghost:missing note')
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges).toHaveLength(1)
   })
 
-  it('skips concept self-links', () => {
+  it('does not create duplicate co-occurrence edge for same-word tag and concept in one file', () => {
     const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        concepts: ['Gene One']
-      })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', tags: ['strategy'], concepts: ['strategy'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', tags: ['strategy'], concepts: ['strategy'] })
     ]
     const graph = buildGraph(artifacts)
-    expect(graph.edges).toHaveLength(0)
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges).toHaveLength(1)
   })
 
-  it('resolves concepts case-insensitively', () => {
-    const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        concepts: ['gene two']
-      }),
-      makeArtifact({ id: 'g2', title: 'Gene Two', type: 'gene' })
-    ]
+  it('skips co-occurrence for terms used in 20+ files', () => {
+    const artifacts = Array.from({ length: 20 }, (_, i) =>
+      makeArtifact({ id: `n${i}`, title: `Note ${i}`, type: 'note', tags: ['common'] })
+    )
     const graph = buildGraph(artifacts)
-    const conceptEdges = graph.edges.filter((e) => e.kind === 'concept')
-    expect(conceptEdges).toHaveLength(1)
-    expect(conceptEdges[0].target).toBe('g2')
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges).toHaveLength(0)
   })
 
-  it('deduplicates concept against existing explicit connection', () => {
+  it('does not create co-occurrence when explicit frontmatter edge exists', () => {
     const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        connections: ['g2'],
-        concepts: ['Gene Two']
-      }),
-      makeArtifact({ id: 'g2', title: 'Gene Two', type: 'gene' })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', connections: ['b'], tags: ['shared'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', tags: ['shared'] })
     ]
     const graph = buildGraph(artifacts)
-    // Should only have the explicit connection, no concept edge
     expect(graph.edges).toHaveLength(1)
     expect(graph.edges[0].kind).toBe('connection')
   })
 
-  it('deduplicates ghost nodes by case-insensitive ID', () => {
+  it('weights edges higher for rare shared terms', () => {
     const artifacts = [
-      makeArtifact({
-        id: 'g1',
-        title: 'Gene One',
-        type: 'gene',
-        concepts: ['Strategy']
-      }),
-      makeArtifact({
-        id: 'g2',
-        title: 'Gene Two',
-        type: 'gene',
-        concepts: ['strategy']
-      })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', tags: ['rare'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', tags: ['rare'] }),
+      makeArtifact({ id: 'c', title: 'C', type: 'note', tags: ['medium'] }),
+      makeArtifact({ id: 'd', title: 'D', type: 'note', tags: ['medium'] }),
+      makeArtifact({ id: 'e', title: 'E', type: 'note', tags: ['medium'] }),
+      makeArtifact({ id: 'f', title: 'F', type: 'note', tags: ['medium'] }),
+      makeArtifact({ id: 'g', title: 'G', type: 'note', tags: ['medium'] })
     ]
     const graph = buildGraph(artifacts)
-    const ghosts = graph.nodes.filter((n) => n.id.startsWith('ghost:'))
-    expect(ghosts).toHaveLength(1)
-    expect(ghosts[0].id).toBe('ghost:strategy')
+    const coEdges = graph.edges.filter((e) => e.kind === 'co-occurrence')
+    expect(coEdges.length).toBe(11) // 1 (rare) + 10 (medium C(5,2))
   })
 
-  // --- Tag node tests ---
-
-  it('creates tag nodes with tag: prefix', () => {
-    const artifacts = [makeArtifact({ id: 'g1', title: 'G1', type: 'gene', tags: ['positioning'] })]
-    const graph = buildGraph(artifacts)
-    const tagNode = graph.nodes.find((n) => n.id === 'tag:positioning')
-    expect(tagNode).toBeDefined()
-    expect(tagNode!.title).toBe('#positioning')
-    expect(tagNode!.type).toBe('tag')
-    expect(tagNode!.signal).toBe('core')
-  })
-
-  it('creates tag edges between artifacts and tag nodes', () => {
-    const artifacts = [makeArtifact({ id: 'g1', title: 'G1', type: 'gene', tags: ['moats'] })]
-    const graph = buildGraph(artifacts)
-    const tagEdges = graph.edges.filter((e) => e.kind === 'tag')
-    expect(tagEdges).toHaveLength(1)
-    expect(tagEdges[0]).toEqual({ source: 'g1', target: 'tag:moats', kind: 'tag' })
-  })
-
-  it('shares one tag node across multiple artifacts', () => {
+  it('creates no co-occurrence edges for file with single unique tag', () => {
     const artifacts = [
-      makeArtifact({ id: 'g1', title: 'G1', type: 'gene', tags: ['strategy'] }),
-      makeArtifact({ id: 'g2', title: 'G2', type: 'gene', tags: ['strategy'] })
+      makeArtifact({ id: 'a', title: 'A', type: 'note', tags: ['unique-a'] }),
+      makeArtifact({ id: 'b', title: 'B', type: 'note', tags: ['unique-b'] })
     ]
     const graph = buildGraph(artifacts)
-    const tagNodes = graph.nodes.filter((n) => n.type === 'tag')
-    expect(tagNodes).toHaveLength(1)
-    const tagEdges = graph.edges.filter((e) => e.kind === 'tag')
-    expect(tagEdges).toHaveLength(2)
-  })
-
-  it('creates no tag nodes when no artifacts have tags', () => {
-    const artifacts = [makeArtifact({ id: 'g1', title: 'G1', type: 'gene' })]
-    const graph = buildGraph(artifacts)
-    const tagNodes = graph.nodes.filter((n) => n.type === 'tag')
-    expect(tagNodes).toHaveLength(0)
+    expect(graph.edges).toHaveLength(0)
   })
 })
