@@ -3,13 +3,13 @@ import { colors } from '../../design/tokens'
 import { CARD_TYPE_INFO, type CanvasNodeType, type CanvasNode } from '@shared/canvas-types'
 
 interface CanvasContextMenuProps {
-  x: number
-  y: number
-  onAddCard: (
+  readonly x: number
+  readonly y: number
+  readonly onAddCard: (
     type: CanvasNodeType,
     overrides?: Partial<Pick<CanvasNode, 'content' | 'metadata'>>
   ) => void
-  onClose: () => void
+  readonly onClose: () => void
 }
 
 // Group card types by category for the menu
@@ -19,7 +19,12 @@ const MENU_SECTIONS: { label: string; category: 'content' | 'media' | 'tools' }[
   { label: 'Tools', category: 'tools' }
 ]
 
-export function CanvasContextMenu({ x, y, onAddCard, onClose }: CanvasContextMenuProps) {
+export function CanvasContextMenu({
+  x,
+  y,
+  onAddCard,
+  onClose
+}: CanvasContextMenuProps): React.ReactElement {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

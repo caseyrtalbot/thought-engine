@@ -17,7 +17,7 @@ import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
 
-export function CanvasView() {
+export function CanvasView(): React.ReactElement {
   const nodes = useCanvasStore((s) => s.nodes)
   const viewport = useCanvasStore((s) => s.viewport)
   const clearSelection = useCanvasStore((s) => s.clearSelection)
@@ -105,7 +105,6 @@ export function CanvasView() {
       let files: DragFileData[]
       try {
         const parsed = JSON.parse(dataJson)
-        // Support both single file and array
         files = Array.isArray(parsed) ? parsed : [parsed]
       } catch {
         return
@@ -117,68 +116,49 @@ export function CanvasView() {
         const file = files[i]
         const x = canvasX + i * STACK_OFFSET
         const y = canvasY + i * STACK_OFFSET
+        const pos = { x, y }
 
-        if (file.type === 'note') {
-          // Vault note: content is the file path
-          const node = createCanvasNode('note', { x, y }, { content: file.path })
-          addNodeWithUndo(node)
-        } else if (file.type === 'image') {
-          // Image: metadata.src is the file path
-          const node = createCanvasNode(
-            'image',
-            { x, y },
-            {
-              metadata: { src: file.path, alt: file.path.split('/').pop() ?? '' }
-            }
-          )
-          addNodeWithUndo(node)
-        } else if (file.type === 'pdf') {
-          const node = createCanvasNode(
-            'pdf',
-            { x, y },
-            {
-              metadata: { src: file.path, pageCount: 0, currentPage: 1 }
-            }
-          )
-          addNodeWithUndo(node)
-        } else if (file.type === 'code') {
-          // Code file: read content, set language
-          try {
-            const content = await window.api.fs.readFile(file.path)
+        switch (file.type) {
+          case 'note': {
+            addNodeWithUndo(createCanvasNode('note', pos, { content: file.path }))
+            break
+          }
+          case 'image': {
+            const alt = file.path.split('/').pop() ?? ''
+            addNodeWithUndo(createCanvasNode('image', pos, { metadata: { src: file.path, alt } }))
+            break
+          }
+          case 'pdf': {
+            addNodeWithUndo(
+              createCanvasNode('pdf', pos, {
+                metadata: { src: file.path, pageCount: 0, currentPage: 1 }
+              })
+            )
+            break
+          }
+          case 'code': {
             const language = inferLanguage(file.path)
             const filename = file.path.split('/').pop() ?? ''
-            const node = createCanvasNode(
-              'code',
-              { x, y },
-              {
-                content,
-                metadata: { language, filename }
-              }
+            let content = ''
+            try {
+              content = await window.api.fs.readFile(file.path)
+            } catch {
+              // File unreadable; create card with empty content
+            }
+            addNodeWithUndo(
+              createCanvasNode('code', pos, { content, metadata: { language, filename } })
             )
-            addNodeWithUndo(node)
-          } catch {
-            // Fallback: create empty code card with filename
-            const node = createCanvasNode(
-              'code',
-              { x, y },
-              {
-                metadata: {
-                  language: inferLanguage(file.path),
-                  filename: file.path.split('/').pop()
-                }
-              }
-            )
-            addNodeWithUndo(node)
+            break
           }
-        } else {
-          // Text fallback
-          try {
-            const content = await window.api.fs.readFile(file.path)
-            const node = createCanvasNode('text', { x, y }, { content })
-            addNodeWithUndo(node)
-          } catch {
-            const node = createCanvasNode('text', { x, y })
-            addNodeWithUndo(node)
+          default: {
+            let content = ''
+            try {
+              content = await window.api.fs.readFile(file.path)
+            } catch {
+              // File unreadable; create card with empty content
+            }
+            addNodeWithUndo(createCanvasNode('text', pos, { content }))
+            break
           }
         }
       }

@@ -15,10 +15,10 @@ import {
 } from '@shared/canvas-types'
 
 interface CardShellProps {
-  node: CanvasNode
-  title: string
-  children: React.ReactNode
-  onClose: () => void
+  readonly node: CanvasNode
+  readonly title: string
+  readonly children: React.ReactNode
+  readonly onClose: () => void
 }
 
 /** Valid conversion targets for each card type */

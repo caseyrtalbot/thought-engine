@@ -2,12 +2,12 @@ import { useCanvasStore } from '../../store/canvas-store'
 import { colors, borderRadius } from '../../design/tokens'
 
 interface CanvasToolbarProps {
-  canUndo: boolean
-  canRedo: boolean
-  onUndo: () => void
-  onRedo: () => void
-  onAddCard: () => void
-  onOpenImport: () => void
+  readonly canUndo: boolean
+  readonly canRedo: boolean
+  readonly onUndo: () => void
+  readonly onRedo: () => void
+  readonly onAddCard: () => void
+  readonly onOpenImport: () => void
 }
 
 export function CanvasToolbar({
@@ -17,7 +17,7 @@ export function CanvasToolbar({
   onRedo,
   onAddCard,
   onOpenImport
-}: CanvasToolbarProps) {
+}: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
 

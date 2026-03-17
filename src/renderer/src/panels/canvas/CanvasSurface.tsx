@@ -32,10 +32,15 @@ function buildGridSvg(minorColor: string, majorColor: string): string {
 }
 
 interface CanvasSurfaceProps {
-  children: React.ReactNode
-  onDoubleClick: (canvasX: number, canvasY: number, screenX: number, screenY: number) => void
-  onBackgroundClick: () => void
-  onFileDrop?: (canvasX: number, canvasY: number, dataJson: string) => void
+  readonly children: React.ReactNode
+  readonly onDoubleClick: (
+    canvasX: number,
+    canvasY: number,
+    screenX: number,
+    screenY: number
+  ) => void
+  readonly onBackgroundClick: () => void
+  readonly onFileDrop?: (canvasX: number, canvasY: number, dataJson: string) => void
 }
 
 export function CanvasSurface({
@@ -43,7 +48,7 @@ export function CanvasSurface({
   onDoubleClick,
   onBackgroundClick,
   onFileDrop
-}: CanvasSurfaceProps) {
+}: CanvasSurfaceProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewport = useCanvasStore((s) => s.viewport)
   const { onWheel, onPointerDown } = useCanvasViewport(containerRef)

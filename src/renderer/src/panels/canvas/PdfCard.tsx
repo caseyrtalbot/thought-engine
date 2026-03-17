@@ -7,10 +7,10 @@ import { colors } from '../../design/tokens'
 import type { CanvasNode, PdfNodeMeta } from '@shared/canvas-types'
 
 interface PdfCardProps {
-  node: CanvasNode
+  readonly node: CanvasNode
 }
 
-export function PdfCard({ node }: PdfCardProps) {
+export function PdfCard({ node }: PdfCardProps): React.ReactElement {
   const removeNode = useCanvasStore((s) => s.removeNode)
   const updateNodeMetadata = useCanvasStore((s) => s.updateNodeMetadata)
 
@@ -187,31 +187,54 @@ export function PdfCard({ node }: PdfCardProps) {
           className="flex-1 overflow-hidden flex items-center justify-center"
           style={{ minHeight: 0 }}
         >
-          {!src ? (
-            <div className="text-center" style={{ color: colors.text.muted }}>
-              <span className="text-xs">No PDF source</span>
-            </div>
-          ) : loading ? (
-            <div className="text-center" style={{ color: colors.text.muted }}>
-              <div
-                className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-1"
-                style={{ borderColor: colors.accent.default, borderTopColor: 'transparent' }}
-              />
-              <span className="text-xs">Loading PDF...</span>
-            </div>
-          ) : error ? (
-            <div className="text-center px-4" style={{ color: colors.text.muted }}>
-              <span className="text-xs">{error}</span>
-            </div>
-          ) : (
-            <canvas
-              ref={canvasRef}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
-          )}
+          <PdfContent src={src} loading={loading} error={error} canvasRef={canvasRef} />
         </div>
       </div>
     </CardShell>
+  )
+}
+
+function PdfContent({
+  src,
+  loading,
+  error,
+  canvasRef
+}: {
+  readonly src: string
+  readonly loading: boolean
+  readonly error: string | null
+  readonly canvasRef: React.RefObject<HTMLCanvasElement | null>
+}): React.ReactElement {
+  if (!src) {
+    return (
+      <div className="text-center" style={{ color: colors.text.muted }}>
+        <span className="text-xs">No PDF source</span>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center" style={{ color: colors.text.muted }}>
+        <div
+          className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-1"
+          style={{ borderColor: colors.accent.default, borderTopColor: 'transparent' }}
+        />
+        <span className="text-xs">Loading PDF...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center px-4" style={{ color: colors.text.muted }}>
+        <span className="text-xs">{error}</span>
+      </div>
+    )
+  }
+
+  return (
+    <canvas ref={canvasRef} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
   )
 }
 
