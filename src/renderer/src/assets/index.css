@@ -384,6 +384,61 @@ body {
   color: var(--color-text-secondary);
 }
 
+/* ── Mermaid diagrams ── */
+
+.mermaid-block {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-container);
+  padding: 1em 1.25em;
+  margin-bottom: 1em;
+  position: relative;
+}
+
+.mermaid-label {
+  position: absolute;
+  top: 0.5em;
+  right: 0.75em;
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.mermaid-diagram {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5em;
+}
+
+.mermaid-diagram svg {
+  display: block;
+  min-width: min-content;
+  height: auto;
+}
+
+.mermaid-error {
+  border: 1px solid #ef4444;
+  border-radius: var(--radius-container);
+  padding: 0.75em 1em;
+}
+
+.mermaid-error .mermaid-error-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: #ef4444;
+  margin-bottom: 0.5em;
+}
+
+.mermaid-error pre {
+  margin: 0;
+  font-size: var(--text-mono-source);
+  color: var(--color-text-muted);
+}
+
 /* ── Horizontal rules ── */
 
 .ProseMirror hr {

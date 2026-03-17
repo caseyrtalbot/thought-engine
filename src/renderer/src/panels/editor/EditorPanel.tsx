@@ -14,6 +14,7 @@ import { RichEditor } from './RichEditor'
 import { SourceEditor } from './SourceEditor'
 import { parseFrontmatter, migrateLegacyWikilinks } from './markdown-utils'
 import { ConceptNodeMark } from './extensions/concept-node-mark'
+import { MermaidCodeBlock } from './extensions/mermaid-code-block'
 import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
 
@@ -60,7 +61,8 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   // Build Tiptap extensions
   const extensions = useMemo(
     () => [
-      StarterKit,
+      StarterKit.configure({ codeBlock: false }),
+      MermaidCodeBlock,
       Markdown,
       TaskList,
       TaskItem.configure({ nested: true }),
