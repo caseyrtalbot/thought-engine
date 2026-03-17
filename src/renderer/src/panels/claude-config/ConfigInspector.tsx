@@ -16,6 +16,18 @@ export function ConfigInspector({ path, title, onClose }: ConfigInspectorProps) 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Escape key closes inspector
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   const isJson = path.endsWith('.json')
   const language = isJson ? json() : markdown()
 
@@ -63,12 +75,7 @@ export function ConfigInspector({ path, title, onClose }: ConfigInspectorProps) 
   if (error) {
     return (
       <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.base }}>
-        <InspectorHeader
-          title={title}
-          path={path}
-          saveStatus="saved"
-          onClose={onClose}
-        />
+        <InspectorHeader title={title} path={path} saveStatus="saved" onClose={onClose} />
         <div className="flex-1 flex items-center justify-center p-4">
           <p className="text-sm" style={{ color: colors.text.muted }}>
             Failed to load file: {error}
@@ -81,12 +88,7 @@ export function ConfigInspector({ path, title, onClose }: ConfigInspectorProps) 
   if (content === null) {
     return (
       <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.base }}>
-        <InspectorHeader
-          title={title}
-          path={path}
-          saveStatus="saved"
-          onClose={onClose}
-        />
+        <InspectorHeader title={title} path={path} saveStatus="saved" onClose={onClose} />
         <div className="flex-1 flex items-center justify-center">
           <span className="text-sm" style={{ color: colors.text.muted }}>
             Loading...
@@ -98,18 +100,9 @@ export function ConfigInspector({ path, title, onClose }: ConfigInspectorProps) 
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: colors.bg.base }}>
-      <InspectorHeader
-        title={title}
-        path={path}
-        saveStatus={saveStatus}
-        onClose={onClose}
-      />
+      <InspectorHeader title={title} path={path} saveStatus={saveStatus} onClose={onClose} />
       <div className="flex-1 overflow-hidden">
-        <InspectorEditor
-          initialContent={content}
-          language={language}
-          onChange={handleChange}
-        />
+        <InspectorEditor initialContent={content} language={language} onChange={handleChange} />
       </div>
     </div>
   )
@@ -137,10 +130,7 @@ function InspectorHeader({
       }}
     >
       <div className="flex flex-col min-w-0">
-        <span
-          className="text-sm font-medium truncate"
-          style={{ color: colors.text.primary }}
-        >
+        <span className="text-sm font-medium truncate" style={{ color: colors.text.primary }}>
           {title}
         </span>
         <span

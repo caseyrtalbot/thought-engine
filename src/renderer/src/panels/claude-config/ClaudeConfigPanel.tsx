@@ -3,6 +3,7 @@ import { CanvasSurface } from '../canvas/CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useClaudeConfigStore } from '../../store/claude-config-store'
 import { useClaudeCanvasStore } from '../../store/claude-canvas-store'
+import { useInspectorStore } from '../../store/inspector-store'
 import { LazyCards } from '../canvas/card-registry'
 import { CardShellSkeleton } from '../canvas/CardShellSkeleton'
 import { CardLodPreview } from '../canvas/CardLodPreview'
@@ -207,28 +208,16 @@ export function ClaudeConfigPanel() {
     return () => clearTimeout(timer)
   }, [isDirty, toCanvasFile, markSaved, configPath, setCachedData])
 
-  const [inspectorFile, setInspectorFile] = useState<{ path: string; title: string } | null>(null)
+  const inspectorFile = useInspectorStore((s) => s.inspectorFile)
+  const closeInspector = useInspectorStore((s) => s.closeInspector)
 
-  const handleOpenInInspector = useCallback((path: string, title: string) => {
-    setInspectorFile({ path, title })
-  }, [])
-
-  const handleCloseInspector = useCallback(() => {
-    setInspectorFile(null)
-  }, [])
-
-  // Escape key closes inspector
-  useEffect(() => {
-    if (!inspectorFile) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setInspectorFile(null)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [inspectorFile])
+  // Clear inspector when this panel unmounts
+  useEffect(
+    () => () => {
+      useInspectorStore.getState().closeInspector()
+    },
+    []
+  )
 
   const visibleNodes = useViewportCulling(nodes, viewport, containerSize)
   const lod = getLodLevel(viewport.zoom)
@@ -267,7 +256,7 @@ export function ClaudeConfigPanel() {
   }, [nodes, containerSize])
 
   return (
-    <InspectorProvider value={handleOpenInInspector}>
+    <InspectorProvider value={useInspectorStore.getState().openInspector}>
       <div className="flex h-full w-full overflow-hidden">
         {/* Canvas panel - always at same DOM position to avoid remount */}
         <div className="overflow-hidden shrink-0" style={{ width: inspectorFile ? '55%' : '100%' }}>
@@ -360,7 +349,7 @@ export function ClaudeConfigPanel() {
                 key={inspectorFile.path}
                 path={inspectorFile.path}
                 title={inspectorFile.title}
-                onClose={handleCloseInspector}
+                onClose={closeInspector}
               />
             </div>
           </>

@@ -13,16 +13,17 @@ import {
   type CanvasNodeType,
   type CanvasSide
 } from '@shared/canvas-types'
+import { CLAUDE_TYPE_COLORS } from '../../design/claude-type-colors'
 
 /** Type accent colors for the left border strip on cards */
 const TYPE_ACCENT_COLORS: Partial<Record<CanvasNodeType, string>> = {
-  'claude-settings': '#f59e0b',
-  'claude-agent': '#a78bfa',
-  'claude-skill': '#22d3ee',
-  'claude-rule': '#94a3b8',
-  'claude-command': '#34d399',
-  'claude-team': '#f472b6',
-  'claude-memory': '#fb923c'
+  'claude-settings': CLAUDE_TYPE_COLORS.settings,
+  'claude-agent': CLAUDE_TYPE_COLORS.agents,
+  'claude-skill': CLAUDE_TYPE_COLORS.skills,
+  'claude-rule': CLAUDE_TYPE_COLORS.rules,
+  'claude-command': CLAUDE_TYPE_COLORS.commands,
+  'claude-team': CLAUDE_TYPE_COLORS.teams,
+  'claude-memory': CLAUDE_TYPE_COLORS.memory
 }
 
 interface CardShellProps {

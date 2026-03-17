@@ -4,6 +4,7 @@ import { colors } from '../../design/tokens'
 import { FileContextMenu } from './FileContextMenu'
 import { FileTree } from './FileTree'
 import { SearchBar } from './SearchBar'
+import { VaultSelector } from './VaultSelector'
 import { WorkspaceFilter } from './WorkspaceFilter'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
@@ -27,54 +28,70 @@ interface SidebarProps {
   onCanvasPaths?: ReadonlySet<string>
   canvasConnectionCounts?: ReadonlyMap<string, number>
   sortMode?: SortMode
+  vaultName?: string
+  vaultHistory?: readonly string[]
   onSearch: (query: string) => void
   onWorkspaceSelect: (workspace: string | null) => void
   onFileSelect: (path: string) => void
   onToggleDirectory: (path: string) => void
   onNewFile?: () => void
-  onNewFolder?: () => void
   onSortChange?: (mode: SortMode) => void
   onFileAction?: (action: FileAction) => void
+  onSelectVault?: (path: string) => void
+  onSelectClaudeConfig?: () => void
+  onOpenVaultPicker?: () => void
 }
 
 function ActionBar({
   sortMode = 'modified',
+  vaultName,
+  vaultHistory = [],
   onNewFile,
-  onNewFolder,
-  onSortChange
+  onSortChange,
+  onSelectVault,
+  onSelectClaudeConfig,
+  onOpenVaultPicker
 }: {
   sortMode?: SortMode
+  vaultName?: string
+  vaultHistory?: readonly string[]
   onNewFile?: () => void
-  onNewFolder?: () => void
   onSortChange?: (mode: SortMode) => void
+  onSelectVault?: (path: string) => void
+  onSelectClaudeConfig?: () => void
+  onOpenVaultPicker?: () => void
 }) {
   return (
-    <div className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: colors.text.muted }}>
-      <button
-        onClick={onNewFile}
-        className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
-        title="New file"
-      >
-        + File
-      </button>
-      <button
-        onClick={onNewFolder}
-        className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
-        title="Open a different vault"
-      >
-        Open Vault
-      </button>
-      <div className="flex-1" />
-      <select
-        value={sortMode}
-        onChange={(e) => onSortChange?.(e.target.value as SortMode)}
-        className="bg-transparent text-xs cursor-pointer"
-        style={{ color: colors.text.muted }}
-      >
-        <option value="modified">Modified</option>
-        <option value="name">Name</option>
-        <option value="type">Type</option>
-      </select>
+    <div className="flex flex-col gap-1 px-2 py-1">
+      {vaultName && onSelectVault && onSelectClaudeConfig && onOpenVaultPicker && (
+        <VaultSelector
+          currentName={vaultName}
+          history={vaultHistory}
+          onSelectVault={onSelectVault}
+          onOpenPicker={onOpenVaultPicker}
+          onSelectClaudeConfig={onSelectClaudeConfig}
+        />
+      )}
+      <div className="flex items-center gap-1 text-xs" style={{ color: colors.text.muted }}>
+        <button
+          onClick={onNewFile}
+          className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
+          title="New file"
+        >
+          + File
+        </button>
+        <div className="flex-1" />
+        <select
+          value={sortMode}
+          onChange={(e) => onSortChange?.(e.target.value as SortMode)}
+          className="bg-transparent text-xs cursor-pointer"
+          style={{ color: colors.text.muted }}
+        >
+          <option value="modified">Modified</option>
+          <option value="name">Name</option>
+          <option value="type">Type</option>
+        </select>
+      </div>
     </div>
   )
 }
@@ -89,14 +106,18 @@ export function Sidebar({
   onCanvasPaths,
   canvasConnectionCounts,
   sortMode = 'modified',
+  vaultName,
+  vaultHistory,
   onSearch,
   onWorkspaceSelect,
   onFileSelect,
   onToggleDirectory,
   onNewFile,
-  onNewFolder,
   onSortChange,
-  onFileAction
+  onFileAction,
+  onSelectVault,
+  onSelectClaudeConfig,
+  onOpenVaultPicker
 }: SidebarProps) {
   const [contextMenu, setContextMenu] = useState<FileContextMenuState | null>(null)
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
@@ -145,9 +166,13 @@ export function Sidebar({
       </div>
       <ActionBar
         sortMode={sortMode}
+        vaultName={vaultName}
+        vaultHistory={vaultHistory}
         onNewFile={onNewFile}
-        onNewFolder={onNewFolder}
         onSortChange={onSortChange}
+        onSelectVault={onSelectVault}
+        onSelectClaudeConfig={onSelectClaudeConfig}
+        onOpenVaultPicker={onOpenVaultPicker}
       />
       {workspaces.length > 0 && (
         <WorkspaceFilter

@@ -4,6 +4,7 @@ import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
 import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
+import { ClaudeConfigSidebar } from './panels/sidebar/ClaudeConfigSidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
 import { EditorPanel } from './panels/editor/EditorPanel'
 import { SkillsPanel } from './panels/skills/SkillsPanel'
@@ -53,6 +54,8 @@ function ContentArea() {
 const EMPTY_SET = new Set<string>()
 
 function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
+  const contentView = useViewStore((s) => s.contentView)
+  const toggleClaudeConfig = useViewStore((s) => s.toggleClaudeConfig)
   const files = useVaultStore((s) => s.files)
   const config = useVaultStore((s) => s.config)
   const activeWorkspace = useVaultStore((s) => s.activeWorkspace)
@@ -65,6 +68,19 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<'modified' | 'name' | 'type'>('modified')
   const [searchQuery, setSearchQuery] = useState('')
+  const [vaultHistory, setVaultHistory] = useState<string[]>([])
+
+  // Load vault history on mount
+  useEffect(() => {
+    window.api.config
+      .read('app', 'vaultHistory')
+      .then((history) => {
+        if (Array.isArray(history)) setVaultHistory(history as string[])
+      })
+      .catch(() => {})
+  }, [])
+
+  const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
   const allTreeNodes = useMemo(() => {
     const paths = files.map((f) => f.path)
@@ -158,13 +174,30 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
     setContentView('editor')
   }, [vaultPath, files, openTab, setContentView])
 
-  const handleOpenVault = useCallback(async () => {
+  const handleOpenVaultPicker = useCallback(async () => {
     const path = await window.api.fs.selectVault()
     if (!path) return
     flushPendingSave()
     await window.api.vault.watchStop()
     await onLoadVault(path)
   }, [onLoadVault])
+
+  const handleSelectVault = useCallback(
+    async (path: string) => {
+      flushPendingSave()
+      await window.api.vault.watchStop()
+      await onLoadVault(path)
+      // If we're on the claude-config view, switch back to editor
+      if (useViewStore.getState().contentView === 'claude-config') {
+        setContentView('editor')
+      }
+    },
+    [onLoadVault, setContentView]
+  )
+
+  const handleSelectClaudeConfig = useCallback(() => {
+    toggleClaudeConfig()
+  }, [toggleClaudeConfig])
 
   const handleFileAction = useCallback(
     async (action: { actionId: string; path: string; isDirectory: boolean }) => {
@@ -222,6 +255,18 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
     [files, openTab, setContentView]
   )
 
+  // Show claude config sidebar when on that view
+  if (contentView === 'claude-config') {
+    return (
+      <ClaudeConfigSidebar
+        vaultHistory={vaultHistory}
+        onSelectVault={handleSelectVault}
+        onOpenVaultPicker={handleOpenVaultPicker}
+        onSelectClaudeConfig={handleSelectClaudeConfig}
+      />
+    )
+  }
+
   return (
     <Sidebar
       nodes={treeNodes}
@@ -233,14 +278,18 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
       onCanvasPaths={onCanvasPaths}
       canvasConnectionCounts={canvasConnectionCounts}
       sortMode={sortMode}
+      vaultName={vaultName}
+      vaultHistory={vaultHistory}
       onSearch={setSearchQuery}
       onWorkspaceSelect={setActiveWorkspace}
       onFileSelect={handleFileSelect}
       onToggleDirectory={handleToggleDirectory}
       onNewFile={handleNewFile}
-      onNewFolder={handleOpenVault}
       onSortChange={setSortMode}
       onFileAction={handleFileAction}
+      onSelectVault={handleSelectVault}
+      onSelectClaudeConfig={handleSelectClaudeConfig}
+      onOpenVaultPicker={handleOpenVaultPicker}
     />
   )
 }
@@ -524,6 +573,12 @@ export default function App() {
           useEditorStore.getState().setActiveNote(state.lastOpenNote, state.lastOpenNote)
       }
       window.api.config.write('app', 'lastVaultPath', path)
+
+      // Persist vault history (most-recent-first, deduped, capped at 10)
+      const history = (await window.api.config.read('app', 'vaultHistory')) as string[] | null
+      const updated = [path, ...(history ?? []).filter((p) => p !== path)].slice(0, 10)
+      await window.api.config.write('app', 'vaultHistory', updated)
+
       await window.api.vault.watchStart(path)
       const filePaths = useVaultStore.getState().files.map((f) => f.path)
       const filesWithContent = await Promise.all(
