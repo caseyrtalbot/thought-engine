@@ -7,9 +7,17 @@ interface CanvasToolbarProps {
   onUndo: () => void
   onRedo: () => void
   onAddCard: () => void
+  onOpenImport: () => void
 }
 
-export function CanvasToolbar({ canUndo, canRedo, onUndo, onRedo, onAddCard }: CanvasToolbarProps) {
+export function CanvasToolbar({
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onAddCard,
+  onOpenImport
+}: CanvasToolbarProps) {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
 
@@ -60,6 +68,23 @@ export function CanvasToolbar({ canUndo, canRedo, onUndo, onRedo, onAddCard }: C
         >
           <line x1="7" y1="2" x2="7" y2="12" />
           <line x1="2" y1="7" x2="12" y2="7" />
+        </svg>
+      </button>
+      <button onClick={onOpenImport} style={btnStyle} title="Import notes (Cmd+G)">
+        <svg
+          width={14}
+          height={14}
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          <circle cx="3" cy="3" r="1.5" />
+          <circle cx="11" cy="3" r="1.5" />
+          <circle cx="7" cy="11" r="1.5" />
+          <line x1="4.2" y1="3.8" x2="5.8" y2="9.8" />
+          <line x1="9.8" y1="3.8" x2="8.2" y2="9.8" />
+          <line x1="4.5" y1="3" x2="9.5" y2="3" />
         </svg>
       </button>
 

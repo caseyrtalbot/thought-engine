@@ -84,13 +84,13 @@ body::after {
   --transition-settings-slide: 250ms ease-out;
   --transition-modal-fade: 200ms ease-in;
   --transition-command-palette: 150ms ease-out;
-  --color-bg-base: #0c0e14;
-  --color-bg-surface: #141620;
-  --color-bg-elevated: #1c1f2e;
-  --color-border-default: #252a3a;
-  --color-text-primary: #e2e8f0;
-  --color-text-secondary: #64748b;
-  --color-text-muted: #3b4563;
+  --color-bg-base: #080101;
+  --color-bg-surface: #0f0808;
+  --color-bg-elevated: #1a1111;
+  --color-border-default: rgba(255, 252, 252, 0.10);
+  --color-text-primary: #e8e6e6;
+  --color-text-secondary: #7a7575;
+  --color-text-muted: #4a4444;
   --color-accent-default: #00e5bf;
   --color-accent-hover: #33eece;
   --color-accent-muted: rgba(0, 229, 191, 0.10);
@@ -99,7 +99,7 @@ body::after {
   --panel-gap: 0;
   --panel-radius: 0;
   --panel-padding: 12px 16px;
-  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 252, 252, 0.06);
   --neon-glow: 0 0 8px rgba(0, 229, 191, 0.12);
   --color-accent-focus: rgba(0, 229, 191, 0.3);
   --color-accent-subtle: rgba(0, 229, 191, 0.15);
@@ -147,7 +147,7 @@ body::after {
 /* ─── Panels ─── */
 
 .panel-card {
-  background: var(--color-bg-surface);
+  background: var(--color-bg-base);
   overflow: hidden;
   animation: te-fade-in 0.3s ease-out;
 }
