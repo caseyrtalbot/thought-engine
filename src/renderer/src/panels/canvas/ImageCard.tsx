@@ -22,14 +22,14 @@ export function ImageCard({ node }: ImageCardProps) {
     return segments[segments.length - 1] ?? 'Image'
   }, [src, meta.alt])
 
-  // Resolve file:// for local paths, pass URLs through
+  // Resolve local paths via te-asset:// protocol, pass URLs through
   const resolvedSrc = useMemo(() => {
     if (!src) return ''
     if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')) {
       return src
     }
-    // Local file path: use file:// protocol (Electron supports this)
-    return `file://${src}`
+    // Local file path: use te-asset:// custom protocol (CSP-safe)
+    return `te-asset://local${src.startsWith('/') ? '' : '/'}${src}`
   }, [src])
 
   return (

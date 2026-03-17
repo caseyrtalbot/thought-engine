@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, session } from 'electron'
+import { app, shell, BrowserWindow, session, net, protocol } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerFilesystemIpc } from './ipc/filesystem'
@@ -13,7 +14,7 @@ const PROD_CSP = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data:"
+  "img-src 'self' data: te-asset:"
 ].join('; ')
 
 // Prevent EPIPE from node-pty/shell service from crashing the app
@@ -78,8 +79,32 @@ function registerWindowIpc(): void {
   })
 }
 
+// Register te-asset:// protocol for serving local files (images, PDFs) to the renderer.
+// Must be called before app.whenReady() so the scheme is registered before any navigation.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'te-asset',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: false
+    }
+  }
+])
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron')
+
+  // Handle te-asset:// requests by serving local files via net.fetch(file://)
+  protocol.handle('te-asset', (request) => {
+    // URL format: te-asset://local/<absolute-path>
+    // e.g. te-asset://local/Users/casey/vault/image.png
+    const url = new URL(request.url)
+    const filePath = decodeURIComponent(url.pathname)
+    // Convert to file:// URL for net.fetch (handles all MIME types automatically)
+    return net.fetch(pathToFileURL(filePath).toString())
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
