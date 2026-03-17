@@ -1,7 +1,5 @@
-import { FileText, FolderClosed, FolderOpen } from 'lucide-react'
-
 import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
-import { colors, getArtifactColor } from '../../design/tokens'
+import { colors } from '../../design/tokens'
 import { RenameInput } from './FileContextMenu'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
@@ -163,8 +161,10 @@ function DirectoryRow({
         paddingRight: 8,
         marginBottom: 1,
         color: colors.text.primary,
-        fontWeight: 500,
-        fontSize: 13
+        fontWeight: 400,
+        fontSize: 12,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em'
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
@@ -175,13 +175,6 @@ function DirectoryRow({
     >
       <span className="mr-1.5 flex items-center" style={{ color: colors.text.muted }}>
         <Chevron isExpanded={!isCollapsed} />
-      </span>
-      <span className="mr-1.5 flex items-center" style={{ color: colors.text.muted, opacity: 0.6 }}>
-        {isCollapsed ? (
-          <FolderClosed size={14} strokeWidth={1.5} />
-        ) : (
-          <FolderOpen size={14} strokeWidth={1.5} />
-        )}
       </span>
       {isRenaming ? (
         <RenameInput
@@ -211,8 +204,8 @@ function DirectoryRow({
 function FileRow({
   node,
   isActive,
-  artifactType,
-  isOnCanvas,
+  artifactType: _artifactType,
+  isOnCanvas: _isOnCanvas,
   canvasConnectionCount,
   onFileSelect,
   onContextMenu,
@@ -233,17 +226,6 @@ function FileRow({
 }) {
   const paddingLeft = 8 + node.depth * 16 + 20
   const { base, ext } = splitName(node.name)
-
-  // Icon color: artifact type color when available, accent when on canvas, muted otherwise
-  let iconColor = colors.text.muted
-  if (artifactType) {
-    iconColor = getArtifactColor(artifactType)
-  } else if (isOnCanvas) {
-    iconColor = colors.accent.default
-  }
-
-  // Canvas glow on the icon
-  const canvasGlow = isOnCanvas ? `drop-shadow(0 0 4px ${colors.accent.default})` : undefined
 
   return (
     <div
@@ -271,10 +253,9 @@ function FileRow({
         paddingLeft,
         paddingRight: 8,
         marginBottom: 1,
-        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.08)' : undefined,
-        color: isActive ? colors.text.primary : colors.text.secondary,
+        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : undefined,
         fontWeight: 400,
-        fontSize: 13
+        fontSize: 12
       }}
       onMouseEnter={(e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
@@ -283,18 +264,6 @@ function FileRow({
         if (!isActive) e.currentTarget.style.backgroundColor = ''
       }}
     >
-      <span
-        className="mr-1.5 flex-shrink-0 flex items-center"
-        style={{
-          color: iconColor,
-          opacity: isOnCanvas ? 1 : 0.6,
-          filter: canvasGlow,
-          transition: 'filter 150ms ease-out, color 150ms ease-out'
-        }}
-        title={isOnCanvas ? 'on canvas' : (artifactType ?? undefined)}
-      >
-        <FileText size={14} strokeWidth={1.5} />
-      </span>
       {isRenaming ? (
         <RenameInput
           initialValue={node.name}
@@ -303,8 +272,8 @@ function FileRow({
         />
       ) : (
         <span className="truncate flex-1">
-          {base}
-          {ext && <span style={{ color: colors.text.muted, opacity: 0.4 }}>{ext}</span>}
+          <span style={{ color: colors.text.primary }}>{base}</span>
+          {ext && <span style={{ color: colors.text.muted }}>{ext}</span>}
         </span>
       )}
       {canvasConnectionCount >= 2 && (

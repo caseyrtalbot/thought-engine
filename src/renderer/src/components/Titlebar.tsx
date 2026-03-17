@@ -2,39 +2,44 @@ import { colors } from '../design/tokens'
 
 interface TitlebarProps {
   vaultName: string
+  activeFilePath: string | null
+  vaultPath: string
   onOpenSettings: () => void
 }
 
-export function Titlebar({ vaultName, onOpenSettings }: TitlebarProps) {
+export function Titlebar({ vaultName, activeFilePath, vaultPath, onOpenSettings }: TitlebarProps) {
+  // Compute relative path from vault root
+  const displayPath = activeFilePath && vaultPath
+    ? activeFilePath.replace(vaultPath + '/', '')
+    : null
+
   return (
     <div
       className="h-[38px] flex items-center px-3 select-none flex-shrink-0"
       style={
         {
           backgroundColor: colors.bg.base,
-          borderBottom: '1px solid var(--border-subtle)',
           WebkitAppRegion: 'drag'
         } as React.CSSProperties
       }
     >
       {/* Traffic light spacer (macOS native) */}
       <div className="w-[70px] flex-shrink-0" />
-      {/* Vault tab — text only, no filled pill */}
+      {/* File path or vault name in monospace */}
       <div
-        className="flex items-center gap-2 px-3 py-1 text-[13px]"
+        className="flex items-center px-3 py-1"
         style={
           {
-            color: colors.text.primary,
-            fontWeight: 500,
+            color: colors.text.muted,
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
             WebkitAppRegion: 'no-drag'
           } as React.CSSProperties
         }
       >
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: colors.accent.default }}
-        />
-        <span className="truncate max-w-[200px]">{vaultName}</span>
+        <span className="truncate max-w-[400px]">
+          {displayPath ?? vaultName}
+        </span>
       </div>
       <div className="flex-1" />
       {/* Settings gear */}

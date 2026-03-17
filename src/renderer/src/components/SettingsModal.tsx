@@ -164,7 +164,10 @@ function AppearanceTab() {
               className="rounded-lg p-2 text-left transition-all"
               style={{
                 border: `1.5px solid ${isSelected ? colors.accent.default : t.colors.border.default}`,
-                backgroundColor: t.colors.bg.base
+                backgroundColor: t.colors.bg.base,
+                boxShadow: isSelected
+                  ? `0 0 10px ${colors.accent.default}30, 0 0 4px ${colors.accent.default}20`
+                  : undefined
               }}
             >
               <div className="flex gap-px mb-1.5 rounded overflow-hidden h-3">
@@ -214,7 +217,8 @@ function AppearanceTab() {
                 backgroundColor: a.value,
                 outline: isSelected ? `2px solid ${a.value}` : '2px solid transparent',
                 outlineOffset: '2px',
-                transform: isSelected ? 'scale(1.15)' : undefined
+                transform: isSelected ? 'scale(1.15)' : undefined,
+                boxShadow: isSelected ? `0 0 12px ${a.value}80, 0 0 4px ${a.value}40` : undefined
               }}
             />
           )

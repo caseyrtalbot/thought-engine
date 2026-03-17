@@ -8,9 +8,6 @@ import TaskItem from '@tiptap/extension-task-item'
 import Link from '@tiptap/extension-link'
 import { useEditorStore } from '../../store/editor-store'
 import { useVaultStore } from '../../store/vault-store'
-import { EditorToolbar } from './EditorToolbar'
-import { EditorBreadcrumb } from './EditorBreadcrumb'
-import { TabBar } from './TabBar'
 import { FrontmatterHeader } from './FrontmatterHeader'
 import { BacklinksPanel } from './BacklinksPanel'
 import { RichEditor } from './RichEditor'
@@ -29,26 +26,10 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
   const mode = useEditorStore((s) => s.mode)
   const content = useEditorStore((s) => s.content)
-  const setMode = useEditorStore((s) => s.setMode)
   const setContent = useEditorStore((s) => s.setContent)
   const loadContent = useEditorStore((s) => s.loadContent)
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition)
 
-  // Tabs
-  const openTabs = useEditorStore((s) => s.openTabs)
-  const switchTab = useEditorStore((s) => s.switchTab)
-  const closeTab = useEditorStore((s) => s.closeTab)
-
-  // Navigation (from store)
-  const historyIndex = useEditorStore((s) => s.historyIndex)
-  const historyStack = useEditorStore((s) => s.historyStack)
-  const goBack = useEditorStore((s) => s.goBack)
-  const goForward = useEditorStore((s) => s.goForward)
-
-  const canGoBack = historyIndex > 0
-  const canGoForward = historyIndex < historyStack.length - 1
-
-  const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifact = useVaultStore((s) =>
     activeNoteId ? (s.artifacts.find((a) => a.id === activeNoteId) ?? null) : null
   )
@@ -166,7 +147,7 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
     onSelectionUpdate: handleSelectionUpdate,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none min-h-full px-8 py-4',
+        class: 'focus:outline-none min-h-full px-8 py-12',
         style: `color: ${colors.text.primary};`
       },
       handleDOMEvents: {
@@ -245,10 +226,6 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
     return () => clearTimeout(timer)
   }, [content, activeNotePath])
 
-  const handleToggleMode = useCallback(() => {
-    setMode(mode === 'rich' ? 'source' : 'rich')
-  }, [mode, setMode])
-
   // Empty state - only show when no file is selected
   if (!activeNotePath) {
     return (
@@ -263,19 +240,6 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
 
   return (
     <div className="h-full flex flex-col">
-      <TabBar tabs={openTabs} activePath={activeNotePath} onSwitch={switchTab} onClose={closeTab} />
-
-      <EditorBreadcrumb
-        filePath={activeNotePath}
-        vaultPath={vaultPath ?? ''}
-        canGoBack={canGoBack}
-        canGoForward={canGoForward}
-        onGoBack={goBack}
-        onGoForward={goForward}
-      />
-
-      <EditorToolbar editor={editor} mode={mode} onToggleMode={handleToggleMode} />
-
       <div className="flex-1 overflow-y-auto">
         <FrontmatterHeader
           artifact={artifact}

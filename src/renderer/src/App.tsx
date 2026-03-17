@@ -299,12 +299,18 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     setShowTerminal((prev) => !prev)
   }, [])
 
+  const goBack = useEditorStore((s) => s.goBack)
+  const goForward = useEditorStore((s) => s.goForward)
+  const activeNotePath = useEditorStore((s) => s.activeNotePath)
+
   useKeyboard({
     onCommandPalette: () => setPaletteOpen(true),
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
     onToggleTerminal: toggleTerminal,
     onCloseTab: handleCloseTab,
+    onGoBack: goBack,
+    onGoForward: goForward,
     onEscape: () => setPaletteOpen(false)
   })
 
@@ -364,7 +370,12 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       className="h-screen w-screen flex flex-col"
       style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
     >
-      <Titlebar vaultName={vaultName} onOpenSettings={() => setSettingsOpen(true)} />
+      <Titlebar
+        vaultName={vaultName}
+        activeFilePath={activeNotePath}
+        vaultPath={vaultPath ?? ''}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
       <div className="flex-1 overflow-hidden flex">
         <ActivityBar />
         <SplitPane

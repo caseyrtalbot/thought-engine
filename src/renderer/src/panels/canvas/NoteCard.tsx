@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
+import { useEditorStore } from '../../store/editor-store'
+import { useViewStore } from '../../store/view-store'
 import { CardShell } from './CardShell'
 import { getCanvasEditorExtensions } from './shared/tiptap-config'
 import { colors } from '../../design/tokens'
@@ -91,8 +93,18 @@ export function NoteCard({ node }: NoteCardProps) {
     }
   }, [editor, body, loading])
 
+  const openInEditor = useCallback(() => {
+    useEditorStore.getState().openTab(filePath, title)
+    useViewStore.getState().setContentView('editor')
+  }, [filePath, title])
+
   return (
-    <CardShell node={node} title={title} onClose={() => removeNode(node.id)}>
+    <CardShell
+      node={node}
+      title={title}
+      onClose={() => removeNode(node.id)}
+      onOpenInEditor={openInEditor}
+    >
       <div className="h-full overflow-auto" style={{ minHeight: 0 }}>
         {loading ? (
           <div className="p-3">

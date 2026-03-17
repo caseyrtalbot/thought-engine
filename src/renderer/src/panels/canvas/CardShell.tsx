@@ -19,6 +19,7 @@ interface CardShellProps {
   readonly title: string
   readonly children: React.ReactNode
   readonly onClose: () => void
+  readonly onOpenInEditor?: () => void
 }
 
 /** Valid conversion targets for each card type */
@@ -115,7 +116,7 @@ function nearestSide(clientX: number, clientY: number, rect: DOMRect): CanvasSid
   return relY > 0 ? 'bottom' : 'top'
 }
 
-export function CardShell({ node, title, children, onClose }: CardShellProps) {
+export function CardShell({ node, title, children, onClose, onOpenInEditor }: CardShellProps) {
   const isSelected = useCanvasStore((s) => s.selectedNodeIds.has(node.id))
   const setSelection = useCanvasStore((s) => s.setSelection)
   const toggleSelection = useCanvasStore((s) => s.toggleSelection)
@@ -171,6 +172,7 @@ export function CardShell({ node, title, children, onClose }: CardShellProps) {
       <div
         className="flex items-center justify-between px-3 py-1.5 shrink-0 select-none"
         style={{
+          backgroundColor: colors.bg.base,
           borderBottom: `1px solid ${colors.border.subtle}`,
           cursor: 'grab'
         }}
@@ -201,6 +203,32 @@ export function CardShell({ node, title, children, onClose }: CardShellProps) {
                 strokeWidth="1.5"
               >
                 <path d="M1 4h8l-2-2M11 8H3l2 2" />
+              </svg>
+            </button>
+          )}
+          {onOpenInEditor && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenInEditor()
+              }}
+              className="flex items-center justify-center rounded hover:opacity-80"
+              style={{ width: 18, height: 18, color: colors.text.muted }}
+              aria-label="Open in editor"
+              title="Open in editor"
+            >
+              <svg
+                width={12}
+                height={12}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
               </svg>
             </button>
           )}

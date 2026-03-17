@@ -39,7 +39,7 @@ function applyThemeCssVars(colors: ResolvedColors): void {
     const r = parseInt(hex.slice(1, 3), 16)
     const g = parseInt(hex.slice(3, 5), 16)
     const b = parseInt(hex.slice(5, 7), 16)
-    root.style.setProperty('--neon-glow', `0 0 8px rgba(${r}, ${g}, ${b}, 0.12)`)
+    root.style.setProperty('--neon-glow', `0 0 8px rgba(${r}, ${g}, ${b}, 0.15)`)
     root.style.setProperty('--color-accent-focus', `rgba(${r}, ${g}, ${b}, 0.3)`)
     root.style.setProperty('--color-accent-subtle', `rgba(${r}, ${g}, ${b}, 0.15)`)
   }

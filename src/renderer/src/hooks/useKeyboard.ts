@@ -10,6 +10,8 @@ interface KeyboardConfig {
   onSave?: () => void
   onNewTerminalTab?: () => void
   onCloseTab?: () => void
+  onGoBack?: () => void
+  onGoForward?: () => void
   onEscape?: () => void
 }
 
@@ -22,7 +24,9 @@ const META_KEY_BINDINGS = [
   { key: 'k', handler: 'onCommandPalette' },
   { key: 's', handler: 'onSave' },
   { key: 't', handler: 'onNewTerminalTab' },
-  { key: 'w', handler: 'onCloseTab' }
+  { key: 'w', handler: 'onCloseTab' },
+  { key: '[', handler: 'onGoBack' },
+  { key: ']', handler: 'onGoForward' }
 ] as const satisfies ReadonlyArray<{ key: string; handler: keyof KeyboardConfig }>
 
 export function useKeyboard(config: KeyboardConfig): void {

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
 import type { Artifact } from '@shared/types'
-import { colors, transitions, getArtifactColor } from '../../design/tokens'
+import { colors, getArtifactColor } from '../../design/tokens'
 import { serializeFrontmatter } from './markdown-utils'
 
 // ── Types ──
@@ -24,73 +24,32 @@ export function buildMetadataEntries(artifact: Artifact): readonly MetadataEntry
   return entries
 }
 
-// ── Property field icons ──
+// ── Pill style shared with type badge ──
 
-const PROPERTY_ICONS: Record<string, string> = {
-  title: '\u2261',
-  id: '\u2261',
-  type: '\u2261',
-  signal: '\u2261',
-  created: '\u2261',
-  modified: '\u2261',
-  author: '\u2261',
-  category: '\u2261',
-  source: '\u2261',
-  frame: '\u2261',
-  url: '\u2261',
-  parent: '\u2261',
-  tags: '\uD83C\uDFF7\uFE0F'
+const pillStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '10px',
+  fontWeight: 500,
+  letterSpacing: '0.04em',
+  borderRadius: 4,
+  padding: '2px 8px',
+  border: `1px solid ${colors.text.muted}50`,
+  color: colors.text.secondary,
+  lineHeight: 1.4
 }
 
-function getPropertyIcon(key: string): string {
-  return PROPERTY_ICONS[key.toLowerCase()] ?? '\u2261'
-}
+// ── Tag Pills Editor ──
 
-// ── Tag Chip ──
-
-interface TagChipProps {
-  tag: string
-  onRemove?: () => void
-}
-
-function TagChip({ tag, onRemove }: TagChipProps) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
-      style={{
-        color: '#f59e0b',
-        border: '1px solid rgba(245, 158, 11, 0.3)',
-        transition: transitions.default
-      }}
-    >
-      {tag}
-      {onRemove && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove()
-          }}
-          className="ml-0.5 hover:opacity-70 transition-opacity focus:outline-none"
-          style={{ color: '#f59e0b', fontSize: '10px', lineHeight: 1 }}
-          aria-label={`Remove tag ${tag}`}
-        >
-          {'\u00D7'}
-        </button>
-      )}
-    </span>
-  )
-}
-
-// ── Tag Input ──
-
-interface TagInputProps {
+interface TagEditorProps {
   tags: string[]
   onChange: (tags: string[]) => void
 }
 
-function TagInput({ tags, onChange }: TagInputProps) {
+function TagEditor({ tags, onChange }: TagEditorProps) {
   const [inputValue, setInputValue] = useState('')
+  const [adding, setAdding] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addTag = useCallback(
@@ -107,7 +66,15 @@ function TagInput({ tags, onChange }: TagInputProps) {
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
-      addTag(inputValue)
+      if (inputValue.trim()) {
+        addTag(inputValue)
+      } else {
+        setAdding(false)
+      }
+    }
+    if (e.key === 'Escape') {
+      setInputValue('')
+      setAdding(false)
     }
     if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
       onChange(tags.slice(0, -1))
@@ -115,112 +82,131 @@ function TagInput({ tags, onChange }: TagInputProps) {
   }
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-1 min-h-[28px] cursor-text"
-      onClick={() => inputRef.current?.focus()}
-    >
+    <span className="inline-flex flex-wrap items-center gap-1" style={{ verticalAlign: 'middle' }}>
       {tags.map((tag) => (
-        <TagChip key={tag} tag={tag} onRemove={() => onChange(tags.filter((t) => t !== tag))} />
+        <span key={tag} style={pillStyle} className="group">
+          {tag}
+          <button
+            type="button"
+            onClick={() => onChange(tags.filter((t) => t !== tag))}
+            className="ml-1 focus:outline-none"
+            style={{
+              color: colors.text.muted,
+              fontSize: '9px',
+              lineHeight: 1,
+              opacity: 0.6
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '1'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '0.6'
+            }}
+            aria-label={`Remove tag ${tag}`}
+          >
+            {'\u00D7'}
+          </button>
+        </span>
       ))}
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => {
-          if (inputValue.trim()) addTag(inputValue)
-        }}
-        placeholder={tags.length === 0 ? 'Add tag...' : ''}
-        className="bg-transparent border-0 outline-none text-xs min-w-[60px] flex-1"
-        style={{ color: colors.text.primary }}
-      />
-    </div>
+      {adding ? (
+        <input
+          ref={inputRef}
+          autoFocus
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => {
+            if (inputValue.trim()) addTag(inputValue)
+            setAdding(false)
+          }}
+          className="bg-transparent border-0 outline-none"
+          style={{
+            color: colors.text.secondary,
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            width: `${Math.max((inputValue.length || 4) + 1, 5)}ch`
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(true)
+            setTimeout(() => inputRef.current?.focus(), 30)
+          }}
+          style={{
+            ...pillStyle,
+            color: colors.text.muted,
+            cursor: 'pointer',
+            border: `1px dashed ${colors.text.muted}40`
+          }}
+          className="hover:opacity-80 transition-opacity"
+        >
+          +
+        </button>
+      )}
+    </span>
   )
 }
 
-// ── Editable Property Row ──
+// ── Editable Property Value ──
 
-interface PropertyRowProps {
-  propKey: string
-  value: string | readonly string[]
-  onChangeValue: (value: string | string[]) => void
-  onRemove: () => void
+interface EditableValueProps {
+  value: string
+  onChange: (value: string) => void
 }
 
-function PropertyRow({ propKey, value, onChangeValue, onRemove }: PropertyRowProps) {
-  const isTagField = propKey.toLowerCase() === 'tags'
+function EditableValue({ value, onChange }: EditableValueProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const labelStyle = {
-    color: colors.text.muted,
-    fontSize: '11px',
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase' as const,
-    fontFamily: 'var(--font-mono)'
+  const commit = () => {
+    setEditing(false)
+    if (draft !== value) onChange(draft)
   }
 
-  if (isTagField) {
-    let tagArray: string[] = []
-    if (Array.isArray(value)) {
-      tagArray = value.map(String)
-    } else if (typeof value === 'string') {
-      tagArray = value
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    }
+  if (editing) {
     return (
-      <div className="flex items-start gap-3 py-1 group">
-        <span className="shrink-0" style={{ ...labelStyle, minWidth: 80 }}>
-          {propKey}
-        </span>
-        <div className="flex-1">
-          <TagInput tags={tagArray} onChange={onChangeValue} />
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="opacity-0 group-hover:opacity-100 text-xs transition-opacity focus:outline-none shrink-0"
-          style={{ color: colors.text.muted }}
-          aria-label={`Remove ${propKey}`}
-        >
-          {'\u00D7'}
-        </button>
-      </div>
+      <input
+        ref={inputRef}
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') {
+            setDraft(value)
+            setEditing(false)
+          }
+        }}
+        className="bg-transparent border-0 outline-none"
+        style={{
+          color: colors.text.secondary,
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px'
+        }}
+      />
     )
   }
 
   return (
-    <div className="flex items-center gap-3 py-1 group">
-      <span className="shrink-0" style={{ ...labelStyle, minWidth: 80 }}>
-        {propKey}
-      </span>
-      <input
-        type="text"
-        value={Array.isArray(value) ? value.join(', ') : String(value)}
-        onChange={(e) => onChangeValue(e.target.value)}
-        className="flex-1 bg-transparent border-0 outline-none text-xs"
-        style={{ color: colors.text.secondary }}
-      />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="opacity-0 group-hover:opacity-100 text-xs transition-opacity focus:outline-none shrink-0"
-        style={{ color: colors.text.muted }}
-        aria-label={`Remove ${propKey}`}
-      >
-        {'\u00D7'}
-      </button>
-    </div>
+    <span
+      onClick={() => {
+        setDraft(value)
+        setEditing(true)
+      }}
+      style={{ color: colors.text.secondary, cursor: 'text' }}
+    >
+      {value || '\u00A0'}
+    </span>
   )
 }
 
-// ── Add Property Dropdown ──
-
-interface AddPropertyButtonProps {
-  existingKeys: string[]
-  onAdd: (key: string) => void
-}
+// ── Add Property ──
 
 const SUGGESTED_PROPERTIES = [
   'tags',
@@ -233,6 +219,11 @@ const SUGGESTED_PROPERTIES = [
   'signal',
   'frame'
 ]
+
+interface AddPropertyButtonProps {
+  existingKeys: string[]
+  onAdd: (key: string) => void
+}
 
 function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -250,18 +241,17 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" style={{ marginTop: '0.25em' }}>
       <button
         type="button"
         onClick={() => {
           setIsOpen(!isOpen)
           setTimeout(() => inputRef.current?.focus(), 50)
         }}
-        className="flex items-center gap-1 text-xs py-1 transition-colors hover:opacity-80 focus:outline-none"
-        style={{ color: colors.text.muted }}
+        className="transition-colors hover:opacity-80 focus:outline-none"
+        style={{ color: colors.text.muted, fontSize: '11px', fontFamily: 'var(--font-mono)' }}
       >
-        <span>+</span>
-        <span>Add property</span>
+        + add property
       </button>
 
       {isOpen && (
@@ -270,7 +260,7 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
           style={{
             backgroundColor: colors.bg.elevated,
             border: `1px solid ${colors.border.default}`,
-            minWidth: 180
+            minWidth: 160
           }}
         >
           <div className="p-1.5">
@@ -280,14 +270,12 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
               value={customKey}
               onChange={(e) => setCustomKey(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && customKey.trim()) {
-                  handleAdd(customKey.trim())
-                }
+                if (e.key === 'Enter' && customKey.trim()) handleAdd(customKey.trim())
                 if (e.key === 'Escape') setIsOpen(false)
               }}
               placeholder="Property name..."
               className="w-full bg-transparent border-0 outline-none text-xs px-1.5 py-1"
-              style={{ color: colors.text.primary }}
+              style={{ color: colors.text.primary, fontFamily: 'var(--font-mono)' }}
             />
           </div>
           {available.length > 0 && (
@@ -298,7 +286,7 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
                   type="button"
                   onClick={() => handleAdd(prop)}
                   className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:opacity-80 focus:outline-none"
-                  style={{ color: colors.text.secondary }}
+                  style={{ color: colors.text.secondary, fontFamily: 'var(--font-mono)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = colors.bg.surface
                   }}
@@ -306,9 +294,6 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
                     e.currentTarget.style.backgroundColor = 'transparent'
                   }}
                 >
-                  <span style={{ color: colors.text.muted, marginRight: 6 }}>
-                    {getPropertyIcon(prop)}
-                  </span>
                   {prop}
                 </button>
               ))}
@@ -337,8 +322,6 @@ export function FrontmatterHeader({
   onNavigate,
   onFrontmatterChange
 }: FrontmatterHeaderProps) {
-  const [expanded, setExpanded] = useState(true)
-
   if (mode === 'source') return null
 
   // Build a mutable property map from available data
@@ -348,10 +331,6 @@ export function FrontmatterHeader({
       properties[k] = Array.isArray(v) ? [...v] : String(v)
     }
   }
-
-  // If no frontmatter at all, show nothing (file will still parse via lenient parser)
-  // But provide the "add property" entry point
-  const hasProperties = Object.keys(properties).length > 0
 
   const dispatchChange = (updated: Record<string, string | string[]>) => {
     if (!onFrontmatterChange) return
@@ -364,99 +343,102 @@ export function FrontmatterHeader({
     dispatchChange(updated)
   }
 
-  const handlePropertyRemove = (key: string) => {
-    const { [key]: _, ...remaining } = properties
-    dispatchChange(remaining)
-  }
-
   const handleAddProperty = (key: string) => {
     const updated = { ...properties, [key]: key.toLowerCase() === 'tags' ? [] : '' }
     dispatchChange(updated)
   }
 
-  // Extract tags for display in collapsed header
-  const tags: string[] = (() => {
-    const raw = properties['tags'] ?? artifact?.tags
-    if (!raw) return []
-    if (Array.isArray(raw)) return raw.map(String)
-    if (typeof raw === 'string') {
-      return raw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    }
-    return []
-  })()
-
-  // Determine the artifact type for the badge
+  // Determine the artifact type for display
   const artifactType = (properties['type'] as string) ?? artifact?.type ?? 'note'
-  const badgeColor = getArtifactColor(artifactType)
+  const typeColor = getArtifactColor(artifactType)
+
+  // Skip title from display (it's the H1)
+  const displayKeys = Object.keys(properties).filter((k) => k.toLowerCase() !== 'title')
 
   return (
     <div
       style={{
-        transition: transitions.default
+        fontFamily: 'var(--font-mono)',
+        fontSize: '11px',
+        color: colors.text.muted,
+        lineHeight: 1.8,
+        maxWidth: '42rem',
+        margin: '0 auto',
+        marginBottom: '2em'
       }}
+      className="px-8 pt-6"
     >
-      <div className="px-8 pt-4 pb-1" style={{ maxWidth: '48rem', margin: '0 auto' }}>
-        {/* Type badge - outlined neon style */}
-        <div className="flex items-center gap-2 mb-3">
-          <span
-            className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold uppercase"
-            style={{
-              color: badgeColor,
-              border: `1px solid ${badgeColor}60`,
-              borderRadius: 4,
-              letterSpacing: '0.08em',
-              fontSize: '10px'
-            }}
-          >
-            {artifactType}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            className="ml-auto text-xs transition-colors focus:outline-none"
-            style={{ color: colors.text.muted, transition: transitions.default }}
-            title={expanded ? 'Collapse properties' : 'Expand properties'}
-          >
-            {expanded ? '\u25B4' : '\u25BE'}
-          </button>
-        </div>
-
-        {/* Tag chips in collapsed view */}
-        {!expanded && tags.length > 0 && (
-          <div className="flex gap-1 mb-1">
-            {tags.map((tag) => (
-              <TagChip key={tag} tag={tag} />
-            ))}
-          </div>
-        )}
-
-        {/* Expanded properties */}
-        {expanded && (
-          <div>
-            {hasProperties &&
-              Object.entries(properties).map(([key, value]) => (
-                <PropertyRow
-                  key={key}
-                  propKey={key}
-                  value={value}
-                  onChangeValue={(v) => handlePropertyChange(key, v)}
-                  onRemove={() => handlePropertyRemove(key)}
-                />
-              ))}
-
-            {/* Relationship blocks */}
-            {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
-
-            <div className="mt-2">
-              <AddPropertyButton existingKeys={Object.keys(properties)} onAdd={handleAddProperty} />
-            </div>
-          </div>
-        )}
+      {/* Type badge with neon border */}
+      <div style={{ marginBottom: '0.75em' }}>
+        <span
+          style={{
+            color: typeColor,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontSize: '10px',
+            fontWeight: 600,
+            border: `1px solid ${typeColor}60`,
+            borderRadius: 4,
+            padding: '2px 8px',
+            display: 'inline-block'
+          }}
+        >
+          {artifactType}
+        </span>
       </div>
+
+      {/* Key-value lines: editable */}
+      {displayKeys.map((key) => {
+        const value = properties[key]
+        if (key.toLowerCase() === 'type') return null
+
+        const isTagField = key.toLowerCase() === 'tags'
+
+        if (isTagField) {
+          const tagArray = Array.isArray(value)
+            ? value.map(String)
+            : typeof value === 'string'
+              ? value
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : []
+          return (
+            <div key={key} style={{ marginTop: '0.4em', marginBottom: '0.2em' }}>
+              <div
+                style={{
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.3em'
+                }}
+              >
+                {key}
+              </div>
+              <TagEditor tags={tagArray} onChange={(tags) => handlePropertyChange(key, tags)} />
+            </div>
+          )
+        }
+
+        return (
+          <div key={key}>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {key.padEnd(12)}
+            </span>
+            <EditableValue
+              value={Array.isArray(value) ? value.join(', ') : String(value)}
+              onChange={(v) => handlePropertyChange(key, v)}
+            />
+          </div>
+        )
+      })}
+
+      {/* Relationship section */}
+      {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
+
+      {/* Add property */}
+      {onFrontmatterChange && (
+        <AddPropertyButton existingKeys={Object.keys(properties)} onAdd={handleAddProperty} />
+      )}
     </div>
   )
 }
@@ -480,7 +462,7 @@ function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps)
   if (rows.length === 0) return null
 
   return (
-    <div className="space-y-1.5 pt-2 mt-2">
+    <div style={{ marginTop: '0.5em' }}>
       {rows.map(({ key, label }) => (
         <RelationshipRow key={key} label={label} ids={artifact[key]} onNavigate={onNavigate} />
       ))}
@@ -488,7 +470,7 @@ function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps)
   )
 }
 
-// ── Relationship Row (read-only) ──
+// ── Relationship Row ──
 
 interface RelationshipRowProps {
   label: string
@@ -498,35 +480,30 @@ interface RelationshipRowProps {
 
 function RelationshipRow({ label, ids, onNavigate }: RelationshipRowProps) {
   return (
-    <div className="flex items-start gap-3">
-      <span
-        className="shrink-0 mt-0.5"
-        style={{
-          color: colors.text.muted,
-          minWidth: 80,
-          fontSize: '11px',
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-          fontFamily: 'var(--font-mono)'
-        }}
-      >
-        {label}
+    <div>
+      <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {label.padEnd(12)}
       </span>
-      <div className="flex flex-wrap gap-1">
-        {ids.map((id) => (
+      {ids.map((id, i) => (
+        <span key={id}>
           <span
-            key={id}
             onClick={() => onNavigate?.(id)}
-            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors"
             style={{
               color: colors.text.secondary,
-              backgroundColor: colors.bg.elevated
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = colors.text.primary
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = colors.text.secondary
             }}
           >
             {id}
           </span>
-        ))}
-      </div>
+          {i < ids.length - 1 && <span>, </span>}
+        </span>
+      ))}
     </div>
   )
 }

@@ -83,9 +83,9 @@ export const THEMES = {
   midnight: {
     label: 'Midnight',
     colors: {
-      bg: { base: '#080101', surface: '#0f0808', elevated: '#1a1111' },
-      border: { default: 'rgba(255, 252, 252, 0.10)', subtle: 'rgba(255, 252, 252, 0.06)' },
-      text: { primary: '#e8e6e6', secondary: '#7a7575', muted: '#4a4444' }
+      bg: { base: '#141414', surface: '#1f1f1f', elevated: '#2a2a2a' },
+      border: { default: 'rgba(255, 255, 255, 0.08)', subtle: 'rgba(255, 255, 255, 0.04)' },
+      text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' }
     }
   },
   slate: {
@@ -113,7 +113,7 @@ export const THEMES = {
     }
   },
   evergreen: {
-    label: 'Evergreen',
+    label: 'Opal',
     colors: {
       bg: { base: '#0c0c0e', surface: '#131315', elevated: '#1c1c1f' },
       border: { default: '#2a2a2d', subtle: 'rgba(255, 255, 255, 0.06)' },

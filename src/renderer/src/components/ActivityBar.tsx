@@ -77,8 +77,7 @@ export function ActivityBar() {
       className="flex flex-col items-center shrink-0 py-3 gap-1"
       style={{
         width: 48,
-        backgroundColor: colors.bg.base,
-        borderRight: `1px solid ${colors.border.default}`
+        backgroundColor: colors.bg.base
       }}
     >
       {ITEMS.map(({ view, label, icon }) => {

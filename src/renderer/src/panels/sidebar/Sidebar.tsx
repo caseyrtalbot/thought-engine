@@ -49,10 +49,7 @@ function ActionBar({
   onSortChange?: (mode: SortMode) => void
 }) {
   return (
-    <div
-      className="flex items-center gap-1 px-2 py-1 border-b text-xs"
-      style={{ borderColor: colors.border.subtle, color: colors.text.secondary }}
-    >
+    <div className="flex items-center gap-1 px-2 py-1 text-xs" style={{ color: colors.text.muted }}>
       <button
         onClick={onNewFile}
         className="px-2 py-0.5 rounded hover:bg-[var(--color-bg-elevated)] transition-colors cursor-pointer"
@@ -143,7 +140,7 @@ export function Sidebar({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-2 border-b" style={{ borderColor: colors.border.subtle }}>
+      <div className="p-2">
         <SearchBar onSearch={onSearch} />
       </div>
       <ActionBar

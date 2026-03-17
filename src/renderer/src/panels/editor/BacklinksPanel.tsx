@@ -99,7 +99,7 @@ export function BacklinksPanel({
   if (backlinks.length === 0) return null
 
   return (
-    <div className="border-t" style={{ borderColor: colors.border.default }}>
+    <div>
       {/* Header row */}
       <button
         type="button"
