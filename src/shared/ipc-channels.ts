@@ -1,5 +1,15 @@
 import type { SessionId, VaultConfig, VaultState } from './types'
 
+export type ClaudeActivityKind = 'prompt' | 'session-start' | 'session-end' | 'config-changed'
+
+export interface ClaudeActivityEvent {
+  readonly kind: ClaudeActivityKind
+  readonly timestamp: number
+  readonly filePath?: string
+  readonly promptText?: string
+  readonly sessionId?: string
+}
+
 export interface IpcChannels {
   // --- Filesystem ---
   'fs:read-file': { request: { path: string }; response: string }
@@ -26,6 +36,10 @@ export interface IpcChannels {
   'vault:read-file': { request: { filePath: string }; response: string }
   'vault:watch-start': { request: { vaultPath: string }; response: void }
   'vault:watch-stop': { request: void; response: void }
+
+  // --- Claude Watcher ---
+  'claude:watch-start': { request: { configPath: string }; response: void }
+  'claude:watch-stop': { request: void; response: void }
 
   // --- Shell ---
   'shell:show-in-folder': { request: { path: string }; response: void }
@@ -56,6 +70,7 @@ export interface IpcEvents {
   'terminal:data': { sessionId: SessionId; data: string }
   'terminal:exit': { sessionId: SessionId; code: number }
   'vault:file-changed': { path: string; event: 'add' | 'change' | 'unlink' }
+  'claude:activity': ClaudeActivityEvent
 }
 
 export type IpcChannel = keyof IpcChannels

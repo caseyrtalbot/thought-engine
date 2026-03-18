@@ -21,6 +21,9 @@ export function useViewportCulling(
     const viewMaxY = (-viewport.y + containerSize.height) / viewport.zoom + BUFFER
 
     return nodes.filter((node) => {
+      // Terminal cards hold live PTY sessions — never cull them
+      if (node.type === 'terminal') return true
+
       const nx = node.position.x
       const ny = node.position.y
       const nw = node.size.width

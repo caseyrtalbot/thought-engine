@@ -14,10 +14,11 @@ import { getLodLevel } from '../canvas/use-canvas-lod'
 import { loadClaudeConfig } from '../../engine/claude-config-parser'
 import { useVaultStore } from '../../store/vault-store'
 import { layoutClaudeConfig, type ZoneLabel } from '../canvas/claude/claude-canvas-layout'
-import { saveCanvas, loadCanvas } from '../canvas/canvas-io'
+import { saveCanvas } from '../canvas/canvas-io'
 import { InspectorProvider } from './InspectorContext'
 import { ConfigInspector } from './ConfigInspector'
 import { CreationInspector } from './CreationInspector'
+import { useClaudeActivity } from '../../hooks/useClaudeActivity'
 import { colors, typography } from '../../design/tokens'
 import type { CanvasFile, CanvasNode } from '@shared/canvas-types'
 import { createCanvasFile } from '@shared/canvas-types'
@@ -26,6 +27,21 @@ const CLAUDE_CANVAS_PATH_SUFFIX = '/.thought-engine-canvas.json'
 
 function getCanvasPath(configPath: string): string {
   return configPath + CLAUDE_CANVAS_PATH_SUFFIX
+}
+
+/** Calculate a viewport centered on a specific node at a comfortable zoom. */
+function centerOnNode(
+  node: CanvasNode,
+  container: { width: number; height: number },
+  zoom = 1
+): { x: number; y: number; zoom: number } {
+  const cx = node.position.x + node.size.width / 2
+  const cy = node.position.y + node.size.height / 2
+  return {
+    x: container.width / 2 - cx * zoom,
+    y: container.height / 2 - cy * zoom,
+    zoom
+  }
 }
 
 /** Calculate a viewport that fits all nodes with padding. */
@@ -76,7 +92,6 @@ export function ClaudeConfigPanel() {
   const setConfig = useClaudeConfigStore((s) => s.setConfig)
   const setConfigLoading = useClaudeConfigStore((s) => s.setLoading)
   const setCachedData = useClaudeCanvasStore((s) => s.setCachedData)
-  const cachedData = useClaudeCanvasStore((s) => s.cachedData)
   const vaultPath = useVaultStore((s) => s.vaultPath)
 
   // Resolve the real home path once on mount (preload has access to os.homedir())
@@ -94,6 +109,9 @@ export function ClaudeConfigPanel() {
   const isDirty = useCanvasStore((s) => s.isDirty)
   const toCanvasFile = useCanvasStore((s) => s.toCanvasFile)
   const markSaved = useCanvasStore((s) => s.markSaved)
+
+  // Activity monitoring: glow cards when Claude touches their files
+  useClaudeActivity(!isConfigLoading)
 
   // Track container for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
@@ -137,20 +155,6 @@ export function ClaudeConfigPanel() {
       setConfigLoading(true)
       const canvasPath = getCanvasPath(configPath)
 
-      // Try to get saved viewport (from disk or memory) for position continuity
-      let savedViewport = cachedData?.viewport ?? null
-      if (!savedViewport) {
-        try {
-          const exists = await window.api.fs.fileExists(canvasPath)
-          if (exists) {
-            const diskData = await loadCanvas(canvasPath)
-            savedViewport = diskData.viewport
-          }
-        } catch {
-          // No saved viewport
-        }
-      }
-
       // Always parse fresh config and generate layout from real data
       let canvasData: CanvasFile
       try {
@@ -161,8 +165,34 @@ export function ClaudeConfigPanel() {
         const { nodes, edges, labels } = layoutClaudeConfig(config)
         setZoneLabels(labels)
 
-        const viewport = savedViewport ?? fitViewportToNodes(nodes, containerSize)
-        canvasData = { nodes, edges, viewport }
+        // Inject live terminal card below all config cards
+        const allConfigNodes = nodes
+        let maxBottom = 0
+        let minX = Infinity
+        let maxX = -Infinity
+        for (const n of allConfigNodes) {
+          maxBottom = Math.max(maxBottom, n.position.y + n.size.height)
+          minX = Math.min(minX, n.position.x)
+          maxX = Math.max(maxX, n.position.x + n.size.width)
+        }
+        const termW = 600
+        const termH = 400
+        const termX = allConfigNodes.length > 0 ? (minX + maxX) / 2 - termW / 2 : 0
+        const termY = allConfigNodes.length > 0 ? maxBottom + 60 : 0
+        const homePath = window.api.getHomePath()
+        const terminalNode: CanvasNode = {
+          id: 'claude-live-terminal',
+          type: 'terminal',
+          position: { x: termX, y: termY },
+          size: { width: termW, height: termH },
+          content: '',
+          metadata: { initialCwd: homePath, initialCommand: 'claude' }
+        }
+        const allNodes = [...allConfigNodes, terminalNode]
+
+        // Always center on the terminal card so users land on the live terminal
+        const viewport = centerOnNode(terminalNode, containerSize)
+        canvasData = { nodes: allNodes, edges, viewport }
         setCachedData(canvasData)
       } catch (err) {
         console.error('[ClaudeConfigPanel] Failed to load config:', err)
@@ -172,13 +202,17 @@ export function ClaudeConfigPanel() {
       if (!isMounted.current) return
       useCanvasStore.getState().loadCanvas(canvasPath, canvasData)
       setConfigLoading(false)
+
+      // Start the Claude watcher for activity monitoring
+      window.api.claude?.watchStart(configPath).catch(() => {})
     }
 
     loadClaudeCanvas()
 
-    // Cleanup: save claude canvas, restore vault canvas
+    // Cleanup: save claude canvas, stop watcher, restore vault canvas
     return () => {
       isMounted.current = false
+      window.api.claude?.watchStop().catch(() => {})
 
       // Save current claude canvas state
       const currentData = useCanvasStore.getState().toCanvasFile()
@@ -243,8 +277,33 @@ export function ClaudeConfigPanel() {
       setConfig(config)
       const { nodes, edges, labels } = layoutClaudeConfig(config)
       setZoneLabels(labels)
-      const viewport = fitViewportToNodes(nodes, containerSize)
-      const canvasData: CanvasFile = { nodes, edges, viewport }
+
+      // Re-inject terminal node
+      let maxBottom = 0
+      let minX = Infinity
+      let maxX = -Infinity
+      for (const n of nodes) {
+        maxBottom = Math.max(maxBottom, n.position.y + n.size.height)
+        minX = Math.min(minX, n.position.x)
+        maxX = Math.max(maxX, n.position.x + n.size.width)
+      }
+      const termW = 600
+      const termH = 400
+      const termX = nodes.length > 0 ? (minX + maxX) / 2 - termW / 2 : 0
+      const termY = nodes.length > 0 ? maxBottom + 60 : 0
+      const homePath = window.api.getHomePath()
+      const terminalNode: CanvasNode = {
+        id: 'claude-live-terminal',
+        type: 'terminal',
+        position: { x: termX, y: termY },
+        size: { width: termW, height: termH },
+        content: '',
+        metadata: { initialCwd: homePath, initialCommand: 'claude' }
+      }
+      const allNodes = [...nodes, terminalNode]
+
+      const viewport = fitViewportToNodes(allNodes, containerSize)
+      const canvasData: CanvasFile = { nodes: allNodes, edges, viewport }
       setCachedData(canvasData)
       useCanvasStore.getState().loadCanvas(getCanvasPath(configPath), canvasData)
     } catch {
@@ -377,7 +436,8 @@ export function ClaudeConfigPanel() {
                 </div>
               ))}
               {visibleNodes.map((node: CanvasNode) => {
-                if (lod === 'dot' || lod === 'preview') {
+                // Terminal cards always render at full LOD to preserve PTY sessions
+                if ((lod === 'dot' || lod === 'preview') && node.type !== 'terminal') {
                   return <CardLodPreview key={node.id} node={node} lod={lod} />
                 }
                 const Card = LazyCards[node.type]

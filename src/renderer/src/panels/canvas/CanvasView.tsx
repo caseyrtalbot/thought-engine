@@ -249,7 +249,8 @@ export function CanvasView(): React.ReactElement {
       >
         <EdgeLayer />
         {visibleNodes.map((node) => {
-          if (lod === 'dot' || lod === 'preview') {
+          // Terminal cards always render at full LOD to preserve PTY sessions
+          if ((lod === 'dot' || lod === 'preview') && node.type !== 'terminal') {
             return <CardLodPreview key={node.id} node={node} lod={lod} />
           }
           const Card = LazyCards[node.type]

@@ -35,6 +35,10 @@ export function useCanvasViewport(
 
   const onWheel = useCallback(
     (e: WheelEvent) => {
+      // Let wheel events pass through to terminal cards (xterm scrollback)
+      const target = e.target as HTMLElement
+      if (target.closest('.xterm')) return
+
       e.preventDefault()
       const { viewport, setViewport } = useCanvasStore.getState()
       const container = containerRef.current

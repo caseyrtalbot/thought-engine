@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { Terminal } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { CardShell } from './CardShell'
@@ -32,9 +33,14 @@ export function TerminalCard({ node }: TerminalCardProps) {
     let term: Terminal | null = null
     let cancelled = false
 
+    // Support metadata-driven cwd and initial command
+    const metaCwd = typeof node.metadata?.initialCwd === 'string' ? node.metadata.initialCwd : null
+    const initialCommand =
+      typeof node.metadata?.initialCommand === 'string' ? node.metadata.initialCommand : null
+
     async function init() {
       if (!sessionId) {
-        const cwd = vaultPath || '/'
+        const cwd = metaCwd || vaultPath || '/'
         sessionId = await window.api.terminal.create(cwd)
         sessionIdRef.current = sessionId
         // Persist session ID in node content
@@ -43,22 +49,49 @@ export function TerminalCard({ node }: TerminalCardProps) {
       if (cancelled) return
 
       term = new Terminal({
-        fontFamily: '"JetBrains Mono", monospace',
-        fontSize: 12,
+        fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace',
+        fontSize: 13,
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        fontWeight: '400',
+        fontWeightBold: '600',
         theme: {
-          background: colors.bg.base,
-          foreground: colors.text.primary,
+          background: '#0c0e14',
+          foreground: '#cdd6f4',
           cursor: colors.accent.default,
-          selectionBackground: colors.accent.muted
+          cursorAccent: '#0c0e14',
+          selectionBackground: 'rgba(0, 229, 191, 0.18)',
+          selectionForeground: '#cdd6f4',
+          black: '#45475a',
+          red: '#f38ba8',
+          green: '#a6e3a1',
+          yellow: '#f9e2af',
+          blue: '#89b4fa',
+          magenta: '#cba6f7',
+          cyan: '#94e2d5',
+          white: '#bac2de',
+          brightBlack: '#585b70',
+          brightRed: '#f38ba8',
+          brightGreen: '#a6e3a1',
+          brightYellow: '#f9e2af',
+          brightBlue: '#89b4fa',
+          brightMagenta: '#cba6f7',
+          brightCyan: '#94e2d5',
+          brightWhite: '#a6adc8'
         },
-        scrollback: 5000,
-        cursorBlink: true
+        scrollback: 10000,
+        cursorBlink: true,
+        cursorStyle: 'bar',
+        cursorWidth: 2,
+        allowProposedApi: true,
+        smoothScrollDuration: 100
       })
       termRef.current = term
 
       const fitAddon = new FitAddon()
       fitRef.current = fitAddon
       term.loadAddon(fitAddon)
+      term.loadAddon(new WebLinksAddon())
 
       if (termContainerRef.current) {
         term.open(termContainerRef.current)
@@ -90,6 +123,15 @@ export function TerminalCard({ node }: TerminalCardProps) {
           window.api.terminal.write(sessionIdRef.current, data)
         }
       })
+
+      // Send initial command after shell has time to initialize
+      if (initialCommand && sessionId) {
+        setTimeout(() => {
+          if (!cancelled && sessionIdRef.current) {
+            window.api.terminal.write(sessionIdRef.current, initialCommand + '\n')
+          }
+        }, 500)
+      }
     }
 
     init()
@@ -131,14 +173,14 @@ export function TerminalCard({ node }: TerminalCardProps) {
     }
   }, [])
 
-  // Auto-fit on card resize (throttled to avoid flooding PTY during drag)
+  // Auto-fit on card resize (debounced, ignores canvas zoom changes)
   useEffect(() => {
     const container = termContainerRef.current
     if (!container) return
 
-    let lastFit = 0
     let trailingId: ReturnType<typeof setTimeout> | null = null
-    const INTERVAL = 100
+    let lastWidth = container.clientWidth
+    let lastHeight = container.clientHeight
 
     const doFit = () => {
       if (!fitRef.current || !termRef.current) return
@@ -150,17 +192,21 @@ export function TerminalCard({ node }: TerminalCardProps) {
       }
     }
 
-    const observer = new ResizeObserver(() => {
-      const now = Date.now()
-      if (now - lastFit >= INTERVAL) {
-        lastFit = now
-        doFit()
-      }
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+
+      // Only refit when the actual element dimensions change (card resize),
+      // not when CSS transform changes (canvas zoom). Canvas zoom changes
+      // the visual size via transform but not clientWidth/clientHeight.
+      const w = entry.target.clientWidth
+      const h = entry.target.clientHeight
+      if (w === lastWidth && h === lastHeight) return
+      lastWidth = w
+      lastHeight = h
+
       if (trailingId) clearTimeout(trailingId)
-      trailingId = setTimeout(() => {
-        lastFit = Date.now()
-        doFit()
-      }, INTERVAL)
+      trailingId = setTimeout(doFit, 150)
     })
 
     observer.observe(container)
@@ -195,7 +241,8 @@ export function TerminalCard({ node }: TerminalCardProps) {
     if (oldSession) {
       window.api.terminal.kill(oldSession)
     }
-    const cwd = vaultPath || '/'
+    const metaCwd = typeof node.metadata?.initialCwd === 'string' ? node.metadata.initialCwd : null
+    const cwd = metaCwd || vaultPath || '/'
     const newSessionId = await window.api.terminal.create(cwd)
     sessionIdRef.current = newSessionId
     updateContent(node.id, newSessionId)
@@ -212,7 +259,11 @@ export function TerminalCard({ node }: TerminalCardProps) {
   }, [node.id, vaultPath, updateContent])
 
   return (
-    <CardShell node={node} title="Terminal" onClose={handleClose}>
+    <CardShell
+      node={node}
+      title={node.metadata?.initialCommand === 'claude' ? 'Claude Live' : 'Terminal'}
+      onClose={handleClose}
+    >
       <div
         className="h-full relative"
         onFocus={handleFocus}
@@ -220,6 +271,10 @@ export function TerminalCard({ node }: TerminalCardProps) {
         onClick={(e) => {
           e.stopPropagation()
           handleFocus()
+        }}
+        onPointerDown={(e) => {
+          // Prevent canvas pan/selection from starting when clicking inside terminal
+          e.stopPropagation()
         }}
         tabIndex={-1}
         style={{

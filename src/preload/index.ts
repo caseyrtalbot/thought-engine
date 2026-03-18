@@ -2,6 +2,7 @@ import { contextBridge, webUtils } from 'electron'
 import { homedir } from 'os'
 import { typedInvoke, typedOn } from './typed-ipc'
 import type { SessionId, VaultConfig, VaultState } from '../shared/types'
+import type { ClaudeActivityEvent } from '../shared/ipc-channels'
 
 const api = {
   window: {
@@ -50,6 +51,10 @@ const api = {
     openPath: (path: string) => typedInvoke('shell:open-path', { path }),
     trashItem: (path: string) => typedInvoke('shell:trash-item', { path })
   },
+  claude: {
+    watchStart: (configPath: string) => typedInvoke('claude:watch-start', { configPath }),
+    watchStop: () => typedInvoke('claude:watch-stop')
+  },
   terminal: {
     create: (cwd: string, shell?: string) => typedInvoke('terminal:create', { cwd, shell }),
     write: (sessionId: SessionId, data: string) =>
@@ -67,7 +72,9 @@ const api = {
     terminalExit: (callback: (data: { sessionId: SessionId; code: number }) => void) =>
       typedOn('terminal:exit', callback),
     fileChanged: (callback: (data: { path: string; event: 'add' | 'change' | 'unlink' }) => void) =>
-      typedOn('vault:file-changed', callback)
+      typedOn('vault:file-changed', callback),
+    claudeActivity: (callback: (data: ClaudeActivityEvent) => void) =>
+      typedOn('claude:activity', callback)
   }
 }
 

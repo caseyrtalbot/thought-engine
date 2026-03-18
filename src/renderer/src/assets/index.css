@@ -23,6 +23,15 @@
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+@keyframes te-card-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--activity-color, rgba(167, 139, 250, 0.3)); }
+  50% { box-shadow: 0 0 12px 3px var(--activity-color, rgba(167, 139, 250, 0.15)); }
+}
+
+@keyframes te-edge-flow {
+  to { stroke-dashoffset: -20; }
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;

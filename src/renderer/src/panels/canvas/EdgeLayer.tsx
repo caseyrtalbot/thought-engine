@@ -39,6 +39,9 @@ function EdgePath({ edge, nodes }: { edge: CanvasEdge; nodes: readonly CanvasNod
   const to_node = nodes.find((n) => n.id === edge.toNode)
   if (!from_node || !to_node) return null
 
+  const endpointActive =
+    from_node.metadata?.isActive === true || to_node.metadata?.isActive === true
+
   const from = getAnchorPoint(from_node, edge.fromSide)
   const to = getAnchorPoint(to_node, edge.toSide)
 
@@ -69,7 +72,9 @@ function EdgePath({ edge, nodes }: { edge: CanvasEdge; nodes: readonly CanvasNod
         stroke={isSelected ? colors.accent.default : colors.text.secondary}
         strokeWidth={isSelected ? 2.5 : 1.5}
         markerEnd="url(#arrowhead)"
-        opacity={isSelected ? 1 : 0.6}
+        opacity={endpointActive ? 1 : isSelected ? 1 : 0.6}
+        strokeDasharray={endpointActive ? '8 4' : undefined}
+        style={endpointActive ? { animation: 'te-edge-flow 0.8s linear infinite' } : undefined}
       />
     </g>
   )

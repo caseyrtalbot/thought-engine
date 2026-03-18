@@ -6,6 +6,7 @@ import { registerFilesystemIpc } from './ipc/filesystem'
 import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
+import { registerClaudeWatcherIpc, getClaudeWatcher } from './ipc/claude-watcher'
 import { typedHandle } from './typed-ipc'
 
 const PROD_CSP = [
@@ -104,6 +105,7 @@ app.whenReady().then(() => {
   const window = createWindow()
   registerWatcherIpc(window)
   registerShellIpc(window)
+  registerClaudeWatcherIpc(window)
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -112,6 +114,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   getShellService().killAll()
+  getClaudeWatcher().stop()
 })
 
 app.on('window-all-closed', () => {

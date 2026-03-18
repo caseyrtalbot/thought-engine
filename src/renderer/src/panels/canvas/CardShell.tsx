@@ -144,6 +144,9 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
   const [hovered, setHovered] = useState(false)
   const [convertMenuOpen, setConvertMenuOpen] = useState(false)
 
+  const isActive = node.metadata?.isActive === true
+  const accentColor = TYPE_ACCENT_COLORS[node.type]
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -179,12 +182,16 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
         height: node.size.height,
         backgroundColor: colors.bg.surface,
         borderRadius: borderRadius.card,
-        border: `1px solid ${isSelected ? colors.accent.default : colors.border.default}`,
-        borderLeft: TYPE_ACCENT_COLORS[node.type]
-          ? `3px solid ${TYPE_ACCENT_COLORS[node.type]}`
-          : undefined,
+        border: `1px solid ${isActive && accentColor ? accentColor : isSelected ? colors.accent.default : colors.border.default}`,
+        borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
         boxShadow: isSelected ? `0 0 0 1px ${colors.accent.default}` : 'none',
-        color: node.type.startsWith('claude-') ? '#e2e8f0' : undefined
+        color: node.type.startsWith('claude-') ? '#e2e8f0' : undefined,
+        ...(isActive
+          ? ({
+              '--activity-color': accentColor ?? 'rgba(167, 139, 250, 0.3)',
+              animation: 'te-card-glow 2s ease-in-out infinite'
+            } as React.CSSProperties)
+          : {})
       }}
       onClick={handleClick}
       onPointerUp={handlePointerUp}
@@ -201,11 +208,23 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
         }}
         onPointerDown={onDragStart}
       >
-        <span
-          className="text-xs font-medium truncate"
-          style={{ color: node.type.startsWith('claude-') ? '#cbd5e1' : colors.text.secondary }}
-        >
-          {title}
+        <span className="flex items-center gap-1.5">
+          {isActive && (
+            <span
+              className="te-active-dot shrink-0"
+              style={
+                accentColor
+                  ? { background: accentColor, boxShadow: `0 0 6px ${accentColor}44` }
+                  : undefined
+              }
+            />
+          )}
+          <span
+            className="text-xs font-medium truncate"
+            style={{ color: node.type.startsWith('claude-') ? '#cbd5e1' : colors.text.secondary }}
+          >
+            {title}
+          </span>
         </span>
         {node.metadata?.scope === 'project' && (
           <span

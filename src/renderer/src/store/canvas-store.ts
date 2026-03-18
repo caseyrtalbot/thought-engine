@@ -121,13 +121,18 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       isDirty: true
     })),
 
-  updateNodeMetadata: (id, partial) =>
+  updateNodeMetadata: (id, partial) => {
+    // Ephemeral-only updates (isActive) should not mark canvas dirty or trigger auto-save
+    const ephemeralOnly = Object.keys(partial).every((k) =>
+      ['isActive', 'initialCwd', 'initialCommand'].includes(k)
+    )
     set((s) => ({
       nodes: s.nodes.map((n) =>
         n.id === id ? { ...n, metadata: { ...n.metadata, ...partial } } : n
       ),
-      isDirty: true
-    })),
+      isDirty: ephemeralOnly ? s.isDirty : true
+    }))
+  },
 
   updateNodeType: (id, type) =>
     set((s) => ({
@@ -163,6 +168,14 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   toCanvasFile: () => {
     const { nodes, edges, viewport } = get()
-    return { nodes: [...nodes], edges: [...edges], viewport: { ...viewport } }
+    // Strip ephemeral state from metadata before persisting
+    const EPHEMERAL_KEYS = new Set(['isActive', 'initialCwd', 'initialCommand'])
+    const cleanNodes = nodes.map((n) => ({
+      ...n,
+      metadata: n.metadata
+        ? Object.fromEntries(Object.entries(n.metadata).filter(([k]) => !EPHEMERAL_KEYS.has(k)))
+        : {}
+    }))
+    return { nodes: cleanNodes, edges: [...edges], viewport: { ...viewport } }
   }
 }))
