@@ -303,20 +303,63 @@ export function ClaudeConfigPanel() {
               {zoneLabels.map((label) => (
                 <div
                   key={label.text}
-                  className="absolute pointer-events-none select-none"
+                  className="absolute select-none"
                   style={{
                     left: label.x,
                     top: label.y,
-                    color: label.color,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    fontFamily: typography.fontFamily.display,
-                    letterSpacing: '0.03em',
-                    opacity: 0.8,
-                    whiteSpace: 'nowrap'
+                    pointerEvents: label.configType ? 'auto' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
                   }}
                 >
-                  {label.text}
+                  <span
+                    style={{
+                      color: label.color,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      fontFamily: typography.fontFamily.display,
+                      letterSpacing: '0.03em',
+                      opacity: 0.8,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {label.text}
+                  </span>
+                  {label.configType && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        useInspectorStore.getState().startCreation(label.configType!)
+                      }}
+                      style={{
+                        background: label.color + '22',
+                        color: label.color,
+                        border: 'none',
+                        borderRadius: 4,
+                        width: 20,
+                        height: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 16,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        lineHeight: 1,
+                        opacity: 0.4,
+                        transition: 'opacity 150ms'
+                      }}
+                      onMouseEnter={(e) => {
+                        ;(e.target as HTMLElement).style.opacity = '1'
+                      }}
+                      onMouseLeave={(e) => {
+                        ;(e.target as HTMLElement).style.opacity = '0.4'
+                      }}
+                      title={`New ${label.configType}`}
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
               ))}
               {visibleNodes.map((node: CanvasNode) => {

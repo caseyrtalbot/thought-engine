@@ -20,6 +20,7 @@ export interface ZoneLabel {
   readonly x: number
   readonly y: number
   readonly color: string
+  readonly configType?: string
 }
 
 interface LayoutResult {
@@ -104,7 +105,8 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
       text: `Rules (${ruleItems.length})`,
       x: 0,
       y: cursorY + LABEL_OFFSET,
-      color: '#94a3b8'
+      color: '#94a3b8',
+      configType: 'rule'
     })
     const rules = layoutZoneGrid(ruleItems, 0, cursorY, COLS_PER_ROW)
     allNodes.push(...rules.nodes)
@@ -133,6 +135,16 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
   const agentCols = 2
   const agents = layoutZoneGrid(agentItems, 0, row2Y, agentCols)
   allNodes.push(...agents.nodes)
+
+  if (agentItems.length > 0) {
+    labels.push({
+      text: `Agents (${agentItems.length})`,
+      x: 0,
+      y: row2Y + LABEL_OFFSET,
+      color: '#a78bfa',
+      configType: 'agent'
+    })
+  }
 
   // Settings (center column, after agents)
   const settingsX = agents.right + ZONE_GAP
@@ -178,7 +190,8 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
       text: `Skills (${skillItems.length})`,
       x: skillX,
       y: row2Y + LABEL_OFFSET,
-      color: '#22d3ee'
+      color: '#22d3ee',
+      configType: 'skill'
     })
   }
   const skillCols = 4
@@ -209,7 +222,8 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
       text: `Commands (${cmdItems.length})`,
       x: 0,
       y: row3Y + LABEL_OFFSET,
-      color: '#34d399'
+      color: '#34d399',
+      configType: 'command'
     })
   }
   const cmdCols = 4
@@ -264,7 +278,8 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
       text: `Memory (${memItems.length})`,
       x: memX,
       y: row3Y + LABEL_OFFSET,
-      color: '#fb923c'
+      color: '#fb923c',
+      configType: config.projectPath ? 'memory' : undefined
     })
   }
   const memCols = 3
