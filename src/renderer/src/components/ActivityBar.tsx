@@ -46,6 +46,28 @@ const CanvasIcon = (
   </svg>
 )
 
+const GraphIcon = (
+  <svg
+    width={ICON_SIZE}
+    height={ICON_SIZE}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="6" cy="6" r="2.5" />
+    <circle cx="18" cy="8" r="2.5" />
+    <circle cx="12" cy="18" r="2.5" />
+    <circle cx="5" cy="15" r="1.5" />
+    <line x1="8" y1="7" x2="16" y2="7.5" />
+    <line x1="7" y1="8" x2="11" y2="16.5" />
+    <line x1="16" y1="10" x2="13" y2="16" />
+    <line x1="6" y1="13.5" x2="6" y2="8.5" />
+  </svg>
+)
+
 const SkillsIcon = (
   <svg
     width={ICON_SIZE}
@@ -65,6 +87,7 @@ const SkillsIcon = (
 const ITEMS: ActivityItem[] = [
   { view: 'editor', label: 'Editor', icon: EditorIcon },
   { view: 'canvas', label: 'Canvas', icon: CanvasIcon },
+  { view: 'graph', label: 'Graph', icon: GraphIcon },
   { view: 'skills', label: 'Skills', icon: SkillsIcon }
 ]
 
