@@ -116,7 +116,7 @@ export function ClaudeConfigPanel() {
   // Track container for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
-  const [zoneLabels, setZoneLabels] = useState<readonly ZoneLabel[]>([])
+  const [_zoneLabels, setZoneLabels] = useState<readonly ZoneLabel[]>([])
 
   // Store the previous canvas state for restoration
   const savedCanvasState = useRef<{ filePath: string | null; data: CanvasFile } | null>(null)
@@ -372,69 +372,8 @@ export function ClaudeConfigPanel() {
               onBackgroundClick={handleBackgroundClick}
             >
               <EdgeLayer />
-              {/* Zone labels */}
-              {zoneLabels.map((label) => (
-                <div
-                  key={label.text}
-                  className="absolute select-none"
-                  style={{
-                    left: label.x,
-                    top: label.y,
-                    pointerEvents: label.configType ? 'auto' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                >
-                  <span
-                    style={{
-                      color: label.color,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      fontFamily: typography.fontFamily.display,
-                      letterSpacing: '0.03em',
-                      opacity: 0.8,
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {label.text}
-                  </span>
-                  {label.configType && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        useInspectorStore.getState().startCreation(label.configType!)
-                      }}
-                      style={{
-                        background: label.color + '22',
-                        color: label.color,
-                        border: 'none',
-                        borderRadius: 4,
-                        width: 20,
-                        height: 20,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 16,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        lineHeight: 1,
-                        opacity: 0.4,
-                        transition: 'opacity 150ms'
-                      }}
-                      onMouseEnter={(e) => {
-                        ;(e.target as HTMLElement).style.opacity = '1'
-                      }}
-                      onMouseLeave={(e) => {
-                        ;(e.target as HTMLElement).style.opacity = '0.4'
-                      }}
-                      title={`New ${label.configType}`}
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              ))}
+              {/* Zone labels removed — cards have type badges and title bars.
+                  Fixed labels break once users drag cards freely. */}
               {visibleNodes.map((node: CanvasNode) => {
                 // Terminal cards always render at full LOD to preserve PTY sessions
                 if ((lod === 'dot' || lod === 'preview') && node.type !== 'terminal') {

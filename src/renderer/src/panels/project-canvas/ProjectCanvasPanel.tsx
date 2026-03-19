@@ -93,7 +93,7 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
   const markSaved = useCanvasStore((s) => s.markSaved)
 
   const [isLoading, setIsLoading] = useState(true)
-  const [zoneLabels, setZoneLabels] = useState<readonly ZoneLabel[]>([])
+  const [_zoneLabels, setZoneLabels] = useState<readonly ZoneLabel[]>([])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
@@ -317,35 +317,8 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
 
       <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
         <EdgeLayer />
-        {/* Zone labels */}
-        {zoneLabels.map((label) => (
-          <div
-            key={label.text}
-            className="absolute select-none"
-            style={{
-              left: label.x,
-              top: label.y,
-              pointerEvents: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}
-          >
-            <span
-              style={{
-                color: label.color,
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: typography.fontFamily.display,
-                letterSpacing: '0.03em',
-                opacity: 0.8,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {label.text}
-            </span>
-          </div>
-        ))}
+        {/* Zone labels removed — cards have type badges and title bars that
+            communicate grouping. Fixed labels break once users drag cards. */}
         {visibleNodes.map((node: CanvasNode) => {
           if ((lod === 'dot' || lod === 'preview') && node.type !== 'terminal') {
             return <CardLodPreview key={node.id} node={node} lod={lod} />
