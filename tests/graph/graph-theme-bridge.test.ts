@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  hexToPixi,
-  cssColorToPixi,
-  buildEdgeColor
-} from '@renderer/panels/graph/graph-theme-bridge'
+import { hexToPixi, buildEdgeColor } from '@renderer/panels/graph/graph-theme-bridge'
 
 describe('graph-theme-bridge', () => {
   describe('hexToPixi', () => {
@@ -21,16 +17,6 @@ describe('graph-theme-bridge', () => {
 
     it('handles 3-digit hex', () => {
       expect(hexToPixi('#fff')).toBe(0xffffff)
-    })
-  })
-
-  describe('cssColorToPixi', () => {
-    it('converts rgb(255, 0, 0) to 0xff0000', () => {
-      expect(cssColorToPixi('rgb(255, 0, 0)')).toBe(0xff0000)
-    })
-
-    it('converts hex string', () => {
-      expect(cssColorToPixi('#34D399')).toBe(0x34d399)
     })
   })
 

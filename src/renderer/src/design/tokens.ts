@@ -26,11 +26,6 @@ export const colors = {
   }
 } as const
 
-/** Resolve a CSS custom property to its computed hex value (for Canvas 2D contexts). */
-export function getComputedCssColor(varName: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
-}
-
 export const ARTIFACT_COLORS = {
   gene: '#22d3ee',
   constraint: '#ef4444',

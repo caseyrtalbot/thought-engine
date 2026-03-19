@@ -181,13 +181,3 @@ export function extractRelationships(
 
   return edges
 }
-
-/** Edge colors by relationship kind */
-export const EDGE_KIND_COLORS: Record<ClaudeRelationshipKind, string> = {
-  'settings-controls': '#f59e0b',
-  'team-has-member': '#f472b6',
-  'command-invokes': '#34d399',
-  'skill-references': '#22d3ee',
-  'memory-links': '#fb923c',
-  'agent-uses-tool': '#a78bfa'
-}

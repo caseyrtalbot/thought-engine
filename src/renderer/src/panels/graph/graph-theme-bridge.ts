@@ -10,16 +10,6 @@ export function hexToPixi(hex: string): number {
   return parseInt(h, 16)
 }
 
-/** Convert CSS color string (hex or rgb()) to PixiJS integer. */
-export function cssColorToPixi(css: string): number {
-  if (css.startsWith('#')) return hexToPixi(css)
-  const match = css.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
-  if (match) {
-    return (parseInt(match[1]) << 16) | (parseInt(match[2]) << 8) | parseInt(match[3])
-  }
-  return 0x94a3b8 // fallback: slate
-}
-
 /** Get the PixiJS tint color for an artifact type. */
 export function nodeColorForType(type: ArtifactType): number {
   return hexToPixi(getArtifactColor(type))

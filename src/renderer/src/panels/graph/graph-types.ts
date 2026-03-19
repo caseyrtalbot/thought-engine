@@ -67,16 +67,3 @@ export interface GraphViewport {
   readonly y: number
   readonly scale: number
 }
-
-/** Resolved theme colors for PixiJS rendering */
-export interface GraphThemeColors {
-  readonly background: number
-  readonly nodeFill: number
-  readonly nodeFillFocused: number
-  readonly nodeFillGhost: number
-  readonly nodeStroke: number
-  readonly edge: number
-  readonly edgeHighlight: number
-  readonly labelText: number
-  readonly labelTextDim: number
-}

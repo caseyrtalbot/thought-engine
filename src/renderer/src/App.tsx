@@ -25,7 +25,6 @@ import { useVaultStore } from './store/vault-store'
 import { useEditorStore, flushPendingSave } from './store/editor-store'
 import { useViewStore } from './store/view-store'
 import { colors } from './design/tokens'
-// Titlebar removed — drag region and settings gear merged into ViewTabBar
 import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import { StatusBar } from './components/StatusBar'
