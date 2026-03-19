@@ -178,6 +178,39 @@ body {
   }
 }
 
+/* ─── Graph Settings Slider ─── */
+
+.graph-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-default);
+  outline: none;
+  cursor: pointer;
+}
+
+.graph-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent-default);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.graph-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+.graph-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
 /* ─── Editor Prose Typography ─── */
 
 .ProseMirror {

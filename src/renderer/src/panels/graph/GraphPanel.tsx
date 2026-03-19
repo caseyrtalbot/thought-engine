@@ -4,8 +4,9 @@ import { useEditorStore } from '@renderer/store/editor-store'
 import { useGraphViewStore } from '@renderer/store/graph-view-store'
 import { GraphRenderer } from './graph-renderer'
 import { LabelLayer } from './graph-label-layer'
+import { GraphSettingsPanel } from './GraphSettingsPanel'
 import { getGraphLod } from './graph-lod'
-import type { SimNode, PhysicsCommand, PhysicsResult } from './graph-types'
+import type { SimNode, PhysicsCommand, PhysicsResult, ForceParams } from './graph-types'
 import type { KnowledgeGraph } from '@shared/types'
 
 /** Convert KnowledgeGraph data into worker-compatible format. */
@@ -106,6 +107,16 @@ export function GraphPanel() {
       onViewportChange: (vp) => {
         if (!mountedRef.current) return
         setViewportStore(vp)
+
+        // Re-render labels on viewport change (zoom/pan)
+        const ll = labelLayerRef.current
+        if (ll && positionsRef.current.length > 0) {
+          const lod = getGraphLod(vp.scale)
+          const hoveredId = useGraphViewStore.getState().hoveredNodeId
+          const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
+          const ns = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
+          ll.render(simNodesRef.current, positionsRef.current, vp, lod, hoveredIdx, ns)
+        }
       }
     })
 
@@ -193,11 +204,27 @@ export function GraphPanel() {
     workerRef.current.postMessage(cmd)
   }, [graph, setGraphStats])
 
+  // Send force param changes to worker
+  const handleForceParamsChange = useCallback((params: Partial<ForceParams>) => {
+    if (!workerRef.current) return
+    const cmd: PhysicsCommand = { type: 'update-params', params }
+    workerRef.current.postMessage(cmd)
+  }, [])
+
+  // Reheat the simulation
+  const handleReheat = useCallback(() => {
+    if (!workerRef.current) return
+    const cmd: PhysicsCommand = { type: 'reheat', alpha: 0.5 }
+    workerRef.current.postMessage(cmd)
+  }, [])
+
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden"
       style={{ background: 'var(--color-bg-base)' }}
-    />
+    >
+      <GraphSettingsPanel onForceParamsChange={handleForceParamsChange} onReheat={handleReheat} />
+    </div>
   )
 }
