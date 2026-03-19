@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useCanvasViewport } from './use-canvas-viewport'
 import { useCanvasSelection } from './use-canvas-selection'
-import { colors } from '../../design/tokens'
+import { colors, canvasTokens } from '../../design/tokens'
 import { TE_FILE_MIME, inferCardType } from './file-drop-utils'
 
 const GRID_SIZE = 24
@@ -156,7 +156,7 @@ export function CanvasSurface({
       data-canvas-surface
       className="relative w-full h-full overflow-hidden"
       style={{
-        backgroundColor: colors.bg.base,
+        backgroundColor: canvasTokens.surface,
         backgroundImage: svgDataUri,
         backgroundSize: `${PATTERN_SIZE * viewport.zoom}px ${PATTERN_SIZE * viewport.zoom}px`,
         backgroundPosition: `${viewport.x % (PATTERN_SIZE * viewport.zoom)}px ${viewport.y % (PATTERN_SIZE * viewport.zoom)}px`,

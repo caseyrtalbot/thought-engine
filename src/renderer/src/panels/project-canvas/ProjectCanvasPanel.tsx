@@ -81,7 +81,7 @@ interface ProjectCanvasPanelProps {
  * When deactivated, save project canvas and restore vault canvas.
  * The panel stays mounted (keep-alive) so terminal sessions survive tab switches.
  */
-export function ProjectCanvasPanel({ isActive }: ProjectCanvasPanelProps) {
+export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const setCachedData = useProjectCanvasStore((s) => s.setCachedData)
 

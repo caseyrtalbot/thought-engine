@@ -34,6 +34,14 @@ function applyThemeCssVars(colors: ResolvedColors): void {
   root.style.setProperty('--color-accent-hover', colors.accent.hover)
   root.style.setProperty('--color-accent-muted', colors.accent.muted)
 
+  // Canvas-specific tokens
+  root.style.setProperty('--canvas-surface-bg', colors.canvas.surface)
+  root.style.setProperty('--canvas-card-bg', colors.canvas.card)
+  root.style.setProperty('--canvas-card-title-bg', colors.canvas.cardTitleBar)
+  root.style.setProperty('--canvas-card-border', colors.canvas.cardBorder)
+  root.style.setProperty('--canvas-text-heading', colors.canvas.textHeading)
+  root.style.setProperty('--canvas-blockquote-bar', colors.canvas.blockquoteBar)
+
   const hex = colors.accent.default
   if (hex.startsWith('#') && hex.length === 7) {
     const r = parseInt(hex.slice(1, 3), 16)

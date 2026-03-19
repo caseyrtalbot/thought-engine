@@ -131,6 +131,20 @@ export const visualLanguage = {
   borderSubtle: 'rgba(255, 255, 255, 0.08)'
 } as const
 
+export const canvasTokens = {
+  surface: 'var(--canvas-surface-bg)',
+  card: 'var(--canvas-card-bg)',
+  cardTitleBar: 'var(--canvas-card-title-bg)',
+  cardBorder: 'var(--canvas-card-border)',
+  textHeading: 'var(--canvas-text-heading)',
+  blockquoteBar: 'var(--canvas-blockquote-bar)',
+  cardRadius: 6,
+  titleBarHeight: 34,
+  contentPadding: 24,
+  badgeGreen: '#4caf50',
+  linkCyan: '#5cb8c4'
+} as const
+
 export const animations = {
   spatialTransition: '250ms ease-out'
 } as const

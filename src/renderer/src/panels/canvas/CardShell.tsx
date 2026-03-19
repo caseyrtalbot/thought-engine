@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useNodeDrag, useNodeResize } from './use-canvas-drag'
-import { colors, borderRadius } from '../../design/tokens'
+import { colors, canvasTokens, typography } from '../../design/tokens'
 import {
   startConnectionDrag,
   endConnectionDrag,
@@ -15,7 +15,7 @@ import {
 } from '@shared/canvas-types'
 import { CLAUDE_TYPE_COLORS } from '../../design/claude-type-colors'
 
-/** Type accent colors for the left border strip on cards */
+/** Type accent colors for the left border strip on claude cards only */
 const TYPE_ACCENT_COLORS: Partial<Record<CanvasNodeType, string>> = {
   'claude-settings': CLAUDE_TYPE_COLORS.settings,
   'claude-agent': CLAUDE_TYPE_COLORS.agents,
@@ -71,7 +71,6 @@ function ConvertMenu({
         onClose()
       }
     }
-    // Delay attachment to avoid the click that opened the menu from closing it
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handler)
     }, 0)
@@ -92,7 +91,7 @@ function ConvertMenu({
         minWidth: 120,
         backgroundColor: colors.bg.elevated,
         border: `1px solid ${colors.border.default}`,
-        borderRadius: borderRadius.container,
+        borderRadius: canvasTokens.cardRadius,
         zIndex: 50,
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
       }}
@@ -136,6 +135,34 @@ function nearestSide(clientX: number, clientY: number, rect: DOMRect): CanvasSid
   return relY > 0 ? 'bottom' : 'top'
 }
 
+/** Icon button used in the card title bar. 24x24 hit target, 12x12 icon. */
+function TitleBarButton({
+  onClick,
+  label,
+  children
+}: {
+  readonly onClick: (e: React.MouseEvent) => void
+  readonly label: string
+  readonly children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-center rounded hover:opacity-80"
+      style={{
+        width: 24,
+        height: 24,
+        color: colors.text.muted,
+        cursor: 'pointer'
+      }}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function CardShell({ node, title, children, onClose, onOpenInEditor }: CardShellProps) {
   const isSelected = useCanvasStore((s) => s.selectedNodeIds.has(node.id))
   const setSelection = useCanvasStore((s) => s.setSelection)
@@ -146,6 +173,7 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
   const [convertMenuOpen, setConvertMenuOpen] = useState(false)
 
   const isActive = node.metadata?.isActive === true
+  const isClaudeType = node.type.startsWith('claude-')
   const accentColor = TYPE_ACCENT_COLORS[node.type]
 
   const handleClick = useCallback(
@@ -160,7 +188,6 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
     [node.id, setSelection, toggleSelection]
   )
 
-  // Whole-card drop target for connection drag
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!isConnectionDragActive()) return
@@ -175,18 +202,21 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
   return (
     <div
       data-canvas-node
-      className="absolute flex flex-col"
+      className="absolute flex flex-col canvas-card"
       style={{
         left: node.position.x,
         top: node.position.y,
         width: node.size.width,
         height: node.size.height,
-        backgroundColor: colors.bg.surface,
-        borderRadius: borderRadius.card,
-        border: `1px solid ${isActive && accentColor ? accentColor : isSelected ? colors.accent.default : colors.border.default}`,
-        borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
-        boxShadow: isSelected ? `0 0 0 1px ${colors.accent.default}` : 'none',
-        color: node.type.startsWith('claude-') ? '#e2e8f0' : undefined,
+        backgroundColor: canvasTokens.card,
+        borderRadius: canvasTokens.cardRadius,
+        border: isSelected
+          ? `1px solid ${colors.accent.default}`
+          : `1px solid ${canvasTokens.cardBorder}`,
+        borderLeft: isClaudeType && accentColor ? `3px solid ${accentColor}` : undefined,
+        boxShadow: isSelected ? `0 0 0 1px ${colors.accent.default}` : '0 2px 8px rgba(0,0,0,0.15)',
+        color: isClaudeType ? '#e2e8f0' : undefined,
+        overflow: 'hidden',
         ...(isActive
           ? ({
               '--activity-color': accentColor ?? 'rgba(167, 139, 250, 0.3)',
@@ -199,17 +229,20 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Header / drag handle */}
+      {/* Title bar */}
       <div
-        className="flex items-center justify-between px-3 py-1.5 shrink-0 select-none"
+        className="flex items-center justify-between shrink-0 select-none"
         style={{
-          backgroundColor: colors.bg.base,
-          borderBottom: `1px solid ${colors.border.subtle}`,
+          height: canvasTokens.titleBarHeight,
+          padding: '0 10px',
+          backgroundColor: canvasTokens.cardTitleBar,
+          borderBottom: `1px solid ${canvasTokens.cardBorder}`,
+          borderRadius: `${canvasTokens.cardRadius}px ${canvasTokens.cardRadius}px 0 0`,
           cursor: 'grab'
         }}
         onPointerDown={onDragStart}
       >
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 min-w-0 flex-1">
           {isActive && (
             <span
               className="te-active-dot shrink-0"
@@ -221,32 +254,32 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
             />
           )}
           <span
-            className="text-xs font-medium truncate"
-            style={{ color: node.type.startsWith('claude-') ? '#cbd5e1' : colors.text.secondary }}
+            className="truncate"
+            style={{
+              fontFamily: typography.fontFamily.mono,
+              fontSize: 12,
+              color: isClaudeType ? '#cbd5e1' : colors.text.secondary
+            }}
           >
             {title}
           </span>
         </span>
         {node.metadata?.scope === 'project' && (
           <span
-            className="px-1 py-0.5 rounded text-xs shrink-0"
+            className="px-1 py-0.5 rounded shrink-0 ml-2"
             style={{ backgroundColor: '#6366f122', color: '#818cf8', fontSize: 9 }}
           >
             PROJECT
           </span>
         )}
-        <div className="flex items-center gap-1 ml-2 shrink-0 relative">
-          {/* Convert card type dropdown */}
+        <div className="flex items-center gap-0.5 ml-2 shrink-0 relative">
           {VALID_CONVERSIONS[node.type].length > 0 && (
-            <button
+            <TitleBarButton
               onClick={(e) => {
                 e.stopPropagation()
                 setConvertMenuOpen((prev) => !prev)
               }}
-              className="flex items-center justify-center rounded hover:opacity-80"
-              style={{ width: 18, height: 18, color: colors.text.muted }}
-              aria-label="Convert card type"
-              title="Convert card type"
+              label="Convert card type"
             >
               <svg
                 width={12}
@@ -258,18 +291,15 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
               >
                 <path d="M1 4h8l-2-2M11 8H3l2 2" />
               </svg>
-            </button>
+            </TitleBarButton>
           )}
           {onOpenInEditor && (
-            <button
+            <TitleBarButton
               onClick={(e) => {
                 e.stopPropagation()
                 onOpenInEditor()
               }}
-              className="flex items-center justify-center rounded hover:opacity-80"
-              style={{ width: 18, height: 18, color: colors.text.muted }}
-              aria-label="Open in editor"
-              title="Open in editor"
+              label="Open in editor"
             >
               <svg
                 width={12}
@@ -284,7 +314,7 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
-            </button>
+            </TitleBarButton>
           )}
           {convertMenuOpen && (
             <ConvertMenu
@@ -293,14 +323,12 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
               onClose={() => setConvertMenuOpen(false)}
             />
           )}
-          <button
+          <TitleBarButton
             onClick={(e) => {
               e.stopPropagation()
               onClose()
             }}
-            className="flex items-center justify-center rounded"
-            style={{ width: 18, height: 18, color: colors.text.muted }}
-            aria-label="Close card"
+            label="Close card"
           >
             <svg
               width={12}
@@ -312,25 +340,27 @@ export function CardShell({ node, title, children, onClose, onOpenInEditor }: Ca
             >
               <path d="M3 3l6 6M9 3l-6 6" />
             </svg>
-          </button>
+          </TitleBarButton>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+      {/* Content area — hidden scrollbars via .canvas-card-content */}
+      <div className="flex-1 canvas-card-content" style={{ minHeight: 0 }}>
         {children}
       </div>
 
-      {/* Resize handle — z-index ensures it stays above xterm in terminal cards */}
-      <div
-        className="absolute bottom-0 right-0 cursor-nwse-resize"
-        style={{ width: 16, height: 16, zIndex: 5 }}
-        onPointerDown={onResizeStart}
-      >
-        <svg width={16} height={16} viewBox="0 0 16 16" style={{ color: colors.text.muted }}>
-          <path d="M14 2L2 14M14 8L8 14" stroke="currentColor" strokeWidth="1" opacity="0.5" />
-        </svg>
-      </div>
+      {/* Resize handle — only visible on hover */}
+      {hovered && (
+        <div
+          className="absolute bottom-0 right-0 cursor-nwse-resize"
+          style={{ width: 16, height: 16, zIndex: 5 }}
+          onPointerDown={onResizeStart}
+        >
+          <svg width={16} height={16} viewBox="0 0 16 16" style={{ color: colors.text.muted }}>
+            <path d="M14 2L2 14M14 8L8 14" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+          </svg>
+        </div>
+      )}
 
       {/* Anchor dots for edge creation */}
       {hovered &&

@@ -64,6 +64,8 @@ export interface Artifact {
   appears_in: string[]
   concepts: readonly string[]
   body: string
+  /** Raw frontmatter key-value pairs for metadata display (e.g. AUTHOR, CATEGORY). */
+  readonly frontmatter: Readonly<Record<string, unknown>>
 }
 
 export const RELATIONSHIP_KINDS = [

@@ -88,7 +88,7 @@ function ContentArea() {
         )}
         {openTypes.has('claude-config') && (
           <KeepAliveSlot active={activeType === 'claude-config'}>
-            <ClaudeConfigPanel isActive={activeType === 'claude-config'} />
+            <ClaudeConfigPanel />
           </KeepAliveSlot>
         )}
         {openTypes.has('project-canvas') && (

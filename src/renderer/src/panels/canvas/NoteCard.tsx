@@ -6,7 +6,10 @@ import { useEditorStore } from '../../store/editor-store'
 import { useViewStore } from '../../store/view-store'
 import { CardShell } from './CardShell'
 import { getCanvasEditorExtensions } from './shared/tiptap-config'
-import { colors } from '../../design/tokens'
+import { CardBadge } from './shared/CardBadge'
+import { MetadataGrid } from './shared/MetadataGrid'
+import { frontmatterToEntries } from './shared/frontmatter-utils'
+import { colors, canvasTokens } from '../../design/tokens'
 import type { CanvasNode } from '@shared/canvas-types'
 
 interface NoteCardProps {
@@ -26,6 +29,15 @@ export function NoteCard({ node }: NoteCardProps) {
   const artifact = artifacts.find((a) => a.id === artifactId)
   const title = artifact?.title ?? filePath.split('/').pop()?.replace('.md', '') ?? 'Note'
 
+  // Build metadata entries from artifact frontmatter (single source of truth)
+  const metadataEntries = useMemo(
+    () => (artifact ? frontmatterToEntries(artifact.frontmatter) : []),
+    [artifact]
+  )
+
+  // Display type badge from artifact type
+  const badgeLabel = artifact?.type?.toUpperCase() ?? 'NOTE'
+
   const extensions = useMemo(() => getCanvasEditorExtensions(), [])
 
   const editor = useEditor({
@@ -34,8 +46,7 @@ export function NoteCard({ node }: NoteCardProps) {
     editable: false,
     editorProps: {
       attributes: {
-        class: 'focus:outline-none px-3 py-2',
-        style: `color: ${colors.text.primary}; font-size: 13px;`
+        class: 'focus:outline-none'
       }
     }
   })
@@ -102,25 +113,36 @@ export function NoteCard({ node }: NoteCardProps) {
   return (
     <CardShell
       node={node}
-      title={title}
+      title={filePath}
       onClose={() => removeNode(node.id)}
       onOpenInEditor={openInEditor}
     >
-      <div className="h-full overflow-auto" style={{ minHeight: 0 }}>
+      <div className="h-full overflow-auto canvas-card-content" style={{ minHeight: 0 }}>
         {loading ? (
-          <div className="p-3">
+          <div style={{ padding: canvasTokens.contentPadding }}>
             <span className="text-sm" style={{ color: colors.text.muted }}>
               Loading...
             </span>
           </div>
         ) : !body ? (
-          <div className="p-3">
+          <div style={{ padding: canvasTokens.contentPadding }}>
             <span className="text-sm" style={{ color: colors.text.muted }}>
               Empty note
             </span>
           </div>
         ) : (
-          editor && <EditorContent editor={editor} />
+          <div style={{ padding: canvasTokens.contentPadding }}>
+            {/* Type badge */}
+            <div style={{ marginBottom: 16 }}>
+              <CardBadge label={badgeLabel} />
+            </div>
+
+            {/* Metadata grid */}
+            {metadataEntries.length > 0 && <MetadataGrid entries={metadataEntries} />}
+
+            {/* Rendered markdown body */}
+            <div className="canvas-prose">{editor && <EditorContent editor={editor} />}</div>
+          </div>
         )}
       </div>
     </CardShell>

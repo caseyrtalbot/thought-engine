@@ -78,7 +78,8 @@ export function parseArtifact(content: string, filename: string): Result<Artifac
       tensions_with: toStringArray(data?.tensions_with),
       appears_in: toStringArray(data?.appears_in),
       concepts: extractConceptNodes(body),
-      body: body.trim()
+      body: body.trim(),
+      frontmatter: data ?? {}
     }
   }
 }
