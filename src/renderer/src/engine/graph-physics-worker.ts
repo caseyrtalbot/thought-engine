@@ -46,6 +46,7 @@ interface PhysicsEngine {
   drag(nodeIndex: number, x: number, y: number): void
   dragEnd(nodeIndex: number): void
   reheat(alpha?: number): void
+  stop(): void
   updateParams(params: Partial<ForceParams>): void
 }
 
@@ -149,6 +150,10 @@ export function createPhysicsEngine(): PhysicsEngine {
     simulation.alpha(alpha)
   }
 
+  function stop(): void {
+    simulation?.stop()
+  }
+
   function updateParams(params: Partial<ForceParams>): void {
     if (!simulation) return
 
@@ -188,7 +193,7 @@ export function createPhysicsEngine(): PhysicsEngine {
     }
   }
 
-  return { init, tick, drag, dragEnd, reheat, updateParams }
+  return { init, tick, drag, dragEnd, reheat, stop, updateParams }
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +281,14 @@ if (typeof self !== 'undefined' && typeof self.postMessage === 'function') {
         engine.updateParams(cmd.params)
         startTicking()
         break
+      }
+
+      default: {
+        const errMsg: PhysicsResult = {
+          type: 'error',
+          message: `Unknown command: ${(cmd as { type: string }).type}`
+        }
+        workerSelf.postMessage(errMsg)
       }
     }
   }
