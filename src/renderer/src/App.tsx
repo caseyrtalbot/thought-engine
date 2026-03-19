@@ -50,7 +50,7 @@ function KeepAliveSlot({
   )
 }
 
-function ContentArea() {
+function ContentArea({ onOpenSettings }: { readonly onOpenSettings?: () => void }) {
   const activeTabId = useTabStore((s) => s.activeTabId)
   const tabs = useTabStore((s) => s.tabs)
   const activeTab = tabs.find((t) => t.id === activeTabId)
@@ -69,7 +69,7 @@ function ContentArea() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* ViewTabBar moved to top-level WorkspaceShell layout */}
+      <ViewTabBar onOpenSettings={onOpenSettings} />
       <div className="flex-1 overflow-hidden panel-card">
         {openTypes.has('editor') && (
           <KeepAliveSlot active={activeType === 'editor'}>
@@ -568,7 +568,16 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       className="h-screen w-screen flex flex-col"
       style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
     >
-      <ViewTabBar onOpenSettings={() => setSettingsOpen(true)} />
+      {/* Titlebar drag region — strip for macOS traffic lights */}
+      <div
+        className="shrink-0"
+        style={
+          {
+            height: 28,
+            WebkitAppRegion: 'drag'
+          } as React.CSSProperties
+        }
+      />
       <div className="flex-1 overflow-hidden flex">
         <ActivityBar />
         <SplitPane
@@ -584,7 +593,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
               <SplitPane
                 left={
                   <PanelErrorBoundary name="Content">
-                    <ContentArea />
+                    <ContentArea onOpenSettings={() => setSettingsOpen(true)} />
                   </PanelErrorBoundary>
                 }
                 right={
@@ -600,7 +609,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
               />
             ) : (
               <PanelErrorBoundary name="Content">
-                <ContentArea />
+                <ContentArea onOpenSettings={() => setSettingsOpen(true)} />
               </PanelErrorBoundary>
             )
           }

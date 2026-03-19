@@ -169,15 +169,11 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
   return (
     <div
       className="flex items-end shrink-0 overflow-x-auto"
-      style={
-        {
-          height: 38,
-          paddingLeft: 78,
-          paddingRight: 8,
-          borderBottom: `1px solid ${colors.border.subtle}`,
-          WebkitAppRegion: 'drag'
-        } as React.CSSProperties
-      }
+      style={{
+        height: 36,
+        padding: '0 8px',
+        borderBottom: `1px solid ${colors.border.subtle}`
+      }}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId
@@ -207,8 +203,7 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
                   ? '1px solid var(--color-bg-surface)'
                   : '1px solid transparent',
                 color: isActive ? colors.text.primary : colors.text.secondary,
-                transition: transitions.default,
-                WebkitAppRegion: 'no-drag'
+                transition: transitions.default
               } as React.CSSProperties
             }
             onClick={() => activateTab(tab.id)}
@@ -257,8 +252,7 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
             {
               color: colors.text.secondary,
               opacity: 0.6,
-              transition: transitions.default,
-              WebkitAppRegion: 'no-drag'
+              transition: transitions.default
             } as React.CSSProperties
           }
           onMouseEnter={(e) => {
