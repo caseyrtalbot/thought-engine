@@ -79,9 +79,11 @@ export class LabelLayer {
       let alpha: number = SIGNAL_OPACITY[nodes[i].signal]
       if (nodes[i].isGhost) alpha = 0.3
 
-      if (neighborSet && !neighborSet.has(i)) alpha *= 0.1
-
-      if (i === hoveredIndex) alpha = 1.0
+      if (i === hoveredIndex) {
+        alpha = 1.0
+      } else if (neighborSet && !neighborSet.has(i)) {
+        alpha *= 0.1
+      }
 
       const yOffset = 8 + Math.sqrt(nodes[i].connectionCount) * 2.5
       const label =

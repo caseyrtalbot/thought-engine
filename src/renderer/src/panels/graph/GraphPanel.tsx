@@ -9,6 +9,9 @@ import { getGraphLod } from './graph-lod'
 import type { SimNode, PhysicsCommand, PhysicsResult, ForceParams } from './graph-types'
 import type { KnowledgeGraph } from '@shared/types'
 
+const FIT_PADDING_PX = 80
+const MAX_AUTO_FIT_SCALE = 2
+
 /** Compute a viewport that fits all nodes with padding. */
 function fitAllNodes(renderer: GraphRenderer, container: HTMLElement): void {
   const positions = renderer.getPositions()
@@ -32,13 +35,12 @@ function fitAllNodes(renderer: GraphRenderer, container: HTMLElement): void {
 
   if (!isFinite(minX)) return
 
-  const padding = 80
-  const boxWidth = maxX - minX + padding * 2
-  const boxHeight = maxY - minY + padding * 2
+  const boxWidth = maxX - minX + FIT_PADDING_PX * 2
+  const boxHeight = maxY - minY + FIT_PADDING_PX * 2
   const containerWidth = container.clientWidth
   const containerHeight = container.clientHeight
 
-  const scale = Math.min(containerWidth / boxWidth, containerHeight / boxHeight, 2)
+  const scale = Math.min(containerWidth / boxWidth, containerHeight / boxHeight, MAX_AUTO_FIT_SCALE)
   const centerX = (minX + maxX) / 2
   const centerY = (minY + maxY) / 2
 

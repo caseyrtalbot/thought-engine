@@ -22,6 +22,15 @@ describe('graph-lod', () => {
     expect(getGraphLod(3.0)).toBe('micro')
   })
 
+  it('handles LOD boundary values correctly', () => {
+    // Macro boundary: < 0.15 is macro, >= 0.15 is meso
+    expect(getGraphLod(0.149)).toBe('macro')
+    expect(getGraphLod(0.15)).toBe('meso')
+    // Micro boundary: < 1.5 is meso, >= 1.5 is micro
+    expect(getGraphLod(1.499)).toBe('meso')
+    expect(getGraphLod(1.5)).toBe('micro')
+  })
+
   it('never shows labels at macro', () => {
     expect(shouldShowLabel('macro', true)).toBe(false)
     expect(shouldShowLabel('macro', false)).toBe(false)
