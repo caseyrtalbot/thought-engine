@@ -1,0 +1,120 @@
+import { describe, it, expect, vi } from 'vitest'
+import { GraphRenderer } from '@renderer/panels/graph/graph-renderer'
+import type { RendererCallbacks, EdgeData } from '@renderer/panels/graph/graph-renderer'
+import type { SimNode } from '@renderer/panels/graph/graph-types'
+
+function makeCallbacks(): RendererCallbacks {
+  return {
+    onNodeHover: vi.fn(),
+    onNodeClick: vi.fn(),
+    onNodeDrag: vi.fn(),
+    onNodeDragEnd: vi.fn(),
+    onViewportChange: vi.fn()
+  }
+}
+
+function makeNode(overrides: Partial<SimNode> & { index: number }): SimNode {
+  return {
+    id: `node-${overrides.index}`,
+    type: 'note',
+    signal: 'emerging',
+    connectionCount: 2,
+    isGhost: false,
+    ...overrides
+  }
+}
+
+describe('GraphRenderer', () => {
+  it('can be constructed with callbacks', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    expect(renderer).toBeDefined()
+    expect(renderer.getNodeCount()).toBe(0)
+  })
+
+  it('tracks paused state before mount', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    expect(renderer.isPaused()).toBe(true)
+  })
+
+  it('accepts position data before mount', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    const positions = new Float32Array([10, 20, 30, 40])
+    renderer.setPositions(positions)
+    // No error thrown, node count is still 0 (positions != nodes)
+    expect(renderer.getNodeCount()).toBe(0)
+  })
+
+  it('accepts graph data before mount', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    const nodes: SimNode[] = [makeNode({ index: 0 }), makeNode({ index: 1 })]
+    const edges: EdgeData[] = [{ sourceIndex: 0, targetIndex: 1, kind: 'connection' }]
+
+    renderer.setGraphData(nodes, edges)
+    expect(renderer.getNodeCount()).toBe(2)
+  })
+
+  it('updates node count when graph data changes', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+
+    renderer.setGraphData([makeNode({ index: 0 })], [])
+    expect(renderer.getNodeCount()).toBe(1)
+
+    renderer.setGraphData(
+      [makeNode({ index: 0 }), makeNode({ index: 1 }), makeNode({ index: 2 })],
+      []
+    )
+    expect(renderer.getNodeCount()).toBe(3)
+  })
+
+  it('accepts setHighlightedNode without errors before mount', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    // Should not throw even with no nodes or mount
+    renderer.setHighlightedNode(0)
+    renderer.setHighlightedNode(null)
+  })
+
+  it('pause and resume toggle paused state', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    expect(renderer.isPaused()).toBe(true)
+
+    // resume before mount should set paused=false but not start loop (no app)
+    renderer.resume()
+    expect(renderer.isPaused()).toBe(false)
+
+    renderer.pause()
+    expect(renderer.isPaused()).toBe(true)
+  })
+
+  it('destroy is safe to call without mount', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    // Calling destroy without ever calling mount should not throw
+    renderer.destroy()
+    expect(renderer.isPaused()).toBe(true)
+  })
+
+  it('setPositions replaces buffer without affecting node count', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    renderer.setGraphData([makeNode({ index: 0 })], [])
+    expect(renderer.getNodeCount()).toBe(1)
+
+    renderer.setPositions(new Float32Array([100, 200]))
+    // Node count comes from setGraphData, not positions
+    expect(renderer.getNodeCount()).toBe(1)
+  })
+
+  it('handles empty graph data', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    renderer.setGraphData([], [])
+    expect(renderer.getNodeCount()).toBe(0)
+  })
+
+  it('handles ghost nodes in graph data', () => {
+    const renderer = new GraphRenderer(makeCallbacks())
+    const nodes: SimNode[] = [
+      makeNode({ index: 0, isGhost: true }),
+      makeNode({ index: 1, isGhost: false })
+    ]
+    renderer.setGraphData(nodes, [])
+    expect(renderer.getNodeCount()).toBe(2)
+  })
+})
