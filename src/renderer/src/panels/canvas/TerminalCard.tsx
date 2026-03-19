@@ -27,10 +27,11 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const setFocusedTerminal = useCanvasStore((s) => s.setFocusedTerminal)
   const vaultPath = useVaultStore((s) => s.vaultPath)
 
-  // Create PTY session on mount
+  // Create xterm + PTY session on mount.
+  // IMPORTANT: xterm must be mounted BEFORE the PTY is created so the
+  // terminalData listener can write to it as soon as the shell sends output.
   useEffect(() => {
     let sessionId = sessionIdRef.current
-    let term: Terminal | null = null
     let cancelled = false
 
     // Support metadata-driven cwd and initial command
@@ -38,90 +39,95 @@ export function TerminalCard({ node }: TerminalCardProps) {
     const initialCommand =
       typeof node.metadata?.initialCommand === 'string' ? node.metadata.initialCommand : null
 
-    async function init() {
+    // Step 1: Create and mount xterm synchronously
+    const term = new Terminal({
+      fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace',
+      fontSize: 13,
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      fontWeight: '400',
+      fontWeightBold: '600',
+      theme: {
+        background: '#0c0e14',
+        foreground: '#cdd6f4',
+        cursor: colors.accent.default,
+        cursorAccent: '#0c0e14',
+        selectionBackground: 'rgba(0, 229, 191, 0.18)',
+        selectionForeground: '#cdd6f4',
+        black: '#45475a',
+        red: '#f38ba8',
+        green: '#a6e3a1',
+        yellow: '#f9e2af',
+        blue: '#89b4fa',
+        magenta: '#cba6f7',
+        cyan: '#94e2d5',
+        white: '#bac2de',
+        brightBlack: '#585b70',
+        brightRed: '#f38ba8',
+        brightGreen: '#a6e3a1',
+        brightYellow: '#f9e2af',
+        brightBlue: '#89b4fa',
+        brightMagenta: '#cba6f7',
+        brightCyan: '#94e2d5',
+        brightWhite: '#a6adc8'
+      },
+      scrollback: 10000,
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      cursorWidth: 2,
+      allowProposedApi: true,
+      smoothScrollDuration: 100
+    })
+    termRef.current = term
+
+    const fitAddon = new FitAddon()
+    fitRef.current = fitAddon
+    term.loadAddon(fitAddon)
+    term.loadAddon(new WebLinksAddon())
+
+    if (termContainerRef.current) {
+      term.open(termContainerRef.current)
+
+      // Force xterm viewport to fill the container
+      const xtermEl = termContainerRef.current.querySelector('.xterm') as HTMLElement | null
+      if (xtermEl) {
+        xtermEl.style.height = '100%'
+      }
+      const screenEl = termContainerRef.current.querySelector('.xterm-screen') as HTMLElement | null
+      if (screenEl) {
+        screenEl.style.height = '100%'
+      }
+
+      fitAddon.fit()
+    }
+
+    // Wire user keystrokes -> PTY
+    term.onData((data) => {
+      if (sessionIdRef.current) {
+        window.api.terminal.write(sessionIdRef.current, data)
+      }
+    })
+
+    // Step 2: Create PTY session (async) — xterm is already mounted and
+    // the terminalData listener is ready, so no output will be dropped.
+    async function createSession() {
       if (!sessionId) {
         const cwd = metaCwd || vaultPath || '/'
         sessionId = await window.api.terminal.create(cwd)
+        if (cancelled) return
         sessionIdRef.current = sessionId
-        // Persist session ID in node content
         updateContent(node.id, sessionId)
       }
-      if (cancelled) return
 
-      term = new Terminal({
-        fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace',
-        fontSize: 13,
-        lineHeight: 1.2,
-        letterSpacing: 0,
-        fontWeight: '400',
-        fontWeightBold: '600',
-        theme: {
-          background: '#0c0e14',
-          foreground: '#cdd6f4',
-          cursor: colors.accent.default,
-          cursorAccent: '#0c0e14',
-          selectionBackground: 'rgba(0, 229, 191, 0.18)',
-          selectionForeground: '#cdd6f4',
-          black: '#45475a',
-          red: '#f38ba8',
-          green: '#a6e3a1',
-          yellow: '#f9e2af',
-          blue: '#89b4fa',
-          magenta: '#cba6f7',
-          cyan: '#94e2d5',
-          white: '#bac2de',
-          brightBlack: '#585b70',
-          brightRed: '#f38ba8',
-          brightGreen: '#a6e3a1',
-          brightYellow: '#f9e2af',
-          brightBlue: '#89b4fa',
-          brightMagenta: '#cba6f7',
-          brightCyan: '#94e2d5',
-          brightWhite: '#a6adc8'
-        },
-        scrollback: 10000,
-        cursorBlink: true,
-        cursorStyle: 'bar',
-        cursorWidth: 2,
-        allowProposedApi: true,
-        smoothScrollDuration: 100
-      })
-      termRef.current = term
-
-      const fitAddon = new FitAddon()
-      fitRef.current = fitAddon
-      term.loadAddon(fitAddon)
-      term.loadAddon(new WebLinksAddon())
-
-      if (termContainerRef.current) {
-        term.open(termContainerRef.current)
-
-        // Force xterm viewport to fill the container
-        const xtermEl = termContainerRef.current.querySelector('.xterm') as HTMLElement | null
-        if (xtermEl) {
-          xtermEl.style.height = '100%'
-        }
-        const screenEl = termContainerRef.current.querySelector(
-          '.xterm-screen'
-        ) as HTMLElement | null
-        if (screenEl) {
-          screenEl.style.height = '100%'
-        }
-
-        fitAddon.fit()
-        const { cols, rows } = term
+      // Now that we have a session ID, resize PTY to match terminal
+      if (termRef.current) {
+        const { cols, rows } = termRef.current
         window.api.terminal.resize(sessionId!, cols, rows)
-
-        // Re-fit after layout settles (flexbox may not have final dimensions yet)
-        requestAnimationFrame(() => {
-          if (!cancelled) fitAddon.fit()
-        })
       }
 
-      term.onData((data) => {
-        if (sessionIdRef.current) {
-          window.api.terminal.write(sessionIdRef.current, data)
-        }
+      // Re-fit after layout settles
+      requestAnimationFrame(() => {
+        if (!cancelled && fitRef.current) fitRef.current.fit()
       })
 
       // Send initial command after shell has time to initialize
@@ -134,7 +140,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
       }
     }
 
-    init()
+    createSession()
 
     return () => {
       cancelled = true
@@ -142,7 +148,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
       if (sid) {
         window.api.terminal.kill(sid)
       }
-      term?.dispose()
+      term.dispose()
       termRef.current = null
       fitRef.current = null
     }
