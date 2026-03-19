@@ -50,7 +50,7 @@ function KeepAliveSlot({
   )
 }
 
-function ContentArea({ onOpenSettings }: { readonly onOpenSettings?: () => void }) {
+function ContentArea() {
   const activeTabId = useTabStore((s) => s.activeTabId)
   const tabs = useTabStore((s) => s.tabs)
   const activeTab = tabs.find((t) => t.id === activeTabId)
@@ -69,7 +69,7 @@ function ContentArea({ onOpenSettings }: { readonly onOpenSettings?: () => void 
 
   return (
     <div className="h-full flex flex-col">
-      <ViewTabBar onOpenSettings={onOpenSettings} />
+      {/* ViewTabBar moved to top-level WorkspaceShell layout */}
       <div className="flex-1 overflow-hidden panel-card">
         {openTypes.has('editor') && (
           <KeepAliveSlot active={activeType === 'editor'}>
@@ -568,7 +568,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       className="h-screen w-screen flex flex-col"
       style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
     >
-      {/* Titlebar removed — drag region and settings gear merged into ViewTabBar */}
+      <ViewTabBar onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex-1 overflow-hidden flex">
         <ActivityBar />
         <SplitPane
@@ -584,7 +584,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
               <SplitPane
                 left={
                   <PanelErrorBoundary name="Content">
-                    <ContentArea onOpenSettings={() => setSettingsOpen(true)} />
+                    <ContentArea />
                   </PanelErrorBoundary>
                 }
                 right={
@@ -600,7 +600,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
               />
             ) : (
               <PanelErrorBoundary name="Content">
-                <ContentArea onOpenSettings={() => setSettingsOpen(true)} />
+                <ContentArea />
               </PanelErrorBoundary>
             )
           }

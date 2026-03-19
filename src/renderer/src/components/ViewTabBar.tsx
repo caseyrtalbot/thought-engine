@@ -168,12 +168,12 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
 
   return (
     <div
-      className="flex items-center shrink-0 overflow-x-auto gap-1"
+      className="flex items-end shrink-0 overflow-x-auto"
       style={
         {
           height: 38,
-          padding: '2px 8px',
           paddingLeft: 78,
+          paddingRight: 8,
           borderBottom: `1px solid ${colors.border.subtle}`,
           WebkitAppRegion: 'drag'
         } as React.CSSProperties
@@ -185,17 +185,27 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
         return (
           <div
             key={tab.id}
-            className="flex items-center group shrink-0 cursor-pointer"
+            className="flex items-center group shrink-0 cursor-pointer relative"
             style={
               {
-                padding: '3px 10px',
+                padding: '0 16px',
+                height: isActive ? 30 : 28,
+                marginBottom: isActive ? -1 : 1,
                 fontSize: 12,
-                borderRadius: 6,
-                border: isActive
-                  ? '1px solid rgba(0, 229, 191, 0.3)'
-                  : '1px solid rgba(255, 255, 255, 0.06)',
-                backgroundColor: isActive ? 'rgba(0, 229, 191, 0.06)' : 'transparent',
-                boxShadow: isActive ? '0 0 8px rgba(0, 229, 191, 0.08)' : 'none',
+                borderRadius: '6px 6px 0 0',
+                backgroundColor: isActive ? 'var(--color-bg-surface)' : 'transparent',
+                borderTop: isActive
+                  ? '1px solid rgba(255, 255, 255, 0.08)'
+                  : '1px solid transparent',
+                borderLeft: isActive
+                  ? '1px solid rgba(255, 255, 255, 0.08)'
+                  : '1px solid transparent',
+                borderRight: isActive
+                  ? '1px solid rgba(255, 255, 255, 0.08)'
+                  : '1px solid transparent',
+                borderBottom: isActive
+                  ? '1px solid var(--color-bg-surface)'
+                  : '1px solid transparent',
                 color: isActive ? colors.text.primary : colors.text.secondary,
                 transition: transitions.default,
                 WebkitAppRegion: 'no-drag'
@@ -203,6 +213,12 @@ export function ViewTabBar({ onOpenSettings }: ViewTabBarProps) {
             }
             onClick={() => activateTab(tab.id)}
             onMouseDown={(e) => handleMiddleClick(e, tab)}
+            onMouseEnter={(e) => {
+              if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
+            }}
           >
             <TabIcon iconId={def?.iconId ?? tab.type} />
             <span className="truncate select-none ml-1.5" style={{ maxWidth: 120 }}>

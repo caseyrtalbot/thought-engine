@@ -168,9 +168,6 @@ export function Sidebar({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Traffic light spacer — matches ViewTabBar height (38px) so sidebar content
-          starts below the macOS close/minimize/maximize buttons */}
-      <div style={{ height: 38, flexShrink: 0 }} />
       <div className="p-2">
         <SearchBar onSearch={onSearch} />
       </div>

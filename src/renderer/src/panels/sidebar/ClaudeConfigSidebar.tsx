@@ -197,8 +197,6 @@ export function ClaudeConfigSidebar({
   if (!config) {
     return (
       <div className="h-full flex flex-col">
-        {/* Traffic light spacer — matches ViewTabBar height (38px) */}
-        <div style={{ height: 38, flexShrink: 0 }} />
         <div className="px-2 py-3">
           <VaultSelector
             currentName="~/.claude/"
@@ -227,8 +225,6 @@ export function ClaudeConfigSidebar({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Traffic light spacer — matches ViewTabBar height (38px) */}
-      <div style={{ height: 38, flexShrink: 0 }} />
       <div className="px-2 py-2">
         <VaultSelector
           currentName="~/.claude/"
