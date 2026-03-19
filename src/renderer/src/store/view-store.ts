@@ -1,55 +1,39 @@
 import { create } from 'zustand'
+import { useTabStore, TAB_DEFINITIONS } from './tab-store'
+import type { TabType } from './tab-store'
 
-export type ContentView =
-  | 'editor'
-  | 'canvas'
-  | 'skills'
-  | 'claude-config'
-  | 'project-canvas'
-  | 'graph'
+export type ContentView = TabType
 
 interface ViewStore {
   readonly contentView: ContentView
-  readonly previousView: ContentView | null
   setContentView: (view: ContentView) => void
-  toggleClaudeConfig: () => void
-  toggleProjectCanvas: () => void
-  toggleGraph: () => void
 }
 
-export const useViewStore = create<ViewStore>((set, get) => ({
-  contentView: 'editor',
-  previousView: null,
+/**
+ * Backward-compatible bridge: reads active view from tab-store.
+ * Existing code that calls setContentView or reads contentView
+ * continues to work without modification.
+ */
+export const useViewStore = create<ViewStore>(() => ({
+  contentView: (useTabStore.getState().tabs.find((t) => t.id === useTabStore.getState().activeTabId)
+    ?.type ?? 'editor') as ContentView,
 
-  setContentView: (view) => set({ contentView: view, previousView: get().contentView }),
-
-  toggleClaudeConfig: () => {
-    const current = get().contentView
-    if (current === 'claude-config') {
-      const prev = get().previousView ?? 'editor'
-      set({ contentView: prev, previousView: 'claude-config' })
-    } else {
-      set({ contentView: 'claude-config', previousView: current })
-    }
-  },
-
-  toggleProjectCanvas: () => {
-    const current = get().contentView
-    if (current === 'project-canvas') {
-      const prev = get().previousView ?? 'editor'
-      set({ contentView: prev, previousView: 'project-canvas' })
-    } else {
-      set({ contentView: 'project-canvas', previousView: current })
-    }
-  },
-
-  toggleGraph: () => {
-    const current = get().contentView
-    if (current === 'graph') {
-      const prev = get().previousView ?? 'editor'
-      set({ contentView: prev, previousView: 'graph' })
-    } else {
-      set({ contentView: 'graph', previousView: current })
-    }
+  setContentView: (view: ContentView) => {
+    const def = TAB_DEFINITIONS[view]
+    useTabStore.getState().openTab({
+      id: view,
+      type: view,
+      label: def.label,
+      closeable: view !== 'editor'
+    })
   }
 }))
+
+// Sync contentView whenever tab-store changes
+useTabStore.subscribe((state) => {
+  const activeTab = state.tabs.find((t) => t.id === state.activeTabId)
+  const viewType = (activeTab?.type ?? 'editor') as ContentView
+  if (useViewStore.getState().contentView !== viewType) {
+    useViewStore.setState({ contentView: viewType })
+  }
+})

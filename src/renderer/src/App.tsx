@@ -13,6 +13,9 @@ import { ClaudeConfigPanel } from './panels/claude-config/ClaudeConfigPanel'
 import { ProjectCanvasPanel } from './panels/project-canvas/ProjectCanvasPanel'
 import { GraphPanel } from './panels/graph/GraphPanel'
 import { ActivityBar } from './components/ActivityBar'
+import { ViewTabBar } from './components/ViewTabBar'
+import { useTabStore, TAB_DEFINITIONS } from './store/tab-store'
+import type { TabType } from './store/tab-store'
 import { TerminalPanel } from './panels/terminal/TerminalPanel'
 import { WelcomeScreen } from './panels/onboarding/WelcomeScreen'
 import { CommandPalette, type CommandItem } from './design/components/CommandPalette'
@@ -32,9 +35,30 @@ import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile } from '@shared/canvas-types'
 
+/** Wrapper that keeps its children mounted but hidden when inactive. */
+function KeepAliveSlot({
+  active,
+  children
+}: {
+  readonly active: boolean
+  readonly children: React.ReactNode
+}) {
+  return (
+    <div className="h-full w-full" style={{ display: active ? 'contents' : 'none' }}>
+      {children}
+    </div>
+  )
+}
+
 function ContentArea() {
-  const contentView = useViewStore((s) => s.contentView)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const tabs = useTabStore((s) => s.tabs)
+  const activeTab = tabs.find((t) => t.id === activeTabId)
+  const activeType = activeTab?.type ?? 'editor'
   const setActiveNote = useEditorStore((s) => s.setActiveNote)
+
+  // Track which panel types have been opened (ever) so they stay mounted
+  const openTypes = useMemo(() => new Set(tabs.map((t) => t.type)), [tabs])
 
   const handleNavigate = useCallback(
     (id: string) => {
@@ -44,13 +68,40 @@ function ContentArea() {
   )
 
   return (
-    <div className="h-full panel-card">
-      {contentView === 'editor' && <EditorPanel onNavigate={handleNavigate} />}
-      {contentView === 'canvas' && <CanvasView />}
-      {contentView === 'skills' && <SkillsPanel />}
-      {contentView === 'claude-config' && <ClaudeConfigPanel />}
-      {contentView === 'project-canvas' && <ProjectCanvasPanel />}
-      {contentView === 'graph' && <GraphPanel />}
+    <div className="h-full flex flex-col">
+      <ViewTabBar />
+      <div className="flex-1 overflow-hidden panel-card">
+        {openTypes.has('editor') && (
+          <KeepAliveSlot active={activeType === 'editor'}>
+            <EditorPanel onNavigate={handleNavigate} />
+          </KeepAliveSlot>
+        )}
+        {openTypes.has('canvas') && (
+          <KeepAliveSlot active={activeType === 'canvas'}>
+            <CanvasView />
+          </KeepAliveSlot>
+        )}
+        {openTypes.has('skills') && (
+          <KeepAliveSlot active={activeType === 'skills'}>
+            <SkillsPanel />
+          </KeepAliveSlot>
+        )}
+        {openTypes.has('claude-config') && (
+          <KeepAliveSlot active={activeType === 'claude-config'}>
+            <ClaudeConfigPanel isActive={activeType === 'claude-config'} />
+          </KeepAliveSlot>
+        )}
+        {openTypes.has('project-canvas') && (
+          <KeepAliveSlot active={activeType === 'project-canvas'}>
+            <ProjectCanvasPanel isActive={activeType === 'project-canvas'} />
+          </KeepAliveSlot>
+        )}
+        {openTypes.has('graph') && (
+          <KeepAliveSlot active={activeType === 'graph'}>
+            <GraphPanel />
+          </KeepAliveSlot>
+        )}
+      </div>
     </div>
   )
 }
@@ -59,7 +110,7 @@ const EMPTY_SET = new Set<string>()
 
 function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
   const contentView = useViewStore((s) => s.contentView)
-  const toggleClaudeConfig = useViewStore((s) => s.toggleClaudeConfig)
+  const sidebarOpenTab = useTabStore((s) => s.openTab)
   const files = useVaultStore((s) => s.files)
   const config = useVaultStore((s) => s.config)
   const activeWorkspace = useVaultStore((s) => s.activeWorkspace)
@@ -200,8 +251,14 @@ function ConnectedSidebar({ onLoadVault }: { onLoadVault: (path: string) => Prom
   )
 
   const handleSelectClaudeConfig = useCallback(() => {
-    toggleClaudeConfig()
-  }, [toggleClaudeConfig])
+    const def = TAB_DEFINITIONS['claude-config']
+    sidebarOpenTab({
+      id: 'claude-config',
+      type: 'claude-config',
+      label: def.label,
+      closeable: true
+    })
+  }, [sidebarOpenTab])
 
   const handleFileAction = useCallback(
     async (action: { actionId: string; path: string; isDirectory: boolean }) => {
@@ -339,9 +396,21 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const setMode = useEditorStore((s) => s.setMode)
   const vaultName = vaultPath?.split('/').pop() ?? 'Thought Engine'
 
-  const toggleClaudeConfig = useViewStore((s) => s.toggleClaudeConfig)
-  const toggleProjectCanvas = useViewStore((s) => s.toggleProjectCanvas)
-  const toggleGraph = useViewStore((s) => s.toggleGraph)
+  const openTab = useTabStore((s) => s.openTab)
+  const closeTab = useTabStore((s) => s.closeTab)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+
+  const toggleTabView = useCallback(
+    (type: TabType) => {
+      const def = TAB_DEFINITIONS[type]
+      if (activeTabId === type) {
+        closeTab(type)
+      } else {
+        openTab({ id: type, type, label: def.label, closeable: type !== 'editor' })
+      }
+    },
+    [activeTabId, openTab, closeTab]
+  )
 
   const toggleView = useCallback(() => {
     if (contentView === 'editor') setContentView('canvas')
@@ -386,27 +455,27 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onEscape: () => setPaletteOpen(false)
   })
 
-  // Cmd+Shift+C: toggle Claude Config Canvas
-  // Cmd+Shift+P: toggle Project Canvas
-  // Cmd+Shift+G: toggle Graph view
+  // Cmd+Shift+C: toggle Claude Config Canvas tab
+  // Cmd+Shift+P: toggle Project Canvas tab
+  // Cmd+Shift+G: toggle Graph tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
         e.preventDefault()
-        toggleClaudeConfig()
+        toggleTabView('claude-config')
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault()
-        toggleProjectCanvas()
+        toggleTabView('project-canvas')
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault()
-        toggleGraph()
+        toggleTabView('graph')
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [toggleClaudeConfig, toggleProjectCanvas, toggleGraph])
+  }, [toggleTabView])
 
   const paletteItems = useMemo<CommandItem[]>(() => {
     const noteItems: CommandItem[] = files.map((f) => ({
@@ -455,10 +524,10 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           }
           break
         case 'cmd:toggle-claude-config':
-          toggleClaudeConfig()
+          toggleTabView('claude-config')
           break
         case 'cmd:toggle-project-canvas':
-          toggleProjectCanvas()
+          toggleTabView('project-canvas')
           break
       }
     },
@@ -469,8 +538,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       toggleTerminal,
       setSettingsOpen,
       vaultPath,
-      toggleClaudeConfig,
-      toggleProjectCanvas
+      toggleTabView
     ]
   )
 

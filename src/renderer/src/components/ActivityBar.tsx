@@ -1,9 +1,9 @@
-import { useViewStore } from '../store/view-store'
+import { useTabStore, TAB_DEFINITIONS } from '../store/tab-store'
+import type { TabType } from '../store/tab-store'
 import { colors } from '../design/tokens'
-import type { ContentView } from '../store/view-store'
 
 interface ActivityItem {
-  view: ContentView
+  view: TabType
   label: string
   icon: React.ReactNode
 }
@@ -92,8 +92,8 @@ const ITEMS: ActivityItem[] = [
 ]
 
 export function ActivityBar() {
-  const contentView = useViewStore((s) => s.contentView)
-  const setContentView = useViewStore((s) => s.setContentView)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const openTab = useTabStore((s) => s.openTab)
 
   return (
     <div
@@ -104,11 +104,14 @@ export function ActivityBar() {
       }}
     >
       {ITEMS.map(({ view, label, icon }) => {
-        const isActive = contentView === view
+        const isActive = activeTabId === view
+        const def = TAB_DEFINITIONS[view]
         return (
           <button
             key={view}
-            onClick={() => setContentView(view)}
+            onClick={() =>
+              openTab({ id: view, type: view, label: def.label, closeable: view !== 'editor' })
+            }
             className="relative flex items-center justify-center transition-opacity"
             style={{
               width: 36,

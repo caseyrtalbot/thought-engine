@@ -71,12 +71,17 @@ function fitViewportToNodes(
   return { x, y, zoom }
 }
 
+interface ProjectCanvasPanelProps {
+  readonly isActive: boolean
+}
+
 /**
- * ProjectCanvasPanel uses the same "store swap" pattern as ClaudeConfigPanel:
- * On mount, save vault canvas state, load project canvas into canvas-store.
- * On unmount, save project canvas and restore vault canvas.
+ * ProjectCanvasPanel uses a "store swap" pattern:
+ * When activated, save vault canvas state, load project canvas into canvas-store.
+ * When deactivated, save project canvas and restore vault canvas.
+ * The panel stays mounted (keep-alive) so terminal sessions survive tab switches.
  */
-export function ProjectCanvasPanel() {
+export function ProjectCanvasPanel({ isActive }: ProjectCanvasPanelProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const setCachedData = useProjectCanvasStore((s) => s.setCachedData)
 

@@ -1,5 +1,5 @@
 import { useCanvasStore } from '../../store/canvas-store'
-import { useViewStore } from '../../store/view-store'
+import { useTabStore, TAB_DEFINITIONS } from '../../store/tab-store'
 import { colors, borderRadius } from '../../design/tokens'
 
 interface CanvasToolbarProps {
@@ -21,7 +21,7 @@ export function CanvasToolbar({
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
-  const toggleClaudeConfig = useViewStore((s) => s.toggleClaudeConfig)
+  const openTab = useTabStore((s) => s.openTab)
 
   const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
   const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
@@ -144,7 +144,10 @@ export function CanvasToolbar({
       <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
 
       <button
-        onClick={toggleClaudeConfig}
+        onClick={() => {
+          const def = TAB_DEFINITIONS['claude-config']
+          openTab({ id: 'claude-config', type: 'claude-config', label: def.label, closeable: true })
+        }}
         style={{ ...btnStyle, color: '#f59e0b' }}
         title="Claude Config Canvas"
       >

@@ -1,0 +1,223 @@
+import { useState, useCallback } from 'react'
+import { useTabStore, TAB_DEFINITIONS } from '../store/tab-store'
+import type { ViewTab, TabType } from '../store/tab-store'
+import { colors, transitions } from '../design/tokens'
+
+const TAB_ICONS: Record<string, React.ReactNode> = {
+  editor: <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />,
+  canvas: (
+    <>
+      <rect x="3" y="3" width="7" height="5" rx="1" />
+      <rect x="14" y="16" width="7" height="5" rx="1" />
+      <path d="M10 5.5h4a2 2 0 0 1 2 2v4" />
+      <path d="M14 18.5h-4a2 2 0 0 1-2-2v-4" />
+    </>
+  ),
+  graph: (
+    <>
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="8" r="2.5" />
+      <circle cx="12" cy="18" r="2.5" />
+      <line x1="8" y1="7" x2="16" y2="7.5" />
+      <line x1="7" y1="8" x2="11" y2="16.5" />
+      <line x1="16" y1="10" x2="13" y2="16" />
+    </>
+  ),
+  skills: (
+    <>
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </>
+  ),
+  'claude-config': (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </>
+  ),
+  'project-canvas': (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="9" y1="21" x2="9" y2="9" />
+    </>
+  )
+}
+
+function TabIcon({ iconId }: { readonly iconId: string }) {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {TAB_ICONS[iconId]}
+    </svg>
+  )
+}
+
+function AddTabButton() {
+  const [open, setOpen] = useState(false)
+  const tabs = useTabStore((s) => s.tabs)
+  const openTab = useTabStore((s) => s.openTab)
+
+  const handleOpen = useCallback(
+    (type: TabType, label: string) => {
+      openTab({ id: type, type, label, closeable: type !== 'editor' })
+      setOpen(false)
+    },
+    [openTab]
+  )
+
+  const openTypes = new Set(tabs.map((t) => t.type))
+  const available = (
+    Object.entries(TAB_DEFINITIONS) as [TabType, { label: string; iconId: string }][]
+  ).filter(([type]) => !openTypes.has(type))
+
+  if (available.length === 0) return null
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="flex items-center justify-center shrink-0 cursor-pointer"
+        style={{
+          width: 24,
+          height: 24,
+          borderRadius: 6,
+          color: colors.text.muted,
+          fontSize: 16,
+          transition: transitions.default
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = colors.text.primary
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = colors.text.muted
+        }}
+        title="Open a new tab"
+      >
+        +
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute top-full left-0 mt-1 z-50 rounded-lg py-1"
+            style={{
+              backgroundColor: colors.bg.elevated,
+              border: `1px solid ${colors.border.default}`,
+              minWidth: 160,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}
+          >
+            {available.map(([type, def]) => (
+              <button
+                key={type}
+                onClick={() => handleOpen(type, def.label)}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-left cursor-pointer"
+                style={{
+                  fontSize: 12,
+                  color: colors.text.secondary,
+                  transition: transitions.default
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)'
+                  e.currentTarget.style.color = colors.text.primary
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = colors.text.secondary
+                }}
+              >
+                <TabIcon iconId={def.iconId} />
+                {def.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export function ViewTabBar() {
+  const tabs = useTabStore((s) => s.tabs)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const activateTab = useTabStore((s) => s.activateTab)
+  const closeTab = useTabStore((s) => s.closeTab)
+
+  const handleMiddleClick = useCallback(
+    (e: React.MouseEvent, tab: ViewTab) => {
+      if (e.button === 1 && tab.closeable) {
+        e.preventDefault()
+        closeTab(tab.id)
+      }
+    },
+    [closeTab]
+  )
+
+  return (
+    <div
+      className="flex items-center shrink-0 overflow-x-auto gap-1"
+      style={{
+        height: 36,
+        padding: '2px 8px',
+        borderBottom: `1px solid ${colors.border.subtle}`
+      }}
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTabId
+        const def = TAB_DEFINITIONS[tab.type]
+        return (
+          <div
+            key={tab.id}
+            className="flex items-center group shrink-0 cursor-pointer"
+            style={{
+              padding: '3px 10px',
+              fontSize: 12,
+              borderRadius: 6,
+              border: isActive
+                ? '1px solid rgba(0, 229, 191, 0.3)'
+                : '1px solid rgba(255, 255, 255, 0.06)',
+              backgroundColor: isActive ? 'rgba(0, 229, 191, 0.06)' : 'transparent',
+              boxShadow: isActive ? '0 0 8px rgba(0, 229, 191, 0.08)' : 'none',
+              color: isActive ? colors.text.primary : colors.text.secondary,
+              transition: transitions.default
+            }}
+            onClick={() => activateTab(tab.id)}
+            onMouseDown={(e) => handleMiddleClick(e, tab)}
+          >
+            <TabIcon iconId={def?.iconId ?? tab.type} />
+            <span className="truncate select-none ml-1.5" style={{ maxWidth: 120 }}>
+              {tab.label}
+            </span>
+            {tab.closeable && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  closeTab(tab.id)
+                }}
+                className="flex items-center justify-center w-4 h-4 ml-1.5 rounded cursor-pointer opacity-0 group-hover:opacity-100"
+                style={{
+                  color: colors.text.muted,
+                  fontSize: 11,
+                  transition: transitions.default
+                }}
+                title="Close tab"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )
+      })}
+      <AddTabButton />
+    </div>
+  )
+}
