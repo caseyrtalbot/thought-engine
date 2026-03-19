@@ -11,6 +11,7 @@ import { SkillsPanel } from './panels/skills/SkillsPanel'
 import { CanvasView } from './panels/canvas/CanvasView'
 import { ClaudeConfigPanel } from './panels/claude-config/ClaudeConfigPanel'
 import { ProjectCanvasPanel } from './panels/project-canvas/ProjectCanvasPanel'
+import { GraphPanel } from './panels/graph/GraphPanel'
 import { ActivityBar } from './components/ActivityBar'
 import { TerminalPanel } from './panels/terminal/TerminalPanel'
 import { WelcomeScreen } from './panels/onboarding/WelcomeScreen'
@@ -49,6 +50,7 @@ function ContentArea() {
       {contentView === 'skills' && <SkillsPanel />}
       {contentView === 'claude-config' && <ClaudeConfigPanel />}
       {contentView === 'project-canvas' && <ProjectCanvasPanel />}
+      {contentView === 'graph' && <GraphPanel />}
     </div>
   )
 }
@@ -339,6 +341,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   const toggleClaudeConfig = useViewStore((s) => s.toggleClaudeConfig)
   const toggleProjectCanvas = useViewStore((s) => s.toggleProjectCanvas)
+  const toggleGraph = useViewStore((s) => s.toggleGraph)
 
   const toggleView = useCallback(() => {
     if (contentView === 'editor') setContentView('canvas')
@@ -385,20 +388,25 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   // Cmd+Shift+C: toggle Claude Config Canvas
   // Cmd+Shift+P: toggle Project Canvas
+  // Cmd+Shift+G: toggle Graph view
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
         e.preventDefault()
         toggleClaudeConfig()
       }
-      if (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'p') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault()
         toggleProjectCanvas()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault()
+        toggleGraph()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [toggleClaudeConfig, toggleProjectCanvas])
+  }, [toggleClaudeConfig, toggleProjectCanvas, toggleGraph])
 
   const paletteItems = useMemo<CommandItem[]>(() => {
     const noteItems: CommandItem[] = files.map((f) => ({

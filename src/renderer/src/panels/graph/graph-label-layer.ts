@@ -72,7 +72,7 @@ export class LabelLayer {
 
       if (sx < -100 || sx > cw + 100 || sy < -50 || sy > ch + 50) continue
 
-      let alpha = SIGNAL_OPACITY[nodes[i].signal]
+      let alpha: number = SIGNAL_OPACITY[nodes[i].signal]
       if (nodes[i].isGhost) alpha = 0.3
 
       if (neighborSet && !neighborSet.has(i)) alpha *= 0.1
