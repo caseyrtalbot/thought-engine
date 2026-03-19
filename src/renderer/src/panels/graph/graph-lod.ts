@@ -1,8 +1,7 @@
 import type { LodLevel } from './graph-types'
 
-const MACRO_THRESHOLD = 0.35
-const MICRO_THRESHOLD = 1.2
-const MESO_LABEL_MIN_CONNECTIONS = 5
+const MACRO_THRESHOLD = 0.15
+const MICRO_THRESHOLD = 1.5
 
 /** Determine LOD tier from current zoom scale. */
 export function getGraphLod(scale: number): LodLevel {
@@ -11,11 +10,14 @@ export function getGraphLod(scale: number): LodLevel {
   return 'meso'
 }
 
-/** Whether to show a label for this node at the current LOD. */
-export function shouldShowLabel(lod: LodLevel, connectionCount: number): boolean {
+/** Whether to show a label for this node at the current LOD.
+ *  At meso, labels only appear for hovered/neighbor nodes (passed via isActive).
+ *  At micro (zoomed in), all labels appear. */
+export function shouldShowLabel(lod: LodLevel, isActive: boolean): boolean {
   if (lod === 'macro') return false
   if (lod === 'micro') return true
-  return connectionCount >= MESO_LABEL_MIN_CONNECTIONS
+  // meso: only show labels for hovered node and its neighbors
+  return isActive
 }
 
 /** Base node radius scaled by connection count. Min 6, max 28. */
@@ -28,5 +30,5 @@ export function nodeRadius(connectionCount: number): number {
 /** Edge line width scaled by zoom (thinner when zoomed out). */
 export function edgeWidth(scale: number): number {
   const base = 1.5
-  return Math.max(0.8, base * Math.sqrt(Math.max(scale, 0.1)))
+  return Math.max(1.0, base * Math.sqrt(Math.max(scale, 0.1)))
 }

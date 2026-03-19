@@ -56,8 +56,8 @@ export function edgeOpacity(kind: RelationshipKind): number {
     case 'tension':
       return 0.85
     case 'appears_in':
-      return 0.65
+      return 0.75
     case 'co-occurrence':
-      return 0.5
+      return 0.6
   }
 }

@@ -64,7 +64,8 @@ export class LabelLayer {
     ctx.textBaseline = 'top'
 
     for (let i = 0; i < nodes.length; i++) {
-      if (!shouldShowLabel(lod, nodes[i].connectionCount)) continue
+      const isActive = i === hoveredIndex || (neighborSet?.has(i) ?? false)
+      if (!shouldShowLabel(lod, isActive)) continue
 
       const wx = positions[i * 2]
       const wy = positions[i * 2 + 1]

@@ -8,8 +8,8 @@ import {
 
 describe('graph-lod', () => {
   it('returns macro for very low zoom', () => {
+    expect(getGraphLod(0.05)).toBe('macro')
     expect(getGraphLod(0.1)).toBe('macro')
-    expect(getGraphLod(0.2)).toBe('macro')
   })
 
   it('returns meso for medium zoom', () => {
@@ -23,18 +23,18 @@ describe('graph-lod', () => {
   })
 
   it('never shows labels at macro', () => {
-    expect(shouldShowLabel('macro', 10)).toBe(false)
-    expect(shouldShowLabel('macro', 100)).toBe(false)
+    expect(shouldShowLabel('macro', true)).toBe(false)
+    expect(shouldShowLabel('macro', false)).toBe(false)
   })
 
-  it('shows labels for high-connection nodes at meso', () => {
-    expect(shouldShowLabel('meso', 8)).toBe(true)
-    expect(shouldShowLabel('meso', 1)).toBe(false)
+  it('shows labels at meso only for active (hovered/neighbor) nodes', () => {
+    expect(shouldShowLabel('meso', true)).toBe(true)
+    expect(shouldShowLabel('meso', false)).toBe(false)
   })
 
-  it('shows all labels at micro', () => {
-    expect(shouldShowLabel('micro', 0)).toBe(true)
-    expect(shouldShowLabel('micro', 1)).toBe(true)
+  it('shows all labels at micro regardless of active state', () => {
+    expect(shouldShowLabel('micro', false)).toBe(true)
+    expect(shouldShowLabel('micro', true)).toBe(true)
   })
 
   it('scales node radius by connection count', () => {

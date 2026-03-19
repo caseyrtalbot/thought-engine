@@ -33,11 +33,14 @@ const MAX_ZOOM = 5.0
 const ZOOM_FACTOR = 1.08
 const DRAG_THRESHOLD = 5
 const NODE_STROKE_COLOR = 0x94a3b8
-const NODE_STROKE_ALPHA = 0.5
-const GHOST_ALPHA = 0.35
+const NODE_STROKE_ALPHA = 0.7
+const GHOST_ALPHA = 0.7
 const NEIGHBOR_DIM_FACTOR = 0.3
-const NEIGHBOR_EDGE_ALPHA = 0.8
+const NEIGHBOR_EDGE_ALPHA = 0.9
 const NON_NEIGHBOR_EDGE_ALPHA = 0.05
+const HIGHLIGHT_EDGE_COLOR = 0x4ade80
+const HIGHLIGHT_GLOW_ALPHA = 0.25
+const HIGHLIGHT_GLOW_WIDTH_MULT = 4
 const HIT_RADIUS = 20
 const SELECTION_RING_COLOR = 0x60a5fa
 
@@ -301,7 +304,7 @@ export class GraphRenderer {
       if (node.isGhost) {
         // Ghost nodes: hollow circle (no fill, prominent stroke)
         g.circle(0, 0, radius)
-        g.stroke({ width: 2, color, alpha: 0.5 })
+        g.stroke({ width: 1.5, color, alpha: 0.8 })
       } else {
         g.circle(0, 0, radius)
         g.fill({ color })
@@ -394,31 +397,52 @@ export class GraphRenderer {
 
       if (sx === undefined || sy === undefined || tx === undefined || ty === undefined) continue
 
-      const color = buildEdgeColor(edge.kind)
+      let color = buildEdgeColor(edge.kind)
       let alpha = edgeOpacity(edge.kind)
+      let isHighlighted = false
 
-      // Apply neighborhood dimming
+      // Apply neighborhood dimming / highlighting
       if (neighborSet !== null) {
-        const isNeighborEdge =
+        isHighlighted =
           edge.sourceIndex === this.highlightedNode || edge.targetIndex === this.highlightedNode
-        alpha = isNeighborEdge ? NEIGHBOR_EDGE_ALPHA : NON_NEIGHBOR_EDGE_ALPHA
+        if (isHighlighted) {
+          color = HIGHLIGHT_EDGE_COLOR
+          alpha = NEIGHBOR_EDGE_ALPHA
+        } else {
+          alpha = NON_NEIGHBOR_EDGE_ALPHA
+        }
       }
 
-      // Subtle quadratic curve for organic feel
+      // Compute curve control point
       const mx = (sx + tx) / 2
       const my = (sy + ty) / 2
       const dx = tx - sx
       const dy = ty - sy
       const dist = Math.sqrt(dx * dx + dy * dy)
+      const curvature = dist > 0 ? Math.min(dist * 0.1, 30) : 0
+      const nx = dist > 0 ? (-dy / dist) * curvature : 0
+      const ny = dist > 0 ? (dx / dist) * curvature : 0
 
-      if (dist > 0) {
-        const curvature = Math.min(dist * 0.1, 30)
-        const nx = (-dy / dist) * curvature
-        const ny = (dx / dist) * curvature
+      // Glow pass for highlighted edges (wider, low-alpha neon green)
+      if (isHighlighted) {
         gfx.moveTo(sx, sy)
+        if (dist > 0) {
+          gfx.quadraticCurveTo(mx + nx, my + ny, tx, ty)
+        } else {
+          gfx.lineTo(tx, ty)
+        }
+        gfx.stroke({
+          width: width * HIGHLIGHT_GLOW_WIDTH_MULT,
+          color: HIGHLIGHT_EDGE_COLOR,
+          alpha: HIGHLIGHT_GLOW_ALPHA
+        })
+      }
+
+      // Core edge pass
+      gfx.moveTo(sx, sy)
+      if (dist > 0) {
         gfx.quadraticCurveTo(mx + nx, my + ny, tx, ty)
       } else {
-        gfx.moveTo(sx, sy)
         gfx.lineTo(tx, ty)
       }
       gfx.stroke({ width, color, alpha })
