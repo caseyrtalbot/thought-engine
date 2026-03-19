@@ -39,7 +39,9 @@ export class LabelLayer {
     viewport: GraphViewport,
     lod: LodLevel,
     hoveredIndex: number | null,
-    neighborSet: Set<number> | null
+    neighborSet: Set<number> | null,
+    showLabels = true,
+    labelScale = 1.0
   ): void {
     const { ctx, dpr } = this
     const w = this.canvas.width
@@ -48,6 +50,7 @@ export class LabelLayer {
     ctx.clearRect(0, 0, w, h)
 
     if (lod === 'macro') return
+    if (!showLabels) return
 
     ctx.save()
     ctx.scale(dpr, dpr)
@@ -55,7 +58,7 @@ export class LabelLayer {
     const cw = w / dpr
     const ch = h / dpr
 
-    const fontSize = Math.min(Math.max(11 / viewport.scale, 8), 14)
+    const fontSize = Math.min(Math.max(11 / viewport.scale, 8), 14) * labelScale
     ctx.font = `500 ${fontSize}px "DM Sans", system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'

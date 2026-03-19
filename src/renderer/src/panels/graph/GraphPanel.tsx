@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useVaultStore } from '@renderer/store/vault-store'
 import { useEditorStore } from '@renderer/store/editor-store'
 import { useGraphViewStore } from '@renderer/store/graph-view-store'
@@ -115,7 +115,17 @@ export function GraphPanel() {
           const hoveredId = useGraphViewStore.getState().hoveredNodeId
           const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
           const ns = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
-          ll.render(simNodesRef.current, positionsRef.current, vp, lod, hoveredIdx, ns)
+          const { showLabels, labelScale } = useGraphViewStore.getState()
+          ll.render(
+            simNodesRef.current,
+            positionsRef.current,
+            vp,
+            lod,
+            hoveredIdx,
+            ns,
+            showLabels,
+            labelScale
+          )
         }
       }
     })
@@ -148,7 +158,17 @@ export function GraphPanel() {
         const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
         const neighborSet = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
 
-        labelLayer.render(simNodesRef.current, msg.buffer, vp, lod, hoveredIdx, neighborSet)
+        const { showLabels, labelScale } = useGraphViewStore.getState()
+        labelLayer.render(
+          simNodesRef.current,
+          msg.buffer,
+          vp,
+          lod,
+          hoveredIdx,
+          neighborSet,
+          showLabels,
+          labelScale
+        )
       }
     }
 
@@ -204,6 +224,24 @@ export function GraphPanel() {
     workerRef.current.postMessage(cmd)
   }, [graph, setGraphStats])
 
+  // Reactively apply display options to the renderer
+  const showEdges = useGraphViewStore((s) => s.showEdges)
+  const showGhostNodes = useGraphViewStore((s) => s.showGhostNodes)
+  const showOrphanNodes = useGraphViewStore((s) => s.showOrphanNodes)
+  const nodeScale = useGraphViewStore((s) => s.nodeScale)
+
+  useEffect(() => {
+    rendererRef.current?.setDisplayOptions({
+      showEdges,
+      showGhostNodes,
+      showOrphanNodes,
+      nodeScale
+    })
+  }, [showEdges, showGhostNodes, showOrphanNodes, nodeScale])
+
+  // Settings panel toggle
+  const [showSettings, setShowSettings] = useState(false)
+
   // Send force param changes to worker
   const handleForceParamsChange = useCallback((params: Partial<ForceParams>) => {
     if (!workerRef.current) return
@@ -224,7 +262,39 @@ export function GraphPanel() {
       className="relative w-full h-full overflow-hidden"
       style={{ background: 'var(--color-bg-base)' }}
     >
-      <GraphSettingsPanel onForceParamsChange={handleForceParamsChange} onReheat={handleReheat} />
+      {/* Settings toggle button */}
+      <button
+        onClick={() => setShowSettings((prev) => !prev)}
+        className="absolute top-3 right-3 z-20 flex items-center justify-center rounded-lg transition-all"
+        style={{
+          width: 32,
+          height: 32,
+          backgroundColor: showSettings ? 'var(--color-accent-default)' : 'rgba(20, 20, 20, 0.85)',
+          border: '1px solid var(--color-border-default)',
+          color: showSettings ? '#141414' : 'var(--color-text-secondary)',
+          backdropFilter: 'blur(8px)'
+        }}
+        title="Graph settings"
+      >
+        <svg
+          width={16}
+          height={16}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+
+      {/* Collapsible settings panel */}
+      {showSettings && (
+        <GraphSettingsPanel onForceParamsChange={handleForceParamsChange} onReheat={handleReheat} />
+      )}
     </div>
   )
 }

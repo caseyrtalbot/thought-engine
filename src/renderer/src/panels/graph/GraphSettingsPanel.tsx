@@ -149,7 +149,7 @@ export function GraphSettingsPanel({ onForceParamsChange, onReheat }: GraphSetti
 
   return (
     <div
-      className="absolute top-3 right-3 z-10 flex flex-col gap-4 overflow-y-auto rounded-lg"
+      className="absolute top-12 right-3 z-10 flex flex-col gap-4 overflow-y-auto rounded-lg"
       style={{
         width: 240,
         maxHeight: 'calc(100% - 24px)',

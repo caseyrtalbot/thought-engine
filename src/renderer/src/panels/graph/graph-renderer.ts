@@ -44,6 +44,13 @@ const HIT_RADIUS = 20
 // GraphRenderer
 // ---------------------------------------------------------------------------
 
+export interface DisplayOptions {
+  readonly showEdges: boolean
+  readonly showGhostNodes: boolean
+  readonly showOrphanNodes: boolean
+  readonly nodeScale: number
+}
+
 export class GraphRenderer {
   // PixiJS objects (created on mount)
   private app: Application | null = null
@@ -56,6 +63,14 @@ export class GraphRenderer {
   private edges: readonly EdgeData[] = []
   private positions: Float32Array = new Float32Array(0)
   private adjacency: Map<number, Set<number>> = new Map()
+
+  // Display options
+  private displayOptions: DisplayOptions = {
+    showEdges: true,
+    showGhostNodes: true,
+    showOrphanNodes: true,
+    nodeScale: 1.0
+  }
 
   // Viewport
   private viewport: GraphViewport = { x: 0, y: 0, scale: 1 }
@@ -212,6 +227,13 @@ export class GraphRenderer {
     this.highlightedNode = nodeIndex
   }
 
+  setDisplayOptions(options: Partial<DisplayOptions>): void {
+    this.displayOptions = { ...this.displayOptions, ...options }
+    if (this.mounted) {
+      this.rebuildNodeGraphics()
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Node graphics
   // -------------------------------------------------------------------------
@@ -228,9 +250,11 @@ export class GraphRenderer {
     this.nodeGraphics = []
 
     // Create new node graphics
+    const { showGhostNodes, showOrphanNodes, nodeScale } = this.displayOptions
+
     for (const node of this.nodes) {
       const g = new Graphics()
-      const radius = nodeRadius(node.connectionCount)
+      const radius = nodeRadius(node.connectionCount) * nodeScale
       const color = nodeColorForType(node.type)
 
       g.circle(0, 0, radius)
@@ -241,6 +265,10 @@ export class GraphRenderer {
       // Base alpha from signal
       const signalAlpha = SIGNAL_OPACITY[node.signal]
       g.alpha = node.isGhost ? GHOST_ALPHA : signalAlpha
+
+      // Hide based on display options
+      if (node.isGhost && !showGhostNodes) g.visible = false
+      if (node.connectionCount === 0 && !showOrphanNodes) g.visible = false
 
       world.addChild(g)
       this.nodeGraphics.push(g)
@@ -297,6 +325,7 @@ export class GraphRenderer {
     gfx.clear()
 
     if (lod === 'macro') return
+    if (!this.displayOptions.showEdges) return
     if (this.positions.length === 0) return
 
     const width = edgeWidth(this.viewport.scale)
@@ -332,6 +361,8 @@ export class GraphRenderer {
   private updateNodePositions(): void {
     if (this.positions.length === 0) return
 
+    const { showGhostNodes, showOrphanNodes } = this.displayOptions
+
     const neighborSet =
       this.highlightedNode !== null
         ? (this.adjacency.get(this.highlightedNode) ?? new Set<number>())
@@ -341,6 +372,19 @@ export class GraphRenderer {
       const g = this.nodeGraphics[i]
       if (!g) continue
 
+      const node = this.nodes[i]
+
+      // Apply visibility filters
+      g.visible = true
+      if (node.isGhost && !showGhostNodes) {
+        g.visible = false
+        continue
+      }
+      if (node.connectionCount === 0 && !showOrphanNodes) {
+        g.visible = false
+        continue
+      }
+
       const x = this.positions[i * 2]
       const y = this.positions[i * 2 + 1]
       if (x === undefined || y === undefined) continue
@@ -348,7 +392,6 @@ export class GraphRenderer {
       g.position.set(x, y)
 
       // Compute alpha
-      const node = this.nodes[i]
       const baseAlpha = node.isGhost ? GHOST_ALPHA : SIGNAL_OPACITY[node.signal]
 
       if (neighborSet !== null) {
