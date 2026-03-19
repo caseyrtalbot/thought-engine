@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 
-export type ContentView = 'editor' | 'canvas' | 'skills' | 'claude-config' | 'project-canvas'
+export type ContentView =
+  | 'editor'
+  | 'canvas'
+  | 'skills'
+  | 'claude-config'
+  | 'project-canvas'
+  | 'graph'
 
 interface ViewStore {
   readonly contentView: ContentView
@@ -8,6 +14,7 @@ interface ViewStore {
   setContentView: (view: ContentView) => void
   toggleClaudeConfig: () => void
   toggleProjectCanvas: () => void
+  toggleGraph: () => void
 }
 
 export const useViewStore = create<ViewStore>((set, get) => ({
@@ -33,6 +40,16 @@ export const useViewStore = create<ViewStore>((set, get) => ({
       set({ contentView: prev, previousView: 'project-canvas' })
     } else {
       set({ contentView: 'project-canvas', previousView: current })
+    }
+  },
+
+  toggleGraph: () => {
+    const current = get().contentView
+    if (current === 'graph') {
+      const prev = get().previousView ?? 'editor'
+      set({ contentView: prev, previousView: 'graph' })
+    } else {
+      set({ contentView: 'graph', previousView: current })
     }
   }
 }))
