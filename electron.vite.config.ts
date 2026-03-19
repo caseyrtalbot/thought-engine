@@ -36,6 +36,7 @@ export default defineConfig({
         'gray-matter',
         'd3-force',
         'd3-quadtree',
+        'pixi.js',
         'd3-zoom',
         'd3-selection',
         '@tiptap/react',
