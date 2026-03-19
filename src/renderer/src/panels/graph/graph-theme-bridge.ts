@@ -29,8 +29,8 @@ export function nodeColorForType(type: ArtifactType): number {
 // Semantic relationship colors (from tokens.ts)
 const CLUSTER_COLOR = 0x34d399
 const TENSION_COLOR = 0xf59e0b
-const DEFAULT_EDGE_COLOR = 0x475569
-const COOCCURRENCE_COLOR = 0x334155
+const DEFAULT_EDGE_COLOR = 0x64748b
+const COOCCURRENCE_COLOR = 0x475569
 const APPEARS_IN_COLOR = 0x64748b
 
 /** Get the PixiJS color for an edge based on its relationship kind. */
@@ -55,11 +55,11 @@ export function edgeOpacity(kind: RelationshipKind): number {
     case 'connection':
     case 'cluster':
     case 'tension':
-      return 0.6
+      return 0.7
     case 'appears_in':
-      return 0.4
+      return 0.5
     case 'co-occurrence':
-      return 0.2
+      return 0.35
   }
 }
 

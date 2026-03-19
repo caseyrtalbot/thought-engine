@@ -18,15 +18,15 @@ export function shouldShowLabel(lod: LodLevel, connectionCount: number): boolean
   return connectionCount >= MESO_LABEL_MIN_CONNECTIONS
 }
 
-/** Base node radius scaled by connection count. Min 4, max 24. */
+/** Base node radius scaled by connection count. Min 6, max 28. */
 export function nodeRadius(connectionCount: number): number {
-  const base = 5
-  const scaled = base + Math.sqrt(connectionCount) * 2.5
-  return Math.min(Math.max(scaled, 4), 24)
+  const base = 7
+  const scaled = base + Math.sqrt(connectionCount) * 3
+  return Math.min(Math.max(scaled, 6), 28)
 }
 
 /** Edge line width scaled by zoom (thinner when zoomed out). */
 export function edgeWidth(scale: number): number {
-  const base = 1.2
-  return Math.max(0.5, base * Math.sqrt(Math.max(scale, 0.1)))
+  const base = 1.5
+  return Math.max(0.8, base * Math.sqrt(Math.max(scale, 0.1)))
 }

@@ -41,8 +41,8 @@ describe('graph-lod', () => {
     const small = nodeRadius(0)
     const large = nodeRadius(20)
     expect(large).toBeGreaterThan(small)
-    expect(small).toBeGreaterThanOrEqual(4)
-    expect(large).toBeLessThanOrEqual(24)
+    expect(small).toBeGreaterThanOrEqual(6)
+    expect(large).toBeLessThanOrEqual(28)
   })
 
   it('scales edge width by zoom', () => {
