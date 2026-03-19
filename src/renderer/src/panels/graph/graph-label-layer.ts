@@ -83,13 +83,15 @@ export class LabelLayer {
       if (i === hoveredIndex) alpha = 1.0
 
       const yOffset = 8 + Math.sqrt(nodes[i].connectionCount) * 2.5
+      const label =
+        nodes[i].title.length > 30 ? nodes[i].title.slice(0, 30) + '\u2026' : nodes[i].title
 
       ctx.globalAlpha = alpha
       ctx.strokeStyle = 'rgba(20, 20, 20, 0.8)'
       ctx.lineWidth = 3
-      ctx.strokeText(nodes[i].id, sx, sy + yOffset)
+      ctx.strokeText(label, sx, sy + yOffset)
       ctx.fillStyle = '#e2e8f0'
-      ctx.fillText(nodes[i].id, sx, sy + yOffset)
+      ctx.fillText(label, sx, sy + yOffset)
     }
 
     ctx.restore()

@@ -39,6 +39,7 @@ const NEIGHBOR_DIM_FACTOR = 0.15
 const NEIGHBOR_EDGE_ALPHA = 0.8
 const NON_NEIGHBOR_EDGE_ALPHA = 0.05
 const HIT_RADIUS = 20
+const SELECTION_RING_COLOR = 0x60a5fa
 
 // ---------------------------------------------------------------------------
 // GraphRenderer
@@ -77,8 +78,10 @@ export class GraphRenderer {
   private canvasWidth = 0
   private canvasHeight = 0
 
-  // Interaction state
+  // Selection + interaction state
   private highlightedNode: number | null = null
+  private selectedNodeIndex: number | null = null
+  private selectionRing: Graphics | null = null
   private dragNodeIndex: number | null = null
   private isPanning = false
   private pointerDownPos = { x: 0, y: 0 }
@@ -136,6 +139,12 @@ export class GraphRenderer {
     world.addChild(edgeGfx)
     this.edgeGraphics = edgeGfx
 
+    // Selection ring (drawn above nodes)
+    const selRing = new Graphics()
+    selRing.visible = false
+    world.addChild(selRing)
+    this.selectionRing = selRing
+
     // Rebuild node graphics if data was set before mount
     if (this.nodes.length > 0) {
       this.rebuildNodeGraphics()
@@ -178,6 +187,7 @@ export class GraphRenderer {
 
     this.worldContainer = null
     this.edgeGraphics = null
+    this.selectionRing = null
     this.nodeGraphics = []
   }
 
@@ -225,6 +235,24 @@ export class GraphRenderer {
 
   setHighlightedNode(nodeIndex: number | null): void {
     this.highlightedNode = nodeIndex
+    this.updateCursor()
+  }
+
+  setSelectedNode(nodeIndex: number | null): void {
+    this.selectedNodeIndex = nodeIndex
+  }
+
+  setViewport(viewport: GraphViewport): void {
+    this.viewport = viewport
+    this.callbacks.onViewportChange(viewport)
+  }
+
+  getPositions(): Float32Array {
+    return this.positions
+  }
+
+  getNodes(): readonly SimNode[] {
+    return this.nodes
   }
 
   setDisplayOptions(options: Partial<DisplayOptions>): void {
@@ -257,10 +285,16 @@ export class GraphRenderer {
       const radius = nodeRadius(node.connectionCount) * nodeScale
       const color = nodeColorForType(node.type)
 
-      g.circle(0, 0, radius)
-      g.fill({ color })
-      g.circle(0, 0, radius)
-      g.stroke({ width: 1, color: NODE_STROKE_COLOR, alpha: NODE_STROKE_ALPHA })
+      if (node.isGhost) {
+        // Ghost nodes: hollow circle (no fill, prominent stroke)
+        g.circle(0, 0, radius)
+        g.stroke({ width: 2, color, alpha: 0.5 })
+      } else {
+        g.circle(0, 0, radius)
+        g.fill({ color })
+        g.circle(0, 0, radius)
+        g.stroke({ width: 1, color: NODE_STROKE_COLOR, alpha: NODE_STROKE_ALPHA })
+      }
 
       // Base alpha from signal
       const signalAlpha = SIGNAL_OPACITY[node.signal]
@@ -272,6 +306,11 @@ export class GraphRenderer {
 
       world.addChild(g)
       this.nodeGraphics.push(g)
+    }
+
+    // Re-add selection ring on top
+    if (this.selectionRing) {
+      world.addChild(this.selectionRing)
     }
   }
 
@@ -352,8 +391,23 @@ export class GraphRenderer {
         alpha = isNeighborEdge ? NEIGHBOR_EDGE_ALPHA : NON_NEIGHBOR_EDGE_ALPHA
       }
 
-      gfx.moveTo(sx, sy)
-      gfx.lineTo(tx, ty)
+      // Subtle quadratic curve for organic feel
+      const mx = (sx + tx) / 2
+      const my = (sy + ty) / 2
+      const dx = tx - sx
+      const dy = ty - sy
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist > 0) {
+        const curvature = Math.min(dist * 0.1, 30)
+        const nx = (-dy / dist) * curvature
+        const ny = (dx / dist) * curvature
+        gfx.moveTo(sx, sy)
+        gfx.quadraticCurveTo(mx + nx, my + ny, tx, ty)
+      } else {
+        gfx.moveTo(sx, sy)
+        gfx.lineTo(tx, ty)
+      }
       gfx.stroke({ width, color, alpha })
     }
   }
@@ -361,7 +415,7 @@ export class GraphRenderer {
   private updateNodePositions(): void {
     if (this.positions.length === 0) return
 
-    const { showGhostNodes, showOrphanNodes } = this.displayOptions
+    const { showGhostNodes, showOrphanNodes, nodeScale } = this.displayOptions
 
     const neighborSet =
       this.highlightedNode !== null
@@ -391,16 +445,71 @@ export class GraphRenderer {
 
       g.position.set(x, y)
 
+      // Hovered node: scale up for glow effect
+      const isHighlighted = i === this.highlightedNode
+      g.scale.set(isHighlighted ? 1.2 : 1)
+
       // Compute alpha
       const baseAlpha = node.isGhost ? GHOST_ALPHA : SIGNAL_OPACITY[node.signal]
 
       if (neighborSet !== null) {
-        const isHighlighted = i === this.highlightedNode
         const isNeighbor = neighborSet.has(i)
         g.alpha = isHighlighted || isNeighbor ? baseAlpha : baseAlpha * NEIGHBOR_DIM_FACTOR
       } else {
         g.alpha = baseAlpha
       }
+    }
+
+    // Update selection ring
+    this.updateSelectionRing(nodeScale)
+  }
+
+  private updateSelectionRing(nodeScale: number): void {
+    const ring = this.selectionRing
+    if (!ring) return
+
+    if (this.selectedNodeIndex === null) {
+      ring.visible = false
+      return
+    }
+
+    const node = this.nodes[this.selectedNodeIndex]
+    if (!node) {
+      ring.visible = false
+      return
+    }
+
+    const x = this.positions[this.selectedNodeIndex * 2]
+    const y = this.positions[this.selectedNodeIndex * 2 + 1]
+    if (x === undefined || y === undefined) {
+      ring.visible = false
+      return
+    }
+
+    const radius = nodeRadius(node.connectionCount) * nodeScale + 4
+    ring.clear()
+    ring.circle(0, 0, radius)
+    ring.stroke({ width: 2, color: SELECTION_RING_COLOR, alpha: 0.9 })
+    ring.position.set(x, y)
+    ring.visible = true
+  }
+
+  // -------------------------------------------------------------------------
+  // Cursor management
+  // -------------------------------------------------------------------------
+
+  private updateCursor(): void {
+    if (!this.app) return
+    const canvas = this.app.canvas as HTMLCanvasElement
+
+    if (this.dragNodeIndex !== null) {
+      canvas.style.cursor = 'grabbing'
+    } else if (this.isPanning) {
+      canvas.style.cursor = 'grabbing'
+    } else if (this.highlightedNode !== null) {
+      canvas.style.cursor = 'pointer'
+    } else {
+      canvas.style.cursor = 'grab'
     }
   }
 
@@ -482,6 +591,7 @@ export class GraphRenderer {
       this.isPanning = true
       this.pointerDownViewport = { x: this.viewport.x, y: this.viewport.y }
     }
+    this.updateCursor()
   }
 
   private handlePointerMove(e: PointerEvent): void {
@@ -513,6 +623,7 @@ export class GraphRenderer {
       if (hitNode !== this.highlightedNode) {
         this.highlightedNode = hitNode
         this.callbacks.onNodeHover(hitNode)
+        this.updateCursor()
       }
     }
   }
@@ -530,6 +641,7 @@ export class GraphRenderer {
     this.dragNodeIndex = null
     this.isPanning = false
     this.pointerMoved = false
+    this.updateCursor()
   }
 }
 

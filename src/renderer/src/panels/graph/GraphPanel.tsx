@@ -17,6 +17,7 @@ function prepareSimData(graph: KnowledgeGraph) {
     return {
       index: i,
       id: n.id,
+      title: n.title,
       type: n.type,
       signal: n.signal,
       connectionCount: n.connectionCount,
@@ -85,6 +86,7 @@ export function GraphPanel() {
         if (!node) return
 
         setSelectedNode(node.id)
+        renderer.setSelectedNode(idx)
 
         // Find the file path for this artifact and navigate
         const currentFileToId = useVaultStore.getState().fileToId
@@ -256,6 +258,55 @@ export function GraphPanel() {
     workerRef.current.postMessage(cmd)
   }, [])
 
+  // Fit all nodes into view
+  const handleFitAll = useCallback(() => {
+    const renderer = rendererRef.current
+    const container = containerRef.current
+    if (!renderer || !container) return
+
+    const positions = renderer.getPositions()
+    const nodes = renderer.getNodes()
+    if (nodes.length === 0 || positions.length === 0) return
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    for (let i = 0; i < nodes.length; i++) {
+      const x = positions[i * 2]
+      const y = positions[i * 2 + 1]
+      if (x === undefined || y === undefined) continue
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
+    }
+
+    if (!isFinite(minX)) return
+
+    const padding = 80
+    const boxWidth = maxX - minX + padding * 2
+    const boxHeight = maxY - minY + padding * 2
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
+
+    const scale = Math.min(containerWidth / boxWidth, containerHeight / boxHeight, 2)
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+
+    const viewport = {
+      x: -centerX * scale,
+      y: -centerY * scale,
+      scale
+    }
+    renderer.setViewport(viewport)
+  }, [])
+
+  // Subscribe to viewport for zoom indicator
+  const viewportScale = useGraphViewStore((s) => s.viewport.scale)
+  const zoomPercent = Math.round(viewportScale * 100)
+
   return (
     <div
       ref={containerRef}
@@ -295,6 +346,43 @@ export function GraphPanel() {
       {showSettings && (
         <GraphSettingsPanel onForceParamsChange={handleForceParamsChange} onReheat={handleReheat} />
       )}
+
+      {/* Bottom-left controls: Fit All + zoom indicator */}
+      <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+        <button
+          onClick={handleFitAll}
+          className="text-xs px-3 py-1.5 rounded-full transition-all cursor-pointer"
+          style={{
+            backgroundColor: 'rgba(20, 20, 20, 0.85)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid var(--color-border-default)',
+            color: 'var(--color-text-secondary)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-accent-default)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border-default)'
+          }}
+          title="Fit all nodes in view"
+        >
+          Fit All
+        </button>
+        <span
+          className="text-xs tabular-nums font-mono px-2 py-1.5 rounded-full"
+          style={{
+            backgroundColor: 'rgba(20, 20, 20, 0.85)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid var(--color-border-default)',
+            color: 'var(--color-text-muted)',
+            fontSize: 10,
+            minWidth: 44,
+            textAlign: 'center'
+          }}
+        >
+          {zoomPercent}%
+        </span>
+      </div>
     </div>
   )
 }

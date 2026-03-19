@@ -4,6 +4,7 @@ import type { ArtifactType, RelationshipKind, Signal } from '@shared/types'
 export interface SimNode {
   readonly index: number
   readonly id: string
+  readonly title: string
   readonly type: ArtifactType
   readonly signal: Signal
   readonly connectionCount: number
