@@ -22,6 +22,7 @@ export function CanvasView(): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const clearSelection = useCanvasStore((s) => s.clearSelection)
   const addNode = useCanvasStore((s) => s.addNode)
+  const setViewport = useCanvasStore((s) => s.setViewport)
   const filePath = useCanvasStore((s) => s.filePath)
   const isDirty = useCanvasStore((s) => s.isDirty)
   const toCanvasFile = useCanvasStore((s) => s.toCanvasFile)
@@ -32,6 +33,9 @@ export function CanvasView(): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
   const [importOpen, setImportOpen] = useState(false)
+
+  // Track which filePath has already been auto-centered so we don't fight user panning
+  const centeredForFileRef = useRef<string | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -48,6 +52,50 @@ export function CanvasView(): React.ReactElement {
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  // Auto-center viewport when a canvas first loads
+  useEffect(() => {
+    if (!filePath) return
+    // Only run once per filePath
+    if (centeredForFileRef.current === filePath) return
+
+    // Wait until the container has been measured by ResizeObserver
+    const el = containerRef.current
+    if (!el) return
+    const width = el.clientWidth
+    const height = el.clientHeight
+    if (width === 0 || height === 0) return
+
+    centeredForFileRef.current = filePath
+
+    const zoom = useCanvasStore.getState().viewport.zoom
+    const currentNodes = useCanvasStore.getState().nodes
+
+    if (currentNodes.length === 0) {
+      // Center on origin
+      setViewport({ x: width / 2, y: height / 2, zoom })
+      return
+    }
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const node of currentNodes) {
+      minX = Math.min(minX, node.position.x)
+      minY = Math.min(minY, node.position.y)
+      maxX = Math.max(maxX, node.position.x + node.size.width)
+      maxY = Math.max(maxY, node.position.y + node.size.height)
+    }
+
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+    setViewport({
+      x: width / 2 - centerX * zoom,
+      y: height / 2 - centerY * zoom,
+      zoom
+    })
+  }, [filePath, containerSize, setViewport])
 
   // Performance: only render nodes visible in the viewport
   const visibleNodes = useViewportCulling(nodes, viewport, containerSize)
