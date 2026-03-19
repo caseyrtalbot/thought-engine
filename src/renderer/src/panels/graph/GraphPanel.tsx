@@ -9,6 +9,46 @@ import { getGraphLod } from './graph-lod'
 import type { SimNode, PhysicsCommand, PhysicsResult, ForceParams } from './graph-types'
 import type { KnowledgeGraph } from '@shared/types'
 
+/** Compute a viewport that fits all nodes with padding. */
+function fitAllNodes(renderer: GraphRenderer, container: HTMLElement): void {
+  const positions = renderer.getPositions()
+  const nodes = renderer.getNodes()
+  if (nodes.length === 0 || positions.length === 0) return
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (let i = 0; i < nodes.length; i++) {
+    const x = positions[i * 2]
+    const y = positions[i * 2 + 1]
+    if (x === undefined || y === undefined) continue
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+
+  if (!isFinite(minX)) return
+
+  const padding = 80
+  const boxWidth = maxX - minX + padding * 2
+  const boxHeight = maxY - minY + padding * 2
+  const containerWidth = container.clientWidth
+  const containerHeight = container.clientHeight
+
+  const scale = Math.min(containerWidth / boxWidth, containerHeight / boxHeight, 2)
+  const centerX = (minX + maxX) / 2
+  const centerY = (minY + maxY) / 2
+
+  renderer.setViewport({
+    x: -centerX * scale,
+    y: -centerY * scale,
+    scale
+  })
+}
+
 /** Convert KnowledgeGraph data into worker-compatible format. */
 function prepareSimData(graph: KnowledgeGraph) {
   const nodeIndexMap = new Map<string, number>()
@@ -47,6 +87,7 @@ export function GraphPanel() {
   const nodeIndexMapRef = useRef<Map<string, number>>(new Map())
   const edgesRef = useRef<Array<{ source: number; target: number }>>([])
   const mountedRef = useRef(false)
+  const hasAutoFitRef = useRef(false)
 
   const graph = useVaultStore((s) => s.graph)
 
@@ -153,6 +194,12 @@ export function GraphPanel() {
         renderer.setPositions(msg.buffer)
         setSimulationState(msg.alpha, msg.settled)
 
+        // Auto-fit viewport once when layout stabilizes
+        if (!hasAutoFitRef.current && msg.alpha < 0.5 && renderer.getNodeCount() > 0) {
+          hasAutoFitRef.current = true
+          fitAllNodes(renderer, container)
+        }
+
         // Update label layer
         const vp = useGraphViewStore.getState().viewport
         const lod = getGraphLod(vp.scale)
@@ -221,6 +268,7 @@ export function GraphPanel() {
     }
 
     setGraphStats(simNodes.length, simEdges.length)
+    hasAutoFitRef.current = false
 
     const cmd: PhysicsCommand = { type: 'init', nodes: simNodes, edges: simEdges }
     workerRef.current.postMessage(cmd)
@@ -294,44 +342,7 @@ export function GraphPanel() {
     const renderer = rendererRef.current
     const container = containerRef.current
     if (!renderer || !container) return
-
-    const positions = renderer.getPositions()
-    const nodes = renderer.getNodes()
-    if (nodes.length === 0 || positions.length === 0) return
-
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
-
-    for (let i = 0; i < nodes.length; i++) {
-      const x = positions[i * 2]
-      const y = positions[i * 2 + 1]
-      if (x === undefined || y === undefined) continue
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-    }
-
-    if (!isFinite(minX)) return
-
-    const padding = 80
-    const boxWidth = maxX - minX + padding * 2
-    const boxHeight = maxY - minY + padding * 2
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight
-
-    const scale = Math.min(containerWidth / boxWidth, containerHeight / boxHeight, 2)
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
-
-    const viewport = {
-      x: -centerX * scale,
-      y: -centerY * scale,
-      scale
-    }
-    renderer.setViewport(viewport)
+    fitAllNodes(renderer, container)
   }, [])
 
   // Subscribe to viewport for zoom indicator

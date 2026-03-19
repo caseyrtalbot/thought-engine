@@ -92,6 +92,7 @@ export class GraphRenderer {
   private animFrameId: number | null = null
   private paused = true
   private mounted = false
+  private destroyed = false
 
   // Callbacks
   private readonly callbacks: RendererCallbacks
@@ -117,6 +118,7 @@ export class GraphRenderer {
   async mount(container: HTMLElement): Promise<void> {
     const app = new Application()
     await app.init({
+      preference: 'webgl',
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
@@ -124,7 +126,17 @@ export class GraphRenderer {
       resizeTo: container
     })
 
-    container.appendChild(app.canvas)
+    // Bail out if destroyed while awaiting init (fast tab switch)
+    if (this.destroyed) {
+      app.destroy(true)
+      return
+    }
+
+    const canvasEl = app.canvas as HTMLCanvasElement
+    canvasEl.style.position = 'absolute'
+    canvasEl.style.top = '0'
+    canvasEl.style.left = '0'
+    container.appendChild(canvasEl)
     this.app = app
     this.canvasWidth = app.canvas.width / (window.devicePixelRatio || 1)
     this.canvasHeight = app.canvas.height / (window.devicePixelRatio || 1)
@@ -166,6 +178,7 @@ export class GraphRenderer {
   destroy(): void {
     this.paused = true
     this.mounted = false
+    this.destroyed = true
 
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId)
