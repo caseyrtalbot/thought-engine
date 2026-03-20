@@ -2,37 +2,7 @@ import { readdir, readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { homedir } from 'os'
 import type { ProjectSessionEvent } from '@shared/project-canvas-types'
-
-/** Convert an absolute path to Claude's directory key format. */
-function toDirKey(projectPath: string): string {
-  return projectPath.replace(/\//g, '-')
-}
-
-const TOOL_NAMES_WITH_PATH = new Set(['Read', 'Write', 'Edit', 'Grep'])
-
-interface JsonlEntry {
-  type?: string
-  timestamp?: string
-  message?: {
-    role?: string
-    content?: unknown
-  }
-}
-
-interface ToolUseBlock {
-  type: 'tool_use'
-  name: string
-  id?: string
-  input?: Record<string, unknown>
-}
-
-function extractToolUseBlocks(content: unknown): ToolUseBlock[] {
-  if (!Array.isArray(content)) return []
-  return content.filter(
-    (block): block is ToolUseBlock =>
-      block && typeof block === 'object' && block.type === 'tool_use'
-  )
-}
+import { toDirKey, extractToolEvents } from './session-utils'
 
 export class ProjectSessionParser {
   async parse(projectPath: string): Promise<ProjectSessionEvent[]> {
@@ -61,41 +31,32 @@ export class ProjectSessionParser {
         const lines = content.split('\n').filter((l) => l.trim())
 
         for (const line of lines) {
-          try {
-            const entry: JsonlEntry = JSON.parse(line)
-            if (entry.type !== 'assistant' && entry.message?.role !== 'assistant') continue
+          const toolEvents = extractToolEvents(line)
+          for (const event of toolEvents) {
+            const type =
+              event.tool === 'Read'
+                ? 'file-read'
+                : event.tool === 'Write'
+                  ? 'file-write'
+                  : event.tool === 'Edit'
+                    ? 'file-edit'
+                    : event.tool === 'Bash'
+                      ? 'bash-command'
+                      : 'file-read'
 
-            const messageContent = entry.message?.content
-            const toolBlocks = extractToolUseBlocks(messageContent)
-            const timestamp = entry.timestamp ? new Date(entry.timestamp).getTime() : Date.now()
-
-            for (const block of toolBlocks) {
-              if (TOOL_NAMES_WITH_PATH.has(block.name)) {
-                const filePath =
-                  (block.input?.file_path as string) || (block.input?.path as string) || undefined
-                if (filePath) {
-                  const type =
-                    block.name === 'Read'
-                      ? 'file-read'
-                      : block.name === 'Write'
-                        ? 'file-write'
-                        : block.name === 'Edit'
-                          ? 'file-edit'
-                          : 'file-read'
-                  events.push({ type, timestamp, sessionId, filePath })
-                }
-              } else if (block.name === 'Bash') {
-                const command = block.input?.command as string | undefined
-                events.push({
-                  type: 'bash-command',
-                  timestamp,
-                  sessionId,
-                  detail: command?.slice(0, 200)
-                })
-              }
+            if (
+              (event.tool === 'Read' || event.tool === 'Write' || event.tool === 'Edit') &&
+              event.filePath
+            ) {
+              events.push({ type, timestamp: event.timestamp, sessionId, filePath: event.filePath })
+            } else if (event.tool === 'Bash') {
+              events.push({
+                type: 'bash-command',
+                timestamp: event.timestamp,
+                sessionId,
+                detail: event.detail
+              })
             }
-          } catch {
-            // Malformed JSONL line
           }
         }
       } catch {
