@@ -16,7 +16,7 @@ When Claude is working across files in a project, the builder needs to know: wha
 
 - Not a retrospective co-editing graph (rejected by council deliberation)
 - Not a replacement for the terminal (complementary, not competitive)
-- Not a persistent history (live view, resets on tab switch)
+- Not a persistent history (live view; retains last few milestones across tab switches for continuity, but is not a full session log)
 
 ## Architecture
 
@@ -27,7 +27,7 @@ When Claude is working across files in a project, the builder needs to know: wha
         │
         ▼
 SessionTailer (main process)
-  - fs.watch on most recent .jsonl
+  - chokidar watch on most recent .jsonl
   - Reads new bytes from last offset
   - Parses tool_use blocks
   - Groups into milestones
@@ -67,20 +67,34 @@ They use different data sources, different rendering paths, and different lifecy
 
 **Behavior:**
 
-1. Receives a project path, computes the Claude directory key
+1. Receives a project path, computes the Claude directory key using the shared `toDirKey()` utility (see Shared utilities below)
 2. Scans `~/.claude/projects/{dirKey}/` for the most recently modified `.jsonl` file
 3. Opens the file, seeks to the end (skip historical events)
-4. Watches for appended bytes via `fs.watch`
-5. On change: reads new bytes from last offset, splits into lines, parses JSON
+4. Watches for appended bytes via chokidar (consistent with `ProjectWatcher` and `VaultWatcher`, which use chokidar for reliable macOS file watching)
+5. On change: reads new bytes from last offset, splits into lines, parses JSON using the shared `extractToolEvents()` utility
 6. Buffers incomplete lines until a newline arrives (handles partial writes)
-7. Filters to assistant messages containing `tool_use` blocks
-8. Passes raw tool events to the grouping function
-9. Emits grouped milestones to the renderer via IPC
-10. Every 5 seconds, checks if a newer `.jsonl` file has appeared. If so, switches to tailing the new file and emits a `session-switched` milestone.
+7. Passes raw tool events to the grouping function
+8. Emits grouped milestones to the renderer via IPC
+9. Every 5 seconds, checks if a newer `.jsonl` file has appeared (also validates the current watched file still exists). If a newer file is found or the current file is gone, switches to tailing the new file and emits a `session-switched` milestone.
+10. On first successful connection to a live session, emits a `session:detected` IPC event so the renderer can auto-show the thread panel.
 
 **Session detection:**
 
-The Claude directory key is derived from the project path with slashes replaced by dashes (matching `ProjectSessionParser.toDirKey()`). The tailer watches the directory, not a specific file, so it can detect new sessions.
+The Claude directory key is derived from the project path using the shared `toDirKey()` function (extracted from `ProjectSessionParser`). The tailer watches the directory, not a specific file, so it can detect new sessions.
+
+**Guard against double-start:** If `session:tail-start` is called while a tail is already active, the tailer stops the existing tail before starting the new one.
+
+### 1b. Shared utilities (extracted from existing parser)
+
+**File:** `src/main/services/session-utils.ts`
+
+**Responsibility:** Shared JSONL parsing logic used by both `ProjectSessionParser` and `SessionTailer`. Prevents code duplication.
+
+**Exports:**
+- `toDirKey(projectPath: string): string` — converts a project path to a Claude directory key (slashes to dashes)
+- `extractToolEvents(jsonLine: string): SessionToolEvent[]` — parses a single JSONL line, extracts tool_use blocks, returns typed events. Returns empty array for non-assistant messages or malformed lines.
+
+Both `ProjectSessionParser.parse()` and `SessionTailer` call these utilities rather than reimplementing the logic.
 
 ### 2. Milestone grouping (pure function)
 
@@ -135,10 +149,13 @@ New handle/invoke channels (added to `IpcChannels`):
 'session:tail-stop': { request: void; response: void }
 ```
 
-New push event (added to `IpcEvents`):
+New push events (added to `IpcEvents`):
 ```typescript
 'session:milestone': SessionMilestone
+'session:detected': { active: boolean }
 ```
+
+The `session:detected` event fires when the tailer first connects to a live session. The renderer uses this to auto-show the thread panel.
 
 **Preload addition** (`src/preload/index.ts`):
 ```typescript
@@ -173,7 +190,7 @@ function useSessionThread(projectPath: string | null, enabled: boolean): Session
 
 - Accepts an `enabled` flag that controls tailing independently of mount/unmount. This is necessary because `ProjectCanvasPanel` uses a keep-alive pattern (stays mounted across tab switches, does not unmount).
 - When `enabled` transitions to `true`: calls `session:tail-start` via `window.api.session.tailStart(projectPath)`, subscribes to `window.api.on.sessionMilestone` events
-- When `enabled` transitions to `false`: calls `session:tail-stop`, removes IPC listener, clears milestones
+- When `enabled` transitions to `false`: calls `session:tail-stop`, removes IPC listener. Retains the last 5 milestones (not cleared) so the user sees context when returning.
 - `enabled` is driven by the thread panel toggle AND the active tab state. If the user toggles the thread on but switches to another tab, `enabled` becomes false. When they return, `enabled` becomes true again.
 - Maintains milestones array, most recent first, capped at 50
 - Tracks `isLive`: true when events received in last 10 seconds, false otherwise
@@ -242,11 +259,13 @@ Expanded (on click):
 
 Note: `ProjectCanvasPanel` uses keep-alive (stays mounted across tab switches). The hook's `enabled` flag, not mount/unmount, controls tailing.
 
-- User opens Project Canvas -> thread toggle visible (off by default)
-- User clicks `⚡` -> toggle state = true, `enabled` = true (active tab + toggle on), tailing begins
-- User switches to another tab -> panel stays mounted, but `enabled` becomes false (inactive tab), tailing stops, milestones cleared
-- User returns to Project Canvas -> `enabled` becomes true again, tailing resumes from current file position with fresh milestones
-- User clicks `⚡` again -> toggle state = false, `enabled` = false, tailing stops
+- User opens Project Canvas -> tailing starts immediately in the background to detect active sessions
+- Active session detected -> thread panel auto-shows (toggle state set to true). No manual discovery needed.
+- User clicks `⚡` to dismiss -> toggle state = false, `enabled` = false, tailing stops
+- User clicks `⚡` again -> toggle state = true, tailing resumes
+- User switches to another tab -> panel stays mounted, `enabled` becomes false, tailing stops. Last 5 milestones retained.
+- User returns to Project Canvas -> `enabled` becomes true, tailing resumes. Retained milestones visible immediately, new events append above them.
+- No active session -> empty state shown, panel does not auto-show
 
 **What is NOT changed:**
 - `CanvasSurface` — no modifications
@@ -269,7 +288,8 @@ Note: `ProjectCanvasPanel` uses keep-alive (stays mounted across tab switches). 
 | Relative timestamps go stale | "3s ago" never updates | `setInterval` every 5 seconds recalculates visible timestamps. |
 | Panel covers canvas cards on narrow screens | Blocked interaction | Dismissible via toggle button. 280px is narrow enough for most screens. |
 | New session starts mid-tailing | Events from old session, then silence | Check for newer JSONL every 5 seconds. Auto-switch and emit `session-switched` milestone. |
-| JSONL file replaced instead of appended | `fs.watch` handle goes stale | The 5-second session-switch check also validates the watched file still exists. If gone, re-scan for the current file. |
+| JSONL file replaced instead of appended | File handle goes stale | Chokidar handles file replacement natively (emits `unlink` then `add`). The 5-second session-switch check provides a safety net. |
+| `session:tail-start` called while already tailing | Double tailing, duplicate events | Guard in tailer: stop existing tail before starting new one. |
 
 ## Testing
 
@@ -304,6 +324,8 @@ Note: `ProjectCanvasPanel` uses keep-alive (stays mounted across tab switches). 
 |------|-------|-------------|
 | `src/main/services/session-tailer.ts` | Main process | New |
 | `src/main/services/session-milestone-grouper.ts` | Main process | New |
+| `src/main/services/session-utils.ts` | Main process | New (shared logic extracted from parser) |
+| `src/main/services/project-session-parser.ts` | Main process | Modified (uses shared utils) |
 | `src/main/ipc/project.ts` | Main process | Modified (register new IPC) |
 | `src/main/index.ts` | Main process | Modified (cleanup on quit) |
 | `src/shared/project-canvas-types.ts` | Shared | Modified (new types) |
@@ -327,6 +349,10 @@ Note: `ProjectCanvasPanel` uses keep-alive (stays mounted across tab switches). 
 | UI placement | Floating overlay (GraphSettingsPanel pattern) | Right split panel, bottom drawer |
 | Architecture | Main process tailer + IPC stream | Renderer-side polling via existing parser |
 | State management | Local hook, not global store | Zustand store, context provider |
+| Thread visibility | Auto-show on session detection | Manual toggle only (council: too easy to miss) |
+| File watching | chokidar | fs.watch (council: unreliable on macOS) |
+| Tab switch behavior | Retain last 5 milestones | Clear all (council: continuity over clean slate) |
+| JSONL parsing | Shared utilities extracted | Duplicate logic in tailer and parser |
 
 ## Council context
 
