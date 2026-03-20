@@ -35,7 +35,15 @@ export class ProjectWatcher {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 },
-      ignored: /(^|[/\\])\../
+      ignored: [
+        /(^|[/\\])\./,
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/build/**',
+        '**/.next/**',
+        '**/out/**',
+        '**/.thought-engine/**'
+      ]
     })
 
     const handleEvent = (event: 'add' | 'change' | 'unlink') => (path: string) => {
