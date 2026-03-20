@@ -5,11 +5,21 @@ out
 .eslintcache
 *.log*
 *.tsbuildinfo
-.worktrees/
 
 # Test artifacts
 e2e/screenshots/
 playwright-report/
 test-results/
+
+# Tool caches
 .worktrees/
 .superpowers/
+.collaborator/
+
+# Ad-hoc screenshots
+*.png
+!resources/icon.png
+!build/icon.png
+
+# Ephemeral project state
+.thought-engine-project-canvas.json
