@@ -27,6 +27,7 @@ interface LayoutResult {
   readonly nodes: readonly CanvasNode[]
   readonly edges: readonly CanvasEdge[]
   readonly labels: readonly ZoneLabel[]
+  readonly terminalOrigin: { readonly x: number; readonly y: number }
 }
 
 type LayoutItem = {
@@ -288,5 +289,9 @@ export function layoutClaudeConfig(config: ClaudeConfig): LayoutResult {
   const extractedEdges = extractRelationships(config, allNodes)
   edges.push(...extractedEdges)
 
-  return { nodes: allNodes, edges, labels }
+  // Terminal origin: right of skills column, below row 3 with standard gap
+  const row3Bottom = Math.max(cmds.bottom, teams.bottom, mems.bottom)
+  const terminalOrigin = { x: skillX, y: row3Bottom + ZONE_GAP }
+
+  return { nodes: allNodes, edges, labels, terminalOrigin }
 }

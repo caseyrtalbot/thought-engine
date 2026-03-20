@@ -190,23 +190,13 @@ export function ClaudeConfigPanel() {
         if (!isMounted.current) return
         setConfig(config)
 
-        const { nodes, edges, labels } = layoutClaudeConfig(config)
+        const { nodes, edges, labels, terminalOrigin } = layoutClaudeConfig(config)
         setZoneLabels(labels)
 
-        // Inject live terminal card below all config cards
-        const allConfigNodes = nodes
-        let maxBottom = 0
-        let minX = Infinity
-        let maxX = -Infinity
-        for (const n of allConfigNodes) {
-          maxBottom = Math.max(maxBottom, n.position.y + n.size.height)
-          minX = Math.min(minX, n.position.x)
-          maxX = Math.max(maxX, n.position.x + n.size.width)
-        }
         const termW = 600
         const termH = 400
-        const termX = allConfigNodes.length > 0 ? (minX + maxX) / 2 - termW / 2 : 0
-        const termY = allConfigNodes.length > 0 ? maxBottom + 60 : 0
+        const termX = terminalOrigin.x
+        const termY = terminalOrigin.y
         const homePath = window.api.getHomePath()
         const termNode: CanvasNode = {
           id: 'claude-live-terminal',
@@ -216,7 +206,7 @@ export function ClaudeConfigPanel() {
           content: '',
           metadata: { initialCwd: homePath, initialCommand: 'claude' }
         }
-        const allNodes = [...allConfigNodes, termNode]
+        const allNodes = [...nodes, termNode]
 
         setTerminalNode(termNode)
         hasCenteredRef.current = false
@@ -303,22 +293,13 @@ export function ClaudeConfigPanel() {
     try {
       const config = await loadClaudeConfig(configPath, vaultPath ?? undefined)
       setConfig(config)
-      const { nodes, edges, labels } = layoutClaudeConfig(config)
+      const { nodes, edges, labels, terminalOrigin } = layoutClaudeConfig(config)
       setZoneLabels(labels)
 
-      // Re-inject terminal node
-      let maxBottom = 0
-      let minX = Infinity
-      let maxX = -Infinity
-      for (const n of nodes) {
-        maxBottom = Math.max(maxBottom, n.position.y + n.size.height)
-        minX = Math.min(minX, n.position.x)
-        maxX = Math.max(maxX, n.position.x + n.size.width)
-      }
       const termW = 600
       const termH = 400
-      const termX = nodes.length > 0 ? (minX + maxX) / 2 - termW / 2 : 0
-      const termY = nodes.length > 0 ? maxBottom + 60 : 0
+      const termX = terminalOrigin.x
+      const termY = terminalOrigin.y
       const homePath = window.api.getHomePath()
       const termNode: CanvasNode = {
         id: 'claude-live-terminal',
