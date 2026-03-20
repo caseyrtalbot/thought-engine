@@ -13,8 +13,10 @@ import { useVaultStore } from '../../store/vault-store'
 import { layoutProjectCanvas } from './project-canvas-layout'
 import { saveCanvas } from '../canvas/canvas-io'
 import { useProjectActivity } from '../../hooks/useProjectActivity'
+import { useSessionThread } from '../../hooks/useSessionThread'
 import { useEditorStore } from '../../store/editor-store'
 import { useTabStore } from '../../store/tab-store'
+import { SessionThreadPanel } from './SessionThreadPanel'
 import { colors, typography } from '../../design/tokens'
 import type { CanvasFile, CanvasNode } from '@shared/canvas-types'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
@@ -107,6 +109,11 @@ export function ProjectCanvasPanel() {
   const markSaved = useCanvasStore((s) => s.markSaved)
 
   const [isLoading, setIsLoading] = useState(true)
+  const [threadOpen, setThreadOpen] = useState(false)
+  const [projectPath, setProjectPath] = useState<string | null>(null)
+  const activeTabId = useTabStore((s) => s.activeTabId)
+  const isActiveTab = activeTabId === 'project-canvas'
+  const threadState = useSessionThread(projectPath, isActiveTab)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
@@ -124,9 +131,17 @@ export function ProjectCanvasPanel() {
     useCanvasStore.getState().setViewport({ x: x + dw / 2, y: y + dh / 2, zoom })
   }, [containerSize])
 
+  useEffect(() => {
+    if (!isActiveTab) return
+    if (typeof window.api?.on?.sessionDetected !== 'function') return
+    const unsub = window.api.on.sessionDetected((event) => {
+      if (event.active) setThreadOpen(true)
+    })
+    return unsub
+  }, [isActiveTab])
+
   const savedCanvasState = useRef<{ filePath: string | null; data: CanvasFile } | null>(null)
   const isMounted = useRef(true)
-  const [projectPath, setProjectPath] = useState<string | null>(null)
 
   // Auto-detect project root on vault change
   useEffect(() => {
@@ -364,6 +379,23 @@ export function ProjectCanvasPanel() {
         >
           + Terminal
         </button>
+        <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
+        <button
+          onClick={() => setThreadOpen((prev) => !prev)}
+          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
+          style={{
+            color: threadOpen ? colors.accent.default : colors.text.secondary
+          }}
+          title={threadOpen ? 'Hide live thread' : 'Show live thread'}
+        >
+          {'⚡'}
+          {threadState.isLive && (
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full ml-1 animate-pulse"
+              style={{ backgroundColor: '#4ade80' }}
+            />
+          )}
+        </button>
       </div>
 
       <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
@@ -385,6 +417,16 @@ export function ProjectCanvasPanel() {
       </CanvasSurface>
 
       <CanvasMinimap containerWidth={containerSize.width} containerHeight={containerSize.height} />
+
+      {threadOpen && (
+        <SessionThreadPanel
+          state={threadState}
+          onFileClick={(filePath) => {
+            useEditorStore.getState().setActiveNote(filePath, filePath)
+            useTabStore.getState().activateTab('editor')
+          }}
+        />
+      )}
     </div>
   )
 }
