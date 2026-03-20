@@ -92,7 +92,7 @@ function ContentArea({ onOpenSettings }: { readonly onOpenSettings?: () => void 
         )}
         {openTypes.has('project-canvas') && (
           <KeepAliveSlot active={activeType === 'project-canvas'}>
-            <ProjectCanvasPanel isActive={activeType === 'project-canvas'} />
+            <ProjectCanvasPanel />
           </KeepAliveSlot>
         )}
         {openTypes.has('graph') && (

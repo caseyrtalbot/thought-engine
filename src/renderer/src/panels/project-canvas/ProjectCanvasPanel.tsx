@@ -13,12 +13,30 @@ import { useVaultStore } from '../../store/vault-store'
 import { layoutProjectCanvas } from './project-canvas-layout'
 import { saveCanvas } from '../canvas/canvas-io'
 import { useProjectActivity } from '../../hooks/useProjectActivity'
+import { useEditorStore } from '../../store/editor-store'
+import { useTabStore } from '../../store/tab-store'
 import { colors, typography } from '../../design/tokens'
 import type { CanvasFile, CanvasNode } from '@shared/canvas-types'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
-import type { ZoneLabel } from '../canvas/claude/claude-canvas-layout'
 
 const PROJECT_CANVAS_FILENAME = '.thought-engine-project-canvas.json'
+const PROJECT_ROOT_MARKERS = ['.git', 'package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod']
+const MAX_WALK_UP = 5
+
+/** Walk up from a path looking for project root markers (.git, package.json, etc). */
+async function detectProjectRoot(startPath: string): Promise<string> {
+  let current = startPath
+  for (let i = 0; i < MAX_WALK_UP; i++) {
+    for (const marker of PROJECT_ROOT_MARKERS) {
+      const exists = await window.api.fs.fileExists(current + '/' + marker)
+      if (exists) return current
+    }
+    const parent = current.replace(/\/[^/]+$/, '')
+    if (parent === current) break
+    current = parent
+  }
+  return startPath
+}
 
 function getCanvasPath(projectPath: string): string {
   return projectPath + '/' + PROJECT_CANVAS_FILENAME
@@ -71,17 +89,13 @@ function fitViewportToNodes(
   return { x, y, zoom }
 }
 
-interface ProjectCanvasPanelProps {
-  readonly isActive: boolean
-}
-
 /**
  * ProjectCanvasPanel uses a "store swap" pattern:
  * When activated, save vault canvas state, load project canvas into canvas-store.
  * When deactivated, save project canvas and restore vault canvas.
  * The panel stays mounted (keep-alive) so terminal sessions survive tab switches.
  */
-export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelProps) {
+export function ProjectCanvasPanel() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const setCachedData = useProjectCanvasStore((s) => s.setCachedData)
 
@@ -93,7 +107,6 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
   const markSaved = useCanvasStore((s) => s.markSaved)
 
   const [isLoading, setIsLoading] = useState(true)
-  const [_zoneLabels, setZoneLabels] = useState<readonly ZoneLabel[]>([])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
@@ -113,8 +126,18 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
 
   const savedCanvasState = useRef<{ filePath: string | null; data: CanvasFile } | null>(null)
   const isMounted = useRef(true)
+  const [projectPath, setProjectPath] = useState<string | null>(null)
 
-  const projectPath = vaultPath
+  // Auto-detect project root on vault change
+  useEffect(() => {
+    if (!vaultPath) {
+      setProjectPath(null)
+      return
+    }
+    detectProjectRoot(vaultPath).then((root) => {
+      setProjectPath(root)
+    })
+  }, [vaultPath])
 
   // Activity monitoring: glow cards when files change
   useProjectActivity(!isLoading, projectPath)
@@ -160,8 +183,7 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
         if (!isMounted.current) return
 
         // Generate layout from session events
-        const { nodes, labels } = layoutProjectCanvas(sessionEvents, projectPath!, containerSize)
-        setZoneLabels(labels)
+        const { nodes } = layoutProjectCanvas(sessionEvents, projectPath!, containerSize)
 
         // Center on the first terminal card
         const terminalNode = nodes.find((n) => n.type === 'terminal')
@@ -229,8 +251,25 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
   }, [clearSelection])
 
   const handleDoubleClick = useCallback(
-    (_canvasX: number, _canvasY: number, _screenX: number, _screenY: number) => {
-      // Future: context menu for adding nodes
+    (canvasX: number, canvasY: number, _screenX: number, _screenY: number) => {
+      // Find the node under the double-click position
+      const currentNodes = useCanvasStore.getState().nodes
+      const hit = currentNodes.find(
+        (n) =>
+          n.type === 'project-file' &&
+          canvasX >= n.position.x &&
+          canvasX <= n.position.x + n.size.width &&
+          canvasY >= n.position.y &&
+          canvasY <= n.position.y + n.size.height
+      )
+      if (!hit) return
+
+      // Open the file in the editor
+      const filePath = hit.metadata?.filePath as string | undefined
+      if (!filePath) return
+
+      useEditorStore.getState().setActiveNote(hit.id, filePath)
+      useTabStore.getState().activateTab('editor')
     },
     []
   )
@@ -240,8 +279,7 @@ export function ProjectCanvasPanel({ isActive: _isActive }: ProjectCanvasPanelPr
     setIsLoading(true)
     try {
       const sessionEvents = await window.api.project.parseSessions(projectPath)
-      const { nodes, labels } = layoutProjectCanvas(sessionEvents, projectPath, containerSize)
-      setZoneLabels(labels)
+      const { nodes } = layoutProjectCanvas(sessionEvents, projectPath, containerSize)
 
       const terminalNode = nodes.find((n) => n.type === 'terminal')
       const vp = terminalNode

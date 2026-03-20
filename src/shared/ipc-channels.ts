@@ -1,9 +1,5 @@
 import type { SessionId, VaultConfig, VaultState } from './types'
-import type {
-  ProjectFileInfo,
-  ProjectSessionEvent,
-  ProjectFileChangedEvent
-} from './project-canvas-types'
+import type { ProjectSessionEvent, ProjectFileChangedEvent } from './project-canvas-types'
 
 export type ClaudeActivityKind = 'prompt' | 'session-start' | 'session-end' | 'config-changed'
 
@@ -50,7 +46,6 @@ export interface IpcChannels {
   'project:watch-start': { request: { projectPath: string }; response: void }
   'project:watch-stop': { request: void; response: void }
   'project:parse-sessions': { request: { projectPath: string }; response: ProjectSessionEvent[] }
-  'project:list-files': { request: { projectPath: string }; response: ProjectFileInfo[] }
 
   // --- Shell ---
   'shell:show-in-folder': { request: { path: string }; response: void }

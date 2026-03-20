@@ -15,6 +15,7 @@ interface CanvasStore {
   readonly selectedEdgeId: string | null
 
   // Interaction state
+  readonly hoveredNodeId: string | null
   readonly focusedTerminalId: string | null
 
   // Document lifecycle
@@ -44,6 +45,9 @@ interface CanvasStore {
   // Viewport
   setViewport: (viewport: CanvasViewport) => void
 
+  // Hover
+  setHoveredNode: (id: string | null) => void
+
   // Terminal focus
   setFocusedTerminal: (id: string | null) => void
 
@@ -61,6 +65,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   isDirty: false,
   selectedNodeIds: new Set(),
   selectedEdgeId: null,
+  hoveredNodeId: null,
   focusedTerminalId: null,
 
   loadCanvas: (filePath, data) =>
@@ -72,6 +77,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       isDirty: false,
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
+      hoveredNodeId: null,
       focusedTerminalId: null
     }),
 
@@ -84,6 +90,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       isDirty: false,
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
+      hoveredNodeId: null,
       focusedTerminalId: null
     }),
 
@@ -163,6 +170,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   setSelectedEdge: (id) => set({ selectedEdgeId: id, selectedNodeIds: new Set() }),
 
   setViewport: (viewport) => set({ viewport }),
+
+  setHoveredNode: (id) => set({ hoveredNodeId: id }),
 
   setFocusedTerminal: (id) => set({ focusedTerminalId: id }),
 

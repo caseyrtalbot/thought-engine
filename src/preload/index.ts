@@ -59,8 +59,7 @@ const api = {
   project: {
     watchStart: (projectPath: string) => typedInvoke('project:watch-start', { projectPath }),
     watchStop: () => typedInvoke('project:watch-stop'),
-    parseSessions: (projectPath: string) => typedInvoke('project:parse-sessions', { projectPath }),
-    listFiles: (projectPath: string) => typedInvoke('project:list-files', { projectPath })
+    parseSessions: (projectPath: string) => typedInvoke('project:parse-sessions', { projectPath })
   },
   terminal: {
     create: (cwd: string, shell?: string) => typedInvoke('terminal:create', { cwd, shell }),
