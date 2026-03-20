@@ -3,7 +3,11 @@ import { homedir } from 'os'
 import { typedInvoke, typedOn } from './typed-ipc'
 import type { SessionId, VaultConfig, VaultState } from '../shared/types'
 import type { ClaudeActivityEvent } from '../shared/ipc-channels'
-import type { ProjectFileChangedEvent } from '../shared/project-canvas-types'
+import type {
+  ProjectFileChangedEvent,
+  SessionMilestone,
+  SessionDetectedEvent
+} from '../shared/project-canvas-types'
 
 const api = {
   window: {
@@ -59,7 +63,9 @@ const api = {
   project: {
     watchStart: (projectPath: string) => typedInvoke('project:watch-start', { projectPath }),
     watchStop: () => typedInvoke('project:watch-stop'),
-    parseSessions: (projectPath: string) => typedInvoke('project:parse-sessions', { projectPath })
+    parseSessions: (projectPath: string) => typedInvoke('project:parse-sessions', { projectPath }),
+    tailStart: (projectPath: string) => typedInvoke('session:tail-start', { projectPath }),
+    tailStop: () => typedInvoke('session:tail-stop')
   },
   terminal: {
     create: (cwd: string, shell?: string) => typedInvoke('terminal:create', { cwd, shell }),
@@ -82,7 +88,11 @@ const api = {
     claudeActivity: (callback: (data: ClaudeActivityEvent) => void) =>
       typedOn('claude:activity', callback),
     projectFileChanged: (callback: (data: ProjectFileChangedEvent) => void) =>
-      typedOn('project:file-changed', callback)
+      typedOn('project:file-changed', callback),
+    sessionMilestone: (callback: (data: SessionMilestone) => void) =>
+      typedOn('session:milestone', callback),
+    sessionDetected: (callback: (data: SessionDetectedEvent) => void) =>
+      typedOn('session:detected', callback)
   }
 }
 

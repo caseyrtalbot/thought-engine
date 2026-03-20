@@ -7,7 +7,7 @@ import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
 import { registerClaudeWatcherIpc, getClaudeWatcher } from './ipc/claude-watcher'
-import { registerProjectIpc, getProjectWatcher } from './ipc/project'
+import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/project'
 import { typedHandle } from './typed-ipc'
 
 const PROD_CSP = [
@@ -118,6 +118,7 @@ app.on('before-quit', () => {
   getShellService().killAll()
   getClaudeWatcher().stop()
   getProjectWatcher().stop()
+  getSessionTailer()?.stop()
 })
 
 app.on('window-all-closed', () => {
