@@ -11,3 +11,23 @@ export interface ProjectFileChangedEvent {
   readonly event: 'add' | 'change' | 'unlink'
   readonly relativePath: string
 }
+
+export interface SessionToolEvent {
+  readonly tool: 'Read' | 'Write' | 'Edit' | 'Bash' | 'Grep'
+  readonly timestamp: number
+  readonly filePath?: string
+  readonly detail?: string
+}
+
+export interface SessionMilestone {
+  readonly id: string
+  readonly type: 'edit' | 'create' | 'command' | 'research' | 'error' | 'session-switched'
+  readonly timestamp: number
+  readonly summary: string
+  readonly files: readonly string[]
+  readonly events: readonly SessionToolEvent[]
+}
+
+export interface SessionDetectedEvent {
+  readonly active: boolean
+}
