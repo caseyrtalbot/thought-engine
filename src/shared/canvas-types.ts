@@ -93,6 +93,8 @@ export interface SystemArtifactNodeMeta {
   readonly hasSnapshot?: boolean
   readonly commandCount?: number
   readonly fileTouchCount?: number
+  readonly connections: readonly string[]
+  readonly tensionRefs: readonly string[]
 }
 
 export interface CanvasNode {
@@ -239,7 +241,9 @@ export function getDefaultMetadata(type: CanvasNodeType): Record<string, unknown
         status: '',
         filePath: '',
         signal: 'untested',
-        fileRefCount: 0
+        fileRefCount: 0,
+        connections: [],
+        tensionRefs: []
       }
     default:
       return {}

@@ -59,7 +59,9 @@ describe('canvas-types registration completeness', () => {
       status: '',
       filePath: '',
       signal: 'untested',
-      fileRefCount: 0
+      fileRefCount: 0,
+      connections: [],
+      tensionRefs: []
     })
   })
 })
