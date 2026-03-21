@@ -152,45 +152,63 @@ interface CanvasStoreSnapshot {
 
 /**
  * Given a just-placed artifact node ID, compute edges to other artifact nodes
- * that appear in its connections or tensionRefs.
+ * based on connections and tensionRefs. Wires both directions:
+ * - Outbound: new node's refs point to existing nodes
+ * - Inbound: existing nodes' refs point to the new node
+ * Deduplicates against edges already in the store.
  * Returns new edges (does not mutate the store).
  */
 export function wireArtifactEdges(nodeId: string, store: CanvasStoreSnapshot): CanvasEdge[] {
   const sourceNode = store.nodes.find((n) => n.id === nodeId)
   if (!sourceNode || sourceNode.type !== 'system-artifact') return []
 
-  const meta = sourceNode.metadata as Partial<SystemArtifactNodeMeta>
-  const connections = meta.connections ?? []
-  const tensionRefs = meta.tensionRefs ?? []
+  const sourceMeta = sourceNode.metadata as Partial<SystemArtifactNodeMeta>
+  const sourceArtifactId = sourceMeta.artifactId ?? ''
 
-  // Build a lookup: artifactId → canvas node id
-  const artifactIdToNodeId = new Map<string, string>()
+  // Build lookups
+  const artifactIdToNode = new Map<string, CanvasNode>()
   for (const n of store.nodes) {
     if (n.type === 'system-artifact' && n.id !== nodeId) {
       const id = n.metadata?.artifactId as string | undefined
-      if (id) artifactIdToNodeId.set(id, n.id)
+      if (id) artifactIdToNode.set(id, n)
     }
   }
 
-  const edges: CanvasEdge[] = []
-  const seen = new Set<string>()
-
-  for (const targetArtifactId of connections) {
-    const targetNodeId = artifactIdToNodeId.get(targetArtifactId)
-    if (!targetNodeId) continue
-    const key = `connection:${targetNodeId}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    edges.push(createCanvasEdge(nodeId, targetNodeId, 'right', 'left', 'connection'))
+  // Build dedup set from existing store edges
+  const existingEdgeKeys = new Set<string>()
+  for (const e of store.edges) {
+    existingEdgeKeys.add(`${e.fromNode}:${e.toNode}:${e.kind ?? 'connection'}`)
   }
 
-  for (const targetArtifactId of tensionRefs) {
-    const targetNodeId = artifactIdToNodeId.get(targetArtifactId)
-    if (!targetNodeId) continue
-    const key = `tension:${targetNodeId}`
-    if (seen.has(key)) continue
+  const edges: CanvasEdge[] = []
+  const seen = new Set<string>(existingEdgeKeys)
+
+  function tryAddEdge(from: string, to: string, kind: 'connection' | 'tension') {
+    const key = `${from}:${to}:${kind}`
+    if (seen.has(key)) return
     seen.add(key)
-    edges.push(createCanvasEdge(nodeId, targetNodeId, 'right', 'left', 'tension'))
+    edges.push(createCanvasEdge(from, to, 'right', 'left', kind))
+  }
+
+  // Outbound: new node's connections/tensionRefs → existing nodes
+  for (const targetId of sourceMeta.connections ?? []) {
+    const target = artifactIdToNode.get(targetId)
+    if (target) tryAddEdge(nodeId, target.id, 'connection')
+  }
+  for (const targetId of sourceMeta.tensionRefs ?? []) {
+    const target = artifactIdToNode.get(targetId)
+    if (target) tryAddEdge(nodeId, target.id, 'tension')
+  }
+
+  // Inbound: existing nodes whose connections/tensionRefs reference the new node
+  for (const [, otherNode] of artifactIdToNode) {
+    const otherMeta = otherNode.metadata as Partial<SystemArtifactNodeMeta>
+    for (const ref of otherMeta.connections ?? []) {
+      if (ref === sourceArtifactId) tryAddEdge(otherNode.id, nodeId, 'connection')
+    }
+    for (const ref of otherMeta.tensionRefs ?? []) {
+      if (ref === sourceArtifactId) tryAddEdge(otherNode.id, nodeId, 'tension')
+    }
   }
 
   return edges
@@ -267,5 +285,15 @@ export async function restorePatternSnapshot(
 
   if (snapshot.nodes.length === 0 && snapshot.edges.length === 0) return
 
-  useCanvasStore.getState().addNodesAndEdges(snapshot.nodes, snapshot.edges)
+  // Deduplicate against existing nodes/edges by ID
+  const store = useCanvasStore.getState()
+  const existingNodeIds = new Set(store.nodes.map((n) => n.id))
+  const existingEdgeIds = new Set(store.edges.map((e) => e.id))
+
+  const newNodes = snapshot.nodes.filter((n) => !existingNodeIds.has(n.id))
+  const newEdges = snapshot.edges.filter((e) => !existingEdgeIds.has(e.id))
+
+  if (newNodes.length === 0 && newEdges.length === 0) return
+
+  useCanvasStore.getState().addNodesAndEdges(newNodes, newEdges)
 }

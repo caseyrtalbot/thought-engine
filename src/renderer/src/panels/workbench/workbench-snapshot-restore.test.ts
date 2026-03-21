@@ -74,6 +74,46 @@ describe('restorePatternSnapshot', () => {
     expect(useCanvasStore.getState().nodes).toHaveLength(0)
   })
 
+  it('deduplicates nodes when restoring the same snapshot twice', async () => {
+    const snapshotPath = '.thought-engine/artifacts/patterns/p-test.canvas.json'
+    const absolutePath = '/vault/' + snapshotPath
+    const reader = createMockFsReader({ [absolutePath]: serializeCanvas(SNAPSHOT_CANVAS) })
+
+    await restorePatternSnapshot(snapshotPath, '/vault', reader)
+    await restorePatternSnapshot(snapshotPath, '/vault', reader)
+
+    const nodes = useCanvasStore.getState().nodes
+    expect(nodes).toHaveLength(2) // Not 4
+  })
+
+  it('deduplicates edges when restoring the same snapshot twice', async () => {
+    const nodeA = createCanvasNode('terminal', { x: 0, y: 0 })
+    const nodeB = createCanvasNode('project-file', { x: 300, y: 0 })
+    const snapshotWithEdges = {
+      nodes: [nodeA, nodeB],
+      edges: [
+        {
+          id: 'edge-1',
+          fromNode: nodeA.id,
+          toNode: nodeB.id,
+          fromSide: 'right' as const,
+          toSide: 'left' as const,
+          kind: 'connection' as const
+        }
+      ],
+      viewport: { x: 0, y: 0, zoom: 1 }
+    }
+
+    const path = 'snapshot.canvas.json'
+    const reader = createMockFsReader({ ['/vault/' + path]: serializeCanvas(snapshotWithEdges) })
+
+    await restorePatternSnapshot(path, '/vault', reader)
+    await restorePatternSnapshot(path, '/vault', reader)
+
+    expect(useCanvasStore.getState().nodes).toHaveLength(2) // Not 4
+    expect(useCanvasStore.getState().edges).toHaveLength(1) // Not 2
+  })
+
   it('restores edges from the snapshot', async () => {
     const nodeA = createCanvasNode('terminal', { x: 0, y: 0 })
     const nodeB = createCanvasNode('project-file', { x: 300, y: 0 })
