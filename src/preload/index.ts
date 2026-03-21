@@ -4,10 +4,10 @@ import { typedInvoke, typedOn } from './typed-ipc'
 import type { SessionId, VaultConfig, VaultState } from '../shared/types'
 import type { ClaudeActivityEvent } from '../shared/ipc-channels'
 import type {
-  ProjectFileChangedEvent,
+  WorkbenchFileChangedEvent,
   SessionMilestone,
   SessionDetectedEvent
-} from '../shared/project-canvas-types'
+} from '../shared/workbench-types'
 
 const api = {
   window: {
@@ -104,7 +104,7 @@ const api = {
     ) => typedOn('vault:files-changed-batch', callback),
     claudeActivity: (callback: (data: ClaudeActivityEvent) => void) =>
       typedOn('claude:activity', callback),
-    projectFileChanged: (callback: (data: ProjectFileChangedEvent) => void) =>
+    projectFileChanged: (callback: (data: WorkbenchFileChangedEvent) => void) =>
       typedOn('project:file-changed', callback),
     sessionMilestone: (callback: (data: SessionMilestone) => void) =>
       typedOn('session:milestone', callback),

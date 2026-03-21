@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { SessionMilestone, SessionToolEvent } from '@shared/project-canvas-types'
+import type { SessionMilestone, SessionToolEvent } from '@shared/workbench-types'
 
 // Note: 'error' type milestones (non-zero exit codes) are deferred.
 // They require parsing tool_result entries which is not yet implemented.

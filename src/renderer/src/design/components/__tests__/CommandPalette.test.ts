@@ -35,10 +35,26 @@ describe('fuzzyMatch', () => {
 
 describe('filterItems', () => {
   const items: CommandItem[] = [
-    { id: 'note:a', label: 'Architecture Notes', category: 'note' },
+    {
+      id: 'note:a',
+      label: 'Architecture Notes',
+      category: 'note',
+      folderPath: 'docs/architecture',
+      artifactType: 'pattern'
+    },
     { id: 'note:b', label: 'Bug Tracker', category: 'note' },
-    { id: 'cmd:toggle', label: 'Toggle Sidebar', category: 'command' },
-    { id: 'cmd:settings', label: 'Open Settings', category: 'command' }
+    {
+      id: 'cmd:toggle',
+      label: 'Toggle Sidebar',
+      category: 'command',
+      description: 'Show or hide the left sidebar'
+    },
+    {
+      id: 'cmd:settings',
+      label: 'Open Settings',
+      category: 'command',
+      keywords: ['preferences', 'workspace']
+    }
   ]
 
   it('returns all items for empty query', () => {
@@ -49,6 +65,11 @@ describe('filterItems', () => {
     const result = filterItems(items, 'arch')
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe('note:a')
+  })
+
+  it('matches extra metadata such as paths and keywords', () => {
+    expect(filterItems(items, 'workspace')[0].id).toBe('cmd:settings')
+    expect(filterItems(items, 'docs/arch')[0].id).toBe('note:a')
   })
 
   it('> prefix filters to commands only', () => {

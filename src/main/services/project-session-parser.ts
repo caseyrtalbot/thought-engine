@@ -1,14 +1,14 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import { join } from 'path'
 import { homedir } from 'os'
-import type { ProjectSessionEvent } from '@shared/project-canvas-types'
+import type { WorkbenchSessionEvent } from '@shared/workbench-types'
 import { toDirKey, extractToolEvents } from './session-utils'
 
 export class ProjectSessionParser {
-  async parse(projectPath: string): Promise<ProjectSessionEvent[]> {
+  async parse(projectPath: string): Promise<WorkbenchSessionEvent[]> {
     const dirKey = toDirKey(projectPath)
     const claudeProjectDir = join(homedir(), '.claude', 'projects', dirKey)
-    const events: ProjectSessionEvent[] = []
+    const events: WorkbenchSessionEvent[] = []
 
     let sessionFiles: string[]
     try {

@@ -1,6 +1,6 @@
 import type { CanvasNode } from '@shared/canvas-types'
 import { createCanvasNode } from '@shared/canvas-types'
-import type { ProjectSessionEvent } from '@shared/project-canvas-types'
+import type { WorkbenchSessionEvent } from '@shared/workbench-types'
 import type { ZoneLabel } from '../canvas/claude/claude-canvas-layout'
 
 const FILE_CARD_W = 240
@@ -18,7 +18,7 @@ const FILE_ZONE_X = TERMINAL_W + ZONE_GAP + 100
 
 /** Group session events by the top-level directory of each file. */
 function groupByDirectory(
-  events: readonly ProjectSessionEvent[],
+  events: readonly WorkbenchSessionEvent[],
   projectPath: string
 ): Map<string, { relativePath: string; touchCount: number; lastSessionId: string }[]> {
   const fileMap = new Map<
@@ -81,8 +81,8 @@ interface LayoutResult {
   readonly labels: readonly ZoneLabel[]
 }
 
-export function layoutProjectCanvas(
-  sessionEvents: readonly ProjectSessionEvent[],
+export function layoutWorkbench(
+  sessionEvents: readonly WorkbenchSessionEvent[],
   projectPath: string,
   _containerSize: { width: number; height: number },
   terminalCount = 1

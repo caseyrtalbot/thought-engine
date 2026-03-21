@@ -1,4 +1,4 @@
-import type { SessionToolEvent } from '@shared/project-canvas-types'
+import type { SessionToolEvent } from '@shared/workbench-types'
 
 /** Convert an absolute path to Claude's directory key format. */
 export function toDirKey(projectPath: string): string {

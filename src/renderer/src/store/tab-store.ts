@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-export type TabType = 'editor' | 'canvas' | 'skills' | 'claude-config' | 'project-canvas' | 'graph'
+export type TabType = 'editor' | 'canvas' | 'skills' | 'claude-config' | 'workbench' | 'graph'
 
 export interface ViewTab {
   readonly id: string
@@ -24,12 +24,15 @@ interface TabActions {
 
 type TabStore = TabState & TabActions
 
+const TAB_TYPES = ['editor', 'canvas', 'skills', 'claude-config', 'workbench', 'graph'] as const
+const LEGACY_WORKBENCH_TAB_ID = 'project-canvas'
+
 export const TAB_DEFINITIONS: Record<TabType, { label: string; iconId: string }> = {
   editor: { label: 'Editor', iconId: 'editor' },
   canvas: { label: 'Vault Canvas', iconId: 'canvas' },
   skills: { label: 'Skills', iconId: 'skills' },
   'claude-config': { label: 'Claude Config', iconId: 'claude-config' },
-  'project-canvas': { label: 'Project Canvas', iconId: 'project-canvas' },
+  workbench: { label: 'Workbench', iconId: 'workbench' },
   graph: { label: 'Graph', iconId: 'graph' }
 }
 
@@ -37,6 +40,80 @@ const DEFAULT_TABS: readonly ViewTab[] = [
   { id: 'editor', type: 'editor', label: 'Editor', closeable: false },
   { id: 'canvas', type: 'canvas', label: 'Vault Canvas', closeable: true }
 ]
+
+interface PersistedViewTab {
+  readonly id: string
+  readonly type: string
+  readonly label: string
+  readonly closeable: boolean
+}
+
+interface PersistedTabSnapshot {
+  readonly tabs?: readonly PersistedViewTab[]
+  readonly activeTabId?: string
+}
+
+function isTabType(value: string): value is TabType {
+  return (TAB_TYPES as readonly string[]).includes(value)
+}
+
+function normalizeTabId(value: string): string {
+  return value === LEGACY_WORKBENCH_TAB_ID ? 'workbench' : value
+}
+
+function normalizeTabType(value: string): TabType | null {
+  const normalized = value === LEGACY_WORKBENCH_TAB_ID ? 'workbench' : value
+  return isTabType(normalized) ? normalized : null
+}
+
+function normalizePersistedTab(tab: PersistedViewTab): ViewTab | null {
+  const type = normalizeTabType(tab.type)
+  if (!type) return null
+
+  const definition = TAB_DEFINITIONS[type]
+  const normalizedLabel =
+    tab.label === 'Project Canvas' || tab.label === 'Workbench' ? definition.label : tab.label
+
+  return {
+    id: normalizeTabId(tab.id),
+    type,
+    label: normalizedLabel || definition.label,
+    closeable: type === 'editor' ? false : tab.closeable
+  }
+}
+
+export function normalizePersistedTabState(snapshot: PersistedTabSnapshot | undefined | null): {
+  readonly tabs: readonly ViewTab[]
+  readonly activeTabId: string
+} {
+  const rawTabs = snapshot?.tabs ?? DEFAULT_TABS
+  const normalizedTabs: ViewTab[] = []
+  const seenIds = new Set<string>()
+
+  for (const rawTab of rawTabs) {
+    const normalizedTab = normalizePersistedTab(rawTab)
+    if (!normalizedTab || seenIds.has(normalizedTab.id)) continue
+    seenIds.add(normalizedTab.id)
+    normalizedTabs.push(normalizedTab)
+  }
+
+  if (!seenIds.has('editor')) {
+    normalizedTabs.unshift(DEFAULT_TABS[0])
+    seenIds.add('editor')
+  }
+
+  if (normalizedTabs.length === 1 && normalizedTabs[0].id === 'editor') {
+    normalizedTabs.push(DEFAULT_TABS[1])
+  }
+
+  const activeTabId = normalizeTabId(snapshot?.activeTabId ?? 'editor')
+  return {
+    tabs: normalizedTabs,
+    activeTabId: normalizedTabs.some((tab) => tab.id === activeTabId)
+      ? activeTabId
+      : (normalizedTabs[0]?.id ?? 'editor')
+  }
+}
 
 export const useTabStore = create<TabStore>()(
   persist(
@@ -92,7 +169,10 @@ export const useTabStore = create<TabStore>()(
     }),
     {
       name: 'thought-engine-tabs',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState) =>
+        normalizePersistedTabState(persistedState as PersistedTabSnapshot),
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId

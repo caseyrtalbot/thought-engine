@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { colors, typography } from '../tokens'
+import { colors, getArtifactColor, typography } from '../tokens'
 
 export interface CommandItem {
   id: string
   label: string
   category: 'note' | 'command'
+  description?: string
+  keywords?: readonly string[]
+  disabled?: boolean
   shortcut?: string
   folderPath?: string
   artifactType?: string
@@ -20,7 +23,7 @@ interface CommandPaletteProps {
 
 const CATEGORY_LABELS: Record<CommandItem['category'], string> = {
   note: 'Notes',
-  command: 'Commands'
+  command: 'Actions'
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -76,32 +79,43 @@ export function filterItems(
 
   return candidates
     .map((item) => {
-      const result = fuzzyMatch(item.label, searchQuery)
-      return { ...item, matchIndices: result.indices, _match: result.match, _score: result.score }
+      const labelResult = fuzzyMatch(item.label, searchQuery)
+      const extraFields = [
+        item.description,
+        item.folderPath,
+        item.artifactType,
+        ...(item.keywords ?? [])
+      ].filter((value): value is string => Boolean(value))
+      const extraResult = extraFields
+        .map((field) => fuzzyMatch(field, searchQuery))
+        .find((result) => result.match)
+
+      if (!labelResult.match && !extraResult?.match) {
+        return { ...item, matchIndices: undefined, _match: false, _score: 0 }
+      }
+
+      return {
+        ...item,
+        matchIndices: labelResult.match ? labelResult.indices : undefined,
+        _match: true,
+        _score: labelResult.match ? labelResult.score + 20 : (extraResult?.score ?? 0)
+      }
     })
     .filter((r) => r._match)
-    .sort((a, b) => b._score - a._score)
+    .sort((a, b) => b._score - a._score || a.label.localeCompare(b.label))
     .map(({ _match, _score, ...rest }) => rest)
 }
 
 function groupByCategory(
   items: ReadonlyArray<CommandItem>
 ): ReadonlyArray<{ category: CommandItem['category']; items: ReadonlyArray<CommandItem> }> {
-  const groups = new Map<CommandItem['category'], CommandItem[]>()
-
-  for (const item of items) {
-    const existing = groups.get(item.category)
-    if (existing) {
-      existing.push(item)
-    } else {
-      groups.set(item.category, [item])
-    }
-  }
-
-  return Array.from(groups.entries()).map(([category, categoryItems]) => ({
-    category,
-    items: categoryItems
-  }))
+  const categoryOrder: readonly CommandItem['category'][] = ['command', 'note']
+  return categoryOrder
+    .map((category) => ({
+      category,
+      items: items.filter((item) => item.category === category)
+    }))
+    .filter((group) => group.items.length > 0)
 }
 
 function HighlightedLabel({ label, indices }: { label: string; indices?: number[] }) {
@@ -149,6 +163,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
 
   const handleSelect = useCallback(
     (item: CommandItem) => {
+      if (item.disabled) return
       onSelect(item)
       onClose()
     },
@@ -221,7 +236,7 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
             type="text"
             value={query}
             onChange={handleQueryChange}
-            placeholder="Search notes... (> for commands)"
+            placeholder="Search notes or actions... (> for actions)"
             aria-label="Command palette"
             className="w-full bg-transparent outline-none text-sm"
             style={{
@@ -232,6 +247,13 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
               borderRadius: '8px'
             }}
           />
+          <div
+            className="mt-2 flex items-center justify-between text-[11px]"
+            style={{ color: colors.text.muted }}
+          >
+            <span>Search titles, paths, artifact types, and action aliases.</span>
+            <span style={{ fontFamily: typography.fontFamily.mono }}>{'>'} actions</span>
+          </div>
         </div>
 
         <div ref={listRef} role="listbox" className="max-h-80 overflow-y-auto py-2">
@@ -267,36 +289,70 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
                       key={item.id}
                       role="option"
                       aria-selected={isSelected}
+                      aria-disabled={item.disabled}
                       data-selected={isSelected}
-                      className="w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-colors"
+                      className="w-full px-4 py-2 text-left transition-colors"
                       style={{
-                        color: colors.text.primary,
+                        color: item.disabled ? colors.text.muted : colors.text.primary,
                         backgroundColor: isSelected ? colors.accent.muted : 'transparent',
                         fontFamily: typography.fontFamily.body
                       }}
                       onClick={() => handleSelect(item)}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
                     >
-                      <HighlightedLabel label={item.label} indices={item.matchIndices} />
-
-                      {item.shortcut && (
-                        <span
-                          className="text-xs px-1.5 py-0.5 rounded"
-                          style={{
-                            color: colors.text.muted,
-                            fontFamily: typography.fontFamily.mono,
-                            backgroundColor: colors.bg.surface
-                          }}
-                        >
-                          {item.shortcut}
-                        </span>
-                      )}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm">
+                            <HighlightedLabel label={item.label} indices={item.matchIndices} />
+                          </div>
+                          {(item.description || item.folderPath) && (
+                            <div
+                              className="mt-0.5 truncate text-[11px]"
+                              style={{ color: colors.text.muted }}
+                            >
+                              {item.description ?? item.folderPath}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {item.artifactType && (
+                            <span
+                              className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.08em]"
+                              style={{
+                                color: getArtifactColor(item.artifactType),
+                                backgroundColor: `${getArtifactColor(item.artifactType)}14`
+                              }}
+                            >
+                              {item.artifactType}
+                            </span>
+                          )}
+                          {item.shortcut && (
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{
+                                color: colors.text.muted,
+                                fontFamily: typography.fontFamily.mono,
+                                backgroundColor: colors.bg.surface
+                              }}
+                            >
+                              {item.shortcut}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   )
                 })}
               </div>
             )
           })}
+        </div>
+        <div
+          className="flex items-center justify-between border-t px-4 py-2 text-[11px]"
+          style={{ borderColor: colors.border.default, color: colors.text.muted }}
+        >
+          <span>Enter runs the selected action.</span>
+          <span style={{ fontFamily: typography.fontFamily.mono }}>↑ ↓ navigate</span>
         </div>
       </div>
     </div>

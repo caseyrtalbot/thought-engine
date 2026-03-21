@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { SessionThreadState } from '../../hooks/useSessionThread'
-import type { SessionMilestone, SessionToolEvent } from '@shared/project-canvas-types'
+import type { SessionMilestone, SessionToolEvent } from '@shared/workbench-types'
 import { colors, typography } from '../../design/tokens'
 
 // ---------------------------------------------------------------------------

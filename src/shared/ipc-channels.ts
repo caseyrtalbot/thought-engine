@@ -1,10 +1,10 @@
 import type { SessionId, VaultConfig, VaultState } from './types'
 import type {
-  ProjectSessionEvent,
-  ProjectFileChangedEvent,
+  WorkbenchSessionEvent,
+  WorkbenchFileChangedEvent,
   SessionMilestone,
   SessionDetectedEvent
-} from './project-canvas-types'
+} from './workbench-types'
 import type { SystemArtifactKind } from './system-artifacts'
 
 export type ClaudeActivityKind = 'prompt' | 'session-start' | 'session-end' | 'config-changed'
@@ -69,10 +69,10 @@ export interface IpcChannels {
   'claude:watch-start': { request: { configPath: string }; response: void }
   'claude:watch-stop': { request: void; response: void }
 
-  // --- Project Canvas ---
+  // --- Workbench ---
   'project:watch-start': { request: { projectPath: string }; response: void }
   'project:watch-stop': { request: void; response: void }
-  'project:parse-sessions': { request: { projectPath: string }; response: ProjectSessionEvent[] }
+  'project:parse-sessions': { request: { projectPath: string }; response: WorkbenchSessionEvent[] }
 
   // --- Session Tailing ---
   'session:tail-start': { request: { projectPath: string }; response: void }
@@ -111,7 +111,7 @@ export interface IpcEvents {
     events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
   }
   'claude:activity': ClaudeActivityEvent
-  'project:file-changed': ProjectFileChangedEvent
+  'project:file-changed': WorkbenchFileChangedEvent
   'session:milestone': SessionMilestone
   'session:detected': SessionDetectedEvent
 }

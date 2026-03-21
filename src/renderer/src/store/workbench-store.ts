@@ -3,12 +3,12 @@ import type { CanvasFile } from '@shared/canvas-types'
 import { createCanvasFile } from '@shared/canvas-types'
 
 /**
- * Persistence cache for the Project Canvas.
+ * Persistence cache for the Workbench.
  * The actual rendering state lives in the main canvas-store via store-swap.
  * This store caches the persisted canvas data so we avoid re-parsing
  * on every view switch.
  */
-interface ProjectCanvasStore {
+interface WorkbenchStore {
   readonly cachedData: CanvasFile | null
   readonly canvasPath: string
   readonly projectPath: string | null
@@ -18,7 +18,7 @@ interface ProjectCanvasStore {
   getOrDefault: () => CanvasFile
 }
 
-export const useProjectCanvasStore = create<ProjectCanvasStore>((set, get) => ({
+export const useWorkbenchStore = create<WorkbenchStore>((set, get) => ({
   cachedData: null,
   canvasPath: '',
   projectPath: null,

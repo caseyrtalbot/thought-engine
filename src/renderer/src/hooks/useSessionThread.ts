@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { SessionMilestone } from '@shared/project-canvas-types'
+import type { SessionMilestone } from '@shared/workbench-types'
 
 const MAX_MILESTONES = 50
 const IDLE_TIMEOUT_MS = 10000

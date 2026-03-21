@@ -1,9 +1,9 @@
 import type { CanvasEdge, CanvasFile, CanvasNode } from '@shared/canvas-types'
 import type {
-  ProjectSessionEvent,
+  WorkbenchSessionEvent,
   SessionMilestone,
   SessionToolEvent
-} from '@shared/project-canvas-types'
+} from '@shared/workbench-types'
 import type {
   PatternArtifactFrontmatter,
   SessionArtifactFrontmatter,
@@ -289,7 +289,7 @@ export function buildSessionArtifactDocument(options: {
   readonly projectPath: string
   readonly now: Date
   readonly milestones: readonly SessionMilestone[]
-  readonly sessionEvents: readonly ProjectSessionEvent[]
+  readonly sessionEvents: readonly WorkbenchSessionEvent[]
 }): {
   readonly id: string
   readonly filename: string

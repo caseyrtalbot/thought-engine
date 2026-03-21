@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { CanvasEdge, CanvasNode } from '@shared/canvas-types'
-import type { ProjectSessionEvent, SessionMilestone } from '@shared/project-canvas-types'
+import type { SessionMilestone, WorkbenchSessionEvent } from '@shared/workbench-types'
 import {
   buildPatternArtifactDocument,
   buildSessionArtifactDocument,
   buildTensionArtifactDocument
-} from './project-canvas-artifacts'
+} from './workbench-artifacts'
 
 function createNode(overrides: Partial<CanvasNode> & Pick<CanvasNode, 'id' | 'type'>): CanvasNode {
   return {
@@ -18,7 +18,7 @@ function createNode(overrides: Partial<CanvasNode> & Pick<CanvasNode, 'id' | 'ty
   }
 }
 
-describe('project canvas artifacts', () => {
+describe('workbench artifacts', () => {
   it('builds a pattern document and snapshot from selected nodes', () => {
     const selectedNodes: CanvasNode[] = [
       createNode({
@@ -124,7 +124,7 @@ describe('project canvas artifacts', () => {
         ]
       }
     ]
-    const sessionEvents: ProjectSessionEvent[] = [
+    const sessionEvents: WorkbenchSessionEvent[] = [
       {
         type: 'file-edit',
         timestamp: Date.parse('2026-03-20T12:00:00Z'),

@@ -3,9 +3,9 @@ import { CardShell } from '../canvas/CardShell'
 import { useCanvasStore } from '../../store/canvas-store'
 import { colors, typography } from '../../design/tokens'
 import type { CanvasNode } from '@shared/canvas-types'
-import './project-canvas-animations.css'
+import './workbench-animations.css'
 
-interface ProjectFileCardProps {
+interface WorkbenchFileCardProps {
   node: CanvasNode
 }
 
@@ -42,7 +42,7 @@ function getFileIcon(language: string): string {
   return icons[language] ?? language.slice(0, 2).toUpperCase()
 }
 
-export function ProjectFileCard({ node }: ProjectFileCardProps) {
+export function WorkbenchFileCard({ node }: WorkbenchFileCardProps) {
   const meta = node.metadata
   const relativePath = (meta?.relativePath as string) ?? node.content
   const language = (meta?.language as string) ?? 'unknown'
@@ -63,7 +63,7 @@ export function ProjectFileCard({ node }: ProjectFileCardProps) {
   return (
     <CardShell node={node} title={fileName} onClose={handleClose}>
       <div
-        className="flex items-center gap-2 px-2.5 py-2 h-full project-file-card-enter"
+        className="flex items-center gap-2 px-2.5 py-2 h-full workbench-file-card-enter"
         style={{
           boxShadow: isActive ? `0 0 12px 2px ${langColor}44` : undefined,
           transition: 'box-shadow 300ms ease'
@@ -120,4 +120,4 @@ export function ProjectFileCard({ node }: ProjectFileCardProps) {
   )
 }
 
-export default ProjectFileCard
+export default WorkbenchFileCard

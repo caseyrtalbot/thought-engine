@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { groupEventsIntoMilestones } from '../../src/main/services/session-milestone-grouper'
-import type { SessionToolEvent } from '@shared/project-canvas-types'
+import type { SessionToolEvent } from '@shared/workbench-types'
 
 const ts = 1710849600000 // fixed timestamp for tests
 

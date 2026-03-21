@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasSurface } from '../canvas/CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
-import { useProjectCanvasStore } from '../../store/project-canvas-store'
+import { useWorkbenchStore } from '../../store/workbench-store'
 import { LazyCards } from '../canvas/card-registry'
 import { CardShellSkeleton } from '../canvas/CardShellSkeleton'
 import { CardLodPreview } from '../canvas/CardLodPreview'
@@ -10,27 +10,27 @@ import { CanvasMinimap } from '../canvas/CanvasMinimap'
 import { useViewportCulling } from '../canvas/use-canvas-culling'
 import { getLodLevel } from '../canvas/use-canvas-lod'
 import { useVaultStore } from '../../store/vault-store'
-import { layoutProjectCanvas } from './project-canvas-layout'
+import { layoutWorkbench } from './workbench-layout'
 import { saveCanvas, serializeCanvas } from '../canvas/canvas-io'
 import { useProjectActivity } from '../../hooks/useProjectActivity'
 import { useSessionThread } from '../../hooks/useSessionThread'
-import { useEditorStore } from '../../store/editor-store'
 import { useTabStore } from '../../store/tab-store'
+import { useWorkbenchActionStore } from '../../store/workbench-actions-store'
 import { SessionThreadPanel } from './SessionThreadPanel'
-import { colors, typography } from '../../design/tokens'
+import { colors, getArtifactColor, typography } from '../../design/tokens'
 import type { CanvasFile, CanvasNode } from '@shared/canvas-types'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
 import {
   buildPatternArtifactDocument,
   buildSessionArtifactDocument,
   buildTensionArtifactDocument
-} from './project-canvas-artifacts'
+} from './workbench-artifacts'
 import {
   createAndOpenSystemArtifact,
   openArtifactInEditor
 } from '../../system-artifacts/system-artifact-runtime'
 
-const PROJECT_CANVAS_FILENAME = '.thought-engine-project-canvas.json'
+const WORKBENCH_FILENAME = '.thought-engine-workbench.json'
 const PROJECT_ROOT_MARKERS = ['.git', 'package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod']
 const MAX_WALK_UP = 5
 
@@ -49,8 +49,65 @@ async function detectProjectRoot(startPath: string): Promise<string> {
   return startPath
 }
 
-function getCanvasPath(projectPath: string): string {
-  return projectPath + '/' + PROJECT_CANVAS_FILENAME
+function getWorkbenchPath(projectPath: string): string {
+  return projectPath + '/' + WORKBENCH_FILENAME
+}
+
+function withAlpha(color: string, alphaSuffix: string, fallback: string): string {
+  return color.startsWith('#') ? `${color}${alphaSuffix}` : fallback
+}
+
+function ToolbarDivider() {
+  return <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
+}
+
+function ToolbarStatusPill({ label, color }: { readonly label: string; readonly color: string }) {
+  return (
+    <span
+      className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.08em]"
+      style={{
+        color,
+        backgroundColor: withAlpha(color, '14', 'rgba(255, 255, 255, 0.05)'),
+        border: `1px solid ${withAlpha(color, '24', 'rgba(255, 255, 255, 0.08)')}`
+      }}
+    >
+      {label}
+    </span>
+  )
+}
+
+function ToolbarButton({
+  label,
+  title,
+  onClick,
+  disabled = false,
+  tone = colors.text.secondary
+}: {
+  readonly label: string
+  readonly title: string
+  readonly onClick: () => void | Promise<void>
+  readonly disabled?: boolean
+  readonly tone?: string
+}) {
+  return (
+    <button
+      onClick={() => void onClick()}
+      disabled={disabled}
+      className="rounded-md px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed"
+      style={{
+        color: disabled ? colors.text.muted : tone,
+        backgroundColor: disabled
+          ? 'transparent'
+          : withAlpha(tone, '14', 'rgba(255, 255, 255, 0.05)'),
+        border: `1px solid ${
+          disabled ? colors.border.default : withAlpha(tone, '24', 'rgba(255, 255, 255, 0.08)')
+        }`
+      }}
+      title={title}
+    >
+      {label}
+    </button>
+  )
 }
 
 function centerOnNode(
@@ -101,14 +158,16 @@ function fitViewportToNodes(
 }
 
 /**
- * ProjectCanvasPanel uses a "store swap" pattern:
- * When activated, save vault canvas state, load project canvas into canvas-store.
- * When deactivated, save project canvas and restore vault canvas.
+ * WorkbenchPanel uses a "store swap" pattern:
+ * When activated, save vault canvas state, load the workbench into canvas-store.
+ * When deactivated, save the workbench and restore the vault canvas.
  * The panel stays mounted (keep-alive) so terminal sessions survive tab switches.
  */
-export function ProjectCanvasPanel() {
+export function WorkbenchPanel() {
   const vaultPath = useVaultStore((s) => s.vaultPath)
-  const setCachedData = useProjectCanvasStore((s) => s.setCachedData)
+  const setCachedData = useWorkbenchStore((s) => s.setCachedData)
+  const setWorkbenchActions = useWorkbenchActionStore((s) => s.setRegistration)
+  const resetWorkbenchActions = useWorkbenchActionStore((s) => s.reset)
 
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
@@ -126,7 +185,7 @@ export function ProjectCanvasPanel() {
     readonly projectPath: string
   } | null>(null)
   const activeTabId = useTabStore((s) => s.activeTabId)
-  const isActiveTab = activeTabId === 'project-canvas'
+  const isActiveTab = activeTabId === 'workbench'
   const projectPath =
     vaultPath == null
       ? null
@@ -196,7 +255,7 @@ export function ProjectCanvasPanel() {
     return () => observer.disconnect()
   }, [])
 
-  // --- Store swap: save vault canvas, load project canvas ---
+  // --- Store swap: save vault canvas, load workbench ---
   useEffect(() => {
     if (!projectPath) return
     isMounted.current = true
@@ -209,9 +268,9 @@ export function ProjectCanvasPanel() {
       data: store.toCanvasFile()
     }
 
-    async function loadProjectCanvas() {
+    async function loadWorkbench() {
       setIsLoading(true)
-      const canvasPath = getCanvasPath(projectPath!)
+      const canvasPath = getWorkbenchPath(projectPath!)
 
       let canvasData: CanvasFile
       try {
@@ -221,7 +280,7 @@ export function ProjectCanvasPanel() {
         if (!isMounted.current) return
 
         // Generate layout from session events
-        const { nodes } = layoutProjectCanvas(sessionEvents, projectPath!, containerSize)
+        const { nodes } = layoutWorkbench(sessionEvents, projectPath!, containerSize)
 
         // Center on the first terminal card
         const terminalNode = nodes.find((n) => n.type === 'terminal')
@@ -232,7 +291,7 @@ export function ProjectCanvasPanel() {
         canvasData = { nodes, edges: [], viewport: vp }
         setCachedData(canvasData)
       } catch (err) {
-        console.error('[ProjectCanvasPanel] Failed to load project canvas:', err)
+        console.error('[WorkbenchPanel] Failed to load workbench:', err)
         canvasData = createCanvasFile()
       }
 
@@ -244,17 +303,17 @@ export function ProjectCanvasPanel() {
       window.api.project.watchStart(projectPath!).catch(() => {})
     }
 
-    loadProjectCanvas()
+    loadWorkbench()
 
     return () => {
       isMounted.current = false
       window.api.project.watchStop().catch(() => {})
 
-      // Save current project canvas state
+      // Save current workbench state
       const currentData = useCanvasStore.getState().toCanvasFile()
       setCachedData(currentData)
       if (projectPath) {
-        const canvasPath = getCanvasPath(projectPath)
+        const canvasPath = getWorkbenchPath(projectPath)
         saveCanvas(canvasPath, currentData).catch(() => {})
       }
 
@@ -271,7 +330,7 @@ export function ProjectCanvasPanel() {
   // Auto-save debounce
   useEffect(() => {
     if (!isDirty || !projectPath) return
-    const canvasPath = getCanvasPath(projectPath)
+    const canvasPath = getWorkbenchPath(projectPath)
     const timer = setTimeout(async () => {
       const data = toCanvasFile()
       setCachedData(data)
@@ -306,8 +365,7 @@ export function ProjectCanvasPanel() {
       const filePath = hit.metadata?.filePath as string | undefined
       if (!filePath) return
 
-      useEditorStore.getState().setActiveNote(hit.id, filePath)
-      useTabStore.getState().activateTab('editor')
+      openArtifactInEditor(filePath)
     },
     []
   )
@@ -317,7 +375,7 @@ export function ProjectCanvasPanel() {
     setIsLoading(true)
     try {
       const sessionEvents = await window.api.project.parseSessions(projectPath)
-      const { nodes } = layoutProjectCanvas(sessionEvents, projectPath, containerSize)
+      const { nodes } = layoutWorkbench(sessionEvents, projectPath, containerSize)
 
       const terminalNode = nodes.find((n) => n.type === 'terminal')
       const vp = terminalNode
@@ -326,7 +384,7 @@ export function ProjectCanvasPanel() {
 
       const canvasData: CanvasFile = { nodes, edges: [], viewport: vp }
       setCachedData(canvasData)
-      useCanvasStore.getState().loadCanvas(getCanvasPath(projectPath), canvasData)
+      useCanvasStore.getState().loadCanvas(getWorkbenchPath(projectPath), canvasData)
     } catch {
       // Parse failed
     }
@@ -442,11 +500,46 @@ export function ProjectCanvasPanel() {
     setThreadOpen(false)
   }, [projectName, projectPath, threadState, vaultPath])
 
+  const handleToggleThread = useCallback(() => {
+    setThreadOpen((prev) => !prev)
+  }, [])
+
+  useEffect(() => {
+    setWorkbenchActions({
+      refresh: handleRefresh,
+      fitAll: handleFitAll,
+      addTerminal: handleAddTerminal,
+      createTension: handleCreateTension,
+      savePattern: handlePromoteSelection,
+      endSession: handleEndSession,
+      toggleThread: handleToggleThread,
+      selectedNodeCount: selectedNodes.length,
+      milestoneCount: threadState.milestones.length,
+      isLive: threadState.isLive,
+      threadOpen
+    })
+  }, [
+    handleAddTerminal,
+    handleCreateTension,
+    handleEndSession,
+    handleFitAll,
+    handlePromoteSelection,
+    handleRefresh,
+    handleToggleThread,
+    selectedNodes.length,
+    setWorkbenchActions,
+    threadOpen,
+    threadState.isLive,
+    threadState.milestones.length
+  ])
+
+  useEffect(() => resetWorkbenchActions, [resetWorkbenchActions])
+
   return (
     <div ref={containerRef} className="h-full relative">
       {/* Toolbar */}
       <div
-        className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded"
+        className="absolute top-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 rounded-xl px-3 py-2"
         style={{
           backgroundColor: colors.bg.elevated,
           border: `1px solid ${colors.border.default}`
@@ -458,78 +551,68 @@ export function ProjectCanvasPanel() {
         >
           {projectName}/
         </span>
-        <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
-        <button
+        <ToolbarStatusPill
+          label={threadState.isLive ? 'live session' : 'idle'}
+          color={threadState.isLive ? '#4ade80' : colors.text.muted}
+        />
+        {selectedNodes.length > 0 && (
+          <ToolbarStatusPill
+            label={`${selectedNodes.length} selected`}
+            color={getArtifactColor('pattern')}
+          />
+        )}
+        {threadState.milestones.length > 0 && (
+          <ToolbarStatusPill
+            label={`${threadState.milestones.length} milestones`}
+            color={getArtifactColor('session')}
+          />
+        )}
+        <ToolbarDivider />
+        <ToolbarButton
+          label={isLoading ? 'Refreshing…' : 'Refresh'}
           onClick={handleRefresh}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
-          style={{ color: colors.text.secondary }}
-          title="Re-parse sessions and re-layout"
-        >
-          {isLoading ? 'Loading...' : 'Refresh'}
-        </button>
-        <button
+          title="Re-parse sessions and rebuild the workbench layout"
+          disabled={isLoading}
+        />
+        <ToolbarButton
+          label="Fit All"
           onClick={handleFitAll}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
-          style={{ color: colors.text.secondary }}
-          title="Fit all cards in view"
-        >
-          Fit All
-        </button>
-        <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
-        <button
+          title="Fit every workbench card into view"
+        />
+        <ToolbarDivider />
+        <ToolbarButton
+          label="Add Terminal"
           onClick={handleAddTerminal}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
-          style={{ color: colors.accent.default }}
           title="Add a new terminal card"
-        >
-          + Terminal
-        </button>
-        <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
-        <button
+          tone={colors.accent.default}
+        />
+        <ToolbarButton
+          label="Capture Tension"
           onClick={handleCreateTension}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
-          style={{ color: colors.text.secondary }}
           title="Capture the current investigation as a tension artifact"
-        >
-          + Tension
-        </button>
-        <button
+          tone={getArtifactColor('tension')}
+        />
+        <ToolbarButton
+          label="Save Pattern"
           onClick={handlePromoteSelection}
           disabled={selectedNodes.length === 0}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80 disabled:opacity-40"
-          style={{ color: selectedNodes.length > 0 ? colors.text.secondary : colors.text.muted }}
           title="Turn the selected cards into a reusable pattern"
-        >
-          Save Pattern
-        </button>
-        <button
+          tone={getArtifactColor('pattern')}
+        />
+        <ToolbarButton
+          label="End Session"
           onClick={handleEndSession}
           disabled={threadState.milestones.length === 0}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80 disabled:opacity-40"
-          style={{
-            color: threadState.milestones.length > 0 ? colors.text.secondary : colors.text.muted
-          }}
           title="Capture the current thread as a completed session artifact"
-        >
-          End Session
-        </button>
-        <div className="w-px h-4" style={{ backgroundColor: colors.border.default }} />
-        <button
-          onClick={() => setThreadOpen((prev) => !prev)}
-          className="text-xs px-2 py-0.5 rounded hover:opacity-80"
-          style={{
-            color: threadOpen ? colors.accent.default : colors.text.secondary
-          }}
-          title={threadOpen ? 'Hide live thread' : 'Show live thread'}
-        >
-          {'⚡'}
-          {threadState.isLive && (
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full ml-1 animate-pulse"
-              style={{ backgroundColor: '#4ade80' }}
-            />
-          )}
-        </button>
+          tone={getArtifactColor('session')}
+        />
+        <ToolbarDivider />
+        <ToolbarButton
+          label={threadOpen ? 'Hide Thread' : 'Show Thread'}
+          onClick={handleToggleThread}
+          title={threadOpen ? 'Hide the live thread' : 'Show the live thread'}
+          tone={threadOpen ? colors.accent.default : colors.text.secondary}
+        />
       </div>
 
       <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>

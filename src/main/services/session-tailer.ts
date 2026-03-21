@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto'
 import { toDirKey, extractToolEvents } from './session-utils'
 import { groupEventsIntoMilestones } from './session-milestone-grouper'
 import { typedSend } from '../typed-ipc'
-import type { SessionMilestone } from '@shared/project-canvas-types'
+import type { SessionMilestone } from '@shared/workbench-types'
 
 const SESSION_CHECK_INTERVAL_MS = 5000
 

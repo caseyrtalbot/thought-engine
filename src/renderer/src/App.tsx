@@ -17,6 +17,7 @@ import { useCanvasFilePaths, useCanvasConnectionCounts } from './hooks/useCanvas
 import { useVaultStore } from './store/vault-store'
 import { useEditorStore, flushPendingSave } from './store/editor-store'
 import { useViewStore } from './store/view-store'
+import { useWorkbenchActionStore } from './store/workbench-actions-store'
 import { colors } from './design/tokens'
 import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
@@ -39,9 +40,9 @@ const LazyClaudeConfigPanel = lazy(() =>
     default: module.ClaudeConfigPanel
   }))
 )
-const LazyProjectCanvasPanel = lazy(() =>
-  import('./panels/project-canvas/ProjectCanvasPanel').then((module) => ({
-    default: module.ProjectCanvasPanel
+const LazyWorkbenchPanel = lazy(() =>
+  import('./panels/workbench/WorkbenchPanel').then((module) => ({
+    default: module.WorkbenchPanel
   }))
 )
 const LazyGraphPanel = lazy(() =>
@@ -140,10 +141,10 @@ function ContentArea() {
           </Suspense>
         </KeepAliveSlot>
       )}
-      {openTypes.has('project-canvas') && mountedTypes.has('project-canvas') && (
-        <KeepAliveSlot active={activeType === 'project-canvas'}>
-          <Suspense fallback={<PanelLoadingFallback label="Loading project canvas..." />}>
-            <LazyProjectCanvasPanel />
+      {openTypes.has('workbench') && mountedTypes.has('workbench') && (
+        <KeepAliveSlot active={activeType === 'workbench'}>
+          <Suspense fallback={<PanelLoadingFallback label="Loading workbench..." />}>
+            <LazyWorkbenchPanel />
           </Suspense>
         </KeepAliveSlot>
       )}
@@ -289,7 +290,7 @@ function ConnectedSidebar({
       // When on a canvas view, single-clicks should not navigate away.
       // The user must double-click to open in editor (double-click also fires this).
       const view = useViewStore.getState().contentView
-      if (view === 'canvas' || view === 'project-canvas') return
+      if (view === 'canvas' || view === 'workbench') return
 
       const file = files.find((f) => f.path === path)
       openEditorPath(path, file?.title)
@@ -478,31 +479,90 @@ function ConnectedSidebar({
 }
 
 const BUILT_IN_COMMANDS: CommandItem[] = [
-  { id: 'cmd:new-note', label: 'New Note', category: 'command', shortcut: '\u2318N' },
-  { id: 'cmd:toggle-view', label: 'Cycle View', category: 'command', shortcut: '\u2318G' },
-  { id: 'cmd:toggle-sidebar', label: 'Toggle Sidebar', category: 'command', shortcut: '\u2318B' },
-  { id: 'cmd:toggle-terminal', label: 'Toggle Terminal', category: 'command', shortcut: '\u2318`' },
+  {
+    id: 'cmd:new-note',
+    label: 'New Note',
+    category: 'command',
+    shortcut: '\u2318N',
+    description: 'Create a blank markdown note in the current vault.',
+    keywords: ['create', 'markdown', 'file']
+  },
+  {
+    id: 'cmd:toggle-view',
+    label: 'Cycle Main View',
+    category: 'command',
+    shortcut: '\u2318G',
+    description: 'Rotate between the editor, vault canvas, and skills tabs.'
+  },
+  {
+    id: 'cmd:toggle-sidebar',
+    label: 'Toggle Sidebar',
+    category: 'command',
+    shortcut: '\u2318B',
+    description: 'Unavailable in this build.',
+    disabled: true
+  },
+  {
+    id: 'cmd:toggle-terminal',
+    label: 'Toggle Terminal',
+    category: 'command',
+    shortcut: '\u2318`',
+    description: 'Show or hide the integrated terminal split.'
+  },
   {
     id: 'cmd:toggle-mode',
-    label: 'Toggle Source/Rich Mode',
+    label: 'Toggle Source and Rich Mode',
     category: 'command',
-    shortcut: '\u2318/'
+    shortcut: '\u2318/',
+    description: 'Switch the editor between markdown source and rich text.'
   },
-  { id: 'cmd:open-settings', label: 'Open Settings', category: 'command' },
-  { id: 'cmd:reindex-vault', label: 'Re-index Vault', category: 'command' },
-  { id: 'cmd:activate-claude', label: 'Activate Claude', category: 'command' },
-  { id: 'cmd:new-canvas', label: 'New Canvas', category: 'command' },
+  {
+    id: 'cmd:open-settings',
+    label: 'Open Settings',
+    category: 'command',
+    description: 'Open application settings and vault controls.'
+  },
+  {
+    id: 'cmd:reindex-vault',
+    label: 'Re-index Vault',
+    category: 'command',
+    description: 'Unavailable in this build.',
+    disabled: true
+  },
+  {
+    id: 'cmd:activate-claude',
+    label: 'Activate Claude',
+    category: 'command',
+    description: 'Unavailable in this build.',
+    disabled: true
+  },
+  {
+    id: 'cmd:new-canvas',
+    label: 'New Canvas',
+    category: 'command',
+    description: 'Create a new freeform vault canvas document.'
+  },
   {
     id: 'cmd:toggle-claude-config',
     label: 'Toggle Claude Config Canvas',
     category: 'command',
-    shortcut: '\u21E7\u2318C'
+    shortcut: '\u21E7\u2318C',
+    description: 'Open or hide the Claude configuration canvas.'
   },
   {
-    id: 'cmd:toggle-project-canvas',
-    label: 'Toggle Project Canvas',
+    id: 'cmd:toggle-workbench',
+    label: 'Toggle Workbench',
     category: 'command',
-    shortcut: '\u21E7\u2318P'
+    shortcut: '\u21E7\u2318P',
+    description: 'Open or hide the project workbench.',
+    keywords: ['project canvas', 'timeline', 'sessions', 'artifacts']
+  },
+  {
+    id: 'cmd:toggle-graph',
+    label: 'Toggle Graph',
+    category: 'command',
+    shortcut: '\u21E7\u2318G',
+    description: 'Open or hide the graph panel.'
   }
 ]
 
@@ -511,6 +571,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const files = useVaultStore((s) => s.files)
+  const systemFiles = useVaultStore((s) => s.systemFiles)
+  const artifacts = useVaultStore((s) => s.artifacts)
+  const fileToId = useVaultStore((s) => s.fileToId)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const contentView = useViewStore((s) => s.contentView)
   const setContentView = useViewStore((s) => s.setContentView)
@@ -519,6 +582,17 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const openTab = useTabStore((s) => s.openTab)
   const closeTab = useTabStore((s) => s.closeTab)
   const activeTabId = useTabStore((s) => s.activeTabId)
+  const workbenchRefresh = useWorkbenchActionStore((s) => s.refresh)
+  const workbenchFitAll = useWorkbenchActionStore((s) => s.fitAll)
+  const workbenchAddTerminal = useWorkbenchActionStore((s) => s.addTerminal)
+  const workbenchCreateTension = useWorkbenchActionStore((s) => s.createTension)
+  const workbenchSavePattern = useWorkbenchActionStore((s) => s.savePattern)
+  const workbenchEndSession = useWorkbenchActionStore((s) => s.endSession)
+  const workbenchToggleThread = useWorkbenchActionStore((s) => s.toggleThread)
+  const selectedNodeCount = useWorkbenchActionStore((s) => s.selectedNodeCount)
+  const milestoneCount = useWorkbenchActionStore((s) => s.milestoneCount)
+  const workbenchThreadOpen = useWorkbenchActionStore((s) => s.threadOpen)
+  const workbenchIsLive = useWorkbenchActionStore((s) => s.isLive)
 
   const toggleTabView = useCallback(
     (type: TabType) => {
@@ -556,6 +630,26 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     if (path) storeCloseTab(path)
   }, [])
 
+  const handleNewNote = useCallback(async () => {
+    if (!vaultPath) return
+
+    const existingPaths = new Set(files.map((file) => file.path))
+    let filename = 'Untitled.md'
+    let counter = 1
+    while (existingPaths.has(`${vaultPath}/${filename}`)) {
+      filename = `Untitled ${counter}.md`
+      counter++
+    }
+
+    const path = `${vaultPath}/${filename}`
+    const title = filename.replace('.md', '')
+    const now = new Date().toISOString().slice(0, 10)
+    const content = `---\nid: ${title}\ntitle: ${title}\ncreated: ${now}\ntags: []\n---\n\n`
+
+    await window.api.fs.writeFile(path, content)
+    openArtifactInEditor(path, title)
+  }, [files, vaultPath])
+
   const toggleTerminal = useCallback(() => {
     setShowTerminal((prev) => !prev)
   }, [])
@@ -575,7 +669,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   })
 
   // Cmd+Shift+C: toggle Claude Config Canvas tab
-  // Cmd+Shift+P: toggle Project Canvas tab
+  // Cmd+Shift+P: toggle Workbench tab
   // Cmd+Shift+G: toggle Graph tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -585,7 +679,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault()
-        toggleTabView('project-canvas')
+        toggleTabView('workbench')
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault()
@@ -596,27 +690,150 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     return () => window.removeEventListener('keydown', handler)
   }, [toggleTabView])
 
+  const artifactById = useMemo(
+    () => new Map(artifacts.map((artifact) => [artifact.id, artifact])),
+    [artifacts]
+  )
+  const paletteFiles = useMemo(() => [...files, ...systemFiles], [files, systemFiles])
+
   const paletteItems = useMemo<CommandItem[]>(() => {
-    const noteItems: CommandItem[] = files.map((f) => ({
-      id: `note:${f.path}`,
-      label: f.title,
-      category: 'note',
-      folderPath: f.path.split('/').slice(0, -1).join('/')
-    }))
-    return [...noteItems, ...BUILT_IN_COMMANDS]
-  }, [files])
+    const noteItems: CommandItem[] = paletteFiles.map((file) => {
+      const artifactId = fileToId[file.path]
+      const artifact = artifactId ? artifactById.get(artifactId) : undefined
+      const relativePath =
+        vaultPath && file.path.startsWith(`${vaultPath}/`)
+          ? file.path.slice(vaultPath.length + 1)
+          : file.path
+      const directory = relativePath.includes('/')
+        ? relativePath.split('/').slice(0, -1).join('/')
+        : undefined
+      const status =
+        artifact && typeof artifact.frontmatter.status === 'string'
+          ? artifact.frontmatter.status
+          : undefined
+
+      return {
+        id: `note:${file.path}`,
+        label: file.title,
+        category: 'note',
+        description: relativePath,
+        folderPath: directory,
+        artifactType: artifact?.type,
+        keywords: [file.filename, relativePath, artifact?.type, status].filter(
+          (value): value is string => Boolean(value)
+        )
+      }
+    })
+
+    const workbenchCommands: CommandItem[] = [
+      {
+        id: 'cmd:workbench-refresh',
+        label: 'Refresh Workbench',
+        category: 'command',
+        description: workbenchRefresh
+          ? 'Re-parse Claude sessions and rebuild the workbench layout.'
+          : 'Open the workbench tab to enable refresh.',
+        keywords: ['project canvas', 'rebuild', 'sessions'],
+        disabled: workbenchRefresh == null
+      },
+      {
+        id: 'cmd:workbench-fit-all',
+        label: 'Fit Workbench to View',
+        category: 'command',
+        description: workbenchFitAll
+          ? 'Fit every workbench card into the current viewport.'
+          : 'Open the workbench tab to enable viewport actions.',
+        keywords: ['project canvas', 'zoom', 'viewport'],
+        disabled: workbenchFitAll == null
+      },
+      {
+        id: 'cmd:workbench-add-terminal',
+        label: 'Add Workbench Terminal',
+        category: 'command',
+        description: workbenchAddTerminal
+          ? 'Add another terminal card to the active workbench.'
+          : 'Open the workbench tab to add terminal cards.',
+        keywords: ['terminal', 'project canvas', 'shell'],
+        disabled: workbenchAddTerminal == null
+      },
+      {
+        id: 'cmd:workbench-capture-tension',
+        label: 'Capture Workbench Tension',
+        category: 'command',
+        description: workbenchCreateTension
+          ? 'Capture the current investigation as a tension artifact.'
+          : 'Open the workbench tab to capture tensions.',
+        keywords: ['tension', 'artifact', 'investigation', 'project canvas'],
+        disabled: workbenchCreateTension == null
+      },
+      {
+        id: 'cmd:workbench-save-pattern',
+        label: 'Save Selection as Pattern',
+        category: 'command',
+        description:
+          workbenchSavePattern && selectedNodeCount > 0
+            ? `Promote ${selectedNodeCount} selected workbench card${selectedNodeCount === 1 ? '' : 's'} into a reusable pattern artifact.`
+            : 'Select workbench cards to enable pattern capture.',
+        keywords: ['pattern', 'artifact', 'selection', 'project canvas'],
+        disabled: workbenchSavePattern == null || selectedNodeCount === 0
+      },
+      {
+        id: 'cmd:workbench-end-session',
+        label: 'End Workbench Session',
+        category: 'command',
+        description:
+          workbenchEndSession && milestoneCount > 0
+            ? `Capture the current workbench thread with ${milestoneCount} milestone${milestoneCount === 1 ? '' : 's'}.`
+            : 'Start or reopen a live workbench thread to end a session.',
+        keywords: ['session', 'artifact', 'project canvas', 'thread'],
+        disabled: workbenchEndSession == null || milestoneCount === 0
+      },
+      {
+        id: 'cmd:workbench-toggle-thread',
+        label: workbenchThreadOpen ? 'Hide Workbench Thread' : 'Show Workbench Thread',
+        category: 'command',
+        description: workbenchToggleThread
+          ? workbenchIsLive
+            ? 'Toggle the live workbench thread while Claude activity is streaming.'
+            : 'Toggle the workbench thread history panel.'
+          : 'Open the workbench tab to inspect the thread.',
+        keywords: ['thread', 'live', 'project canvas', 'timeline'],
+        disabled: workbenchToggleThread == null
+      }
+    ]
+
+    return [...BUILT_IN_COMMANDS, ...workbenchCommands, ...noteItems]
+  }, [
+    artifactById,
+    fileToId,
+    milestoneCount,
+    paletteFiles,
+    selectedNodeCount,
+    vaultPath,
+    workbenchAddTerminal,
+    workbenchCreateTension,
+    workbenchEndSession,
+    workbenchFitAll,
+    workbenchIsLive,
+    workbenchRefresh,
+    workbenchSavePattern,
+    workbenchThreadOpen,
+    workbenchToggleThread
+  ])
 
   const handlePaletteSelect = useCallback(
     async (item: CommandItem) => {
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
-        const { openTab: storeOpenTab } = useEditorStore.getState()
-        storeOpenTab(path)
-        setContentView('editor')
+        const file = paletteFiles.find((entry) => entry.path === path)
+        openArtifactInEditor(path, file?.title, fileToId[path] ?? null)
         return
       }
 
       switch (item.id) {
+        case 'cmd:new-note':
+          await handleNewNote()
+          break
         case 'cmd:toggle-view':
           toggleView()
           break
@@ -630,8 +847,8 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           setSettingsOpen(true)
           break
         case 'cmd:reindex-vault':
-          // TODO: trigger vault re-index
-          break
+        case 'cmd:activate-claude':
+          return
         case 'cmd:new-canvas':
           if (vaultPath) {
             const filename = defaultCanvasFilename([])
@@ -645,19 +862,53 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:toggle-claude-config':
           toggleTabView('claude-config')
           break
-        case 'cmd:toggle-project-canvas':
-          toggleTabView('project-canvas')
+        case 'cmd:toggle-workbench':
+          toggleTabView('workbench')
+          break
+        case 'cmd:toggle-graph':
+          toggleTabView('graph')
+          break
+        case 'cmd:workbench-refresh':
+          if (workbenchRefresh) await workbenchRefresh()
+          break
+        case 'cmd:workbench-fit-all':
+          if (workbenchFitAll) await workbenchFitAll()
+          break
+        case 'cmd:workbench-add-terminal':
+          if (workbenchAddTerminal) await workbenchAddTerminal()
+          break
+        case 'cmd:workbench-capture-tension':
+          if (workbenchCreateTension) await workbenchCreateTension()
+          break
+        case 'cmd:workbench-save-pattern':
+          if (workbenchSavePattern) await workbenchSavePattern()
+          break
+        case 'cmd:workbench-end-session':
+          if (workbenchEndSession) await workbenchEndSession()
+          break
+        case 'cmd:workbench-toggle-thread':
+          if (workbenchToggleThread) await workbenchToggleThread()
           break
       }
     },
     [
+      fileToId,
+      paletteFiles,
       setContentView,
+      handleNewNote,
       toggleView,
       toggleSourceMode,
       toggleTerminal,
       setSettingsOpen,
       vaultPath,
-      toggleTabView
+      toggleTabView,
+      workbenchAddTerminal,
+      workbenchCreateTension,
+      workbenchEndSession,
+      workbenchFitAll,
+      workbenchRefresh,
+      workbenchSavePattern,
+      workbenchToggleThread
     ]
   )
 

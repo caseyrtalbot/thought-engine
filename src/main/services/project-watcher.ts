@@ -1,8 +1,8 @@
 import { watch, type FSWatcher } from 'chokidar'
 import { relative } from 'path'
-import type { ProjectFileChangedEvent } from '@shared/project-canvas-types'
+import type { WorkbenchFileChangedEvent } from '@shared/workbench-types'
 
-export type ProjectFileCallback = (event: ProjectFileChangedEvent) => void
+export type ProjectFileCallback = (event: WorkbenchFileChangedEvent) => void
 
 const IGNORE_PATTERNS = [
   /node_modules/,

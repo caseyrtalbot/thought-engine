@@ -1,4 +1,4 @@
-export interface ProjectSessionEvent {
+export interface WorkbenchSessionEvent {
   readonly type: 'file-read' | 'file-write' | 'file-edit' | 'bash-command' | 'user-prompt'
   readonly timestamp: number
   readonly sessionId: string
@@ -6,7 +6,7 @@ export interface ProjectSessionEvent {
   readonly detail?: string
 }
 
-export interface ProjectFileChangedEvent {
+export interface WorkbenchFileChangedEvent {
   readonly path: string
   readonly event: 'add' | 'change' | 'unlink'
   readonly relativePath: string
