@@ -69,24 +69,40 @@ export function createPhysicsEngine(): PhysicsEngine {
     nodes: ReadonlyArray<SimNode>,
     edges: ReadonlyArray<{ source: number; target: number; kind: RelationshipKind }>
   ): void {
-    const positions = initCircleLayout(nodes.length)
+    // Preserve existing positions for nodes that already have computed layout.
+    // This prevents the "spasm" when the vault re-parses and produces a new
+    // graph reference with identical topology (e.g., after an editor flush).
+    const existingPositions = new Map<string, { x: number; y: number }>()
+    for (const node of d3Nodes) {
+      existingPositions.set(node.id, { x: node.x, y: node.y })
+    }
 
-    d3Nodes = nodes.map((n, i) => ({
-      index: i,
-      x: positions[i].x,
-      y: positions[i].y,
-      vx: 0,
-      vy: 0,
-      fx: null,
-      fy: null,
-      id: n.id
-    }))
+    const fallbackPositions = initCircleLayout(nodes.length)
+
+    d3Nodes = nodes.map((n, i) => {
+      const existing = existingPositions.get(n.id)
+      return {
+        index: i,
+        x: existing?.x ?? fallbackPositions[i].x,
+        y: existing?.y ?? fallbackPositions[i].y,
+        vx: 0,
+        vy: 0,
+        fx: null,
+        fy: null,
+        id: n.id
+      }
+    })
 
     const links: D3Link[] = edges.map((e) => ({
       source: e.source,
       target: e.target,
       kind: e.kind
     }))
+
+    // If most nodes had existing positions, start with low alpha (gentle settle)
+    // rather than full alpha (violent rearrangement)
+    const preservedCount = d3Nodes.filter((n) => existingPositions.has(n.id)).length
+    const initialAlpha = preservedCount > nodes.length * 0.5 ? 0.05 : 1.0
 
     simulation = forceSimulation<D3Node>(d3Nodes)
       .force(
@@ -105,6 +121,7 @@ export function createPhysicsEngine(): PhysicsEngine {
       .velocityDecay(DEFAULT_FORCE_PARAMS.velocityDecay)
       .alphaDecay(DEFAULT_FORCE_PARAMS.alphaDecay)
       .alphaMin(DEFAULT_FORCE_PARAMS.alphaMin)
+      .alpha(initialAlpha)
       .stop()
   }
 

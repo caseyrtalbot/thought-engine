@@ -607,11 +607,8 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const workbenchThreadOpen = useWorkbenchActionStore((s) => s.threadOpen)
   const workbenchIsLive = useWorkbenchActionStore((s) => s.isLive)
 
-  // Canvas-style views use floating chrome instead of the SplitPane panel layout
-  const isCanvasActive =
-    activeTabId === 'canvas' || activeTabId === 'claude-config' || activeTabId === 'workbench'
-  const showSidebarPanel = showSidebar && !isCanvasActive
-  const showFloatingSidebar = showSidebar && isCanvasActive
+  // All views use floating chrome for a seamless infinite canvas aesthetic
+  const showFloatingSidebar = showSidebar
 
   const toggleTabView = useCallback(
     (type: TabType) => {
@@ -948,7 +945,13 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   return (
     <div
       className="h-screen w-screen relative flex"
-      style={{ backgroundColor: colors.bg.base, color: colors.text.primary }}
+      style={
+        {
+          backgroundColor: colors.bg.base,
+          color: colors.text.primary,
+          '--sidebar-inset': showSidebar ? '340px' : '64px'
+        } as React.CSSProperties
+      }
     >
       {/* Titlebar drag region — transparent overlay for macOS traffic lights */}
       <div
@@ -960,52 +963,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           } as React.CSSProperties
         }
       />
-      <ActivityBar floating={isCanvasActive} />
-      {/* When canvas is active, sidebar floats over the canvas instead of taking SplitPane space */}
-      {showSidebarPanel ? (
-        <SplitPane
-          left={
-            <div className="panel-card h-full pt-7">
-              <PanelErrorBoundary name="Sidebar">
-                <ConnectedSidebar
-                  onLoadVault={onLoadVault}
-                  onOpenSettings={() => setSettingsOpen(true)}
-                />
-              </PanelErrorBoundary>
-            </div>
-          }
-          right={
-            showTerminal ? (
-              <SplitPane
-                left={
-                  <PanelErrorBoundary name="Content">
-                    <ContentArea />
-                  </PanelErrorBoundary>
-                }
-                right={
-                  <div className="panel-card h-full">
-                    <PanelErrorBoundary name="Terminal">
-                      <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
-                        <LazyTerminalPanel />
-                      </Suspense>
-                    </PanelErrorBoundary>
-                  </div>
-                }
-                initialLeftWidth={480}
-                minLeftWidth={280}
-                minRightWidth={300}
-              />
-            ) : (
-              <PanelErrorBoundary name="Content">
-                <ContentArea />
-              </PanelErrorBoundary>
-            )
-          }
-          initialLeftWidth={220}
-          minLeftWidth={220}
-          minRightWidth={showTerminal ? 580 : 280}
-        />
-      ) : showTerminal ? (
+      <ActivityBar floating />
+      {/* Content fills full width; sidebar and terminal float as overlays */}
+      {showTerminal ? (
         <SplitPane
           left={
             <PanelErrorBoundary name="Content">
@@ -1032,7 +992,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           </PanelErrorBoundary>
         </div>
       )}
-      {/* Floating sidebar overlay when canvas is the active view */}
+      {/* Floating sidebar overlay */}
       {showFloatingSidebar && (
         <CanvasFloatingSidebar>
           <PanelErrorBoundary name="Sidebar">

@@ -248,7 +248,10 @@ export function GraphPanel() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- Mount once
 
-  // Send graph data to worker when it changes
+  // Send graph data to worker when it changes.
+  // The physics worker preserves existing node positions across re-inits,
+  // so spurious graph ref changes (e.g., vault re-parse after editor flush)
+  // won't cause visual spasms.
   useEffect(() => {
     if (!workerRef.current || graph.nodes.length === 0) return
 
