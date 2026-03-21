@@ -72,10 +72,11 @@ const api = {
     watchStart: (configPath: string) => typedInvoke('claude:watch-start', { configPath }),
     watchStop: () => typedInvoke('claude:watch-stop')
   },
-  project: {
-    watchStart: (projectPath: string) => typedInvoke('project:watch-start', { projectPath }),
-    watchStop: () => typedInvoke('project:watch-stop'),
-    parseSessions: (projectPath: string) => typedInvoke('project:parse-sessions', { projectPath }),
+  workbench: {
+    watchStart: (projectPath: string) => typedInvoke('workbench:watch-start', { projectPath }),
+    watchStop: () => typedInvoke('workbench:watch-stop'),
+    parseSessions: (projectPath: string) =>
+      typedInvoke('workbench:parse-sessions', { projectPath }),
     tailStart: (projectPath: string) => typedInvoke('session:tail-start', { projectPath }),
     tailStop: () => typedInvoke('session:tail-stop')
   },
@@ -105,7 +106,7 @@ const api = {
     claudeActivity: (callback: (data: ClaudeActivityEvent) => void) =>
       typedOn('claude:activity', callback),
     projectFileChanged: (callback: (data: WorkbenchFileChangedEvent) => void) =>
-      typedOn('project:file-changed', callback),
+      typedOn('workbench:file-changed', callback),
     sessionMilestone: (callback: (data: SessionMilestone) => void) =>
       typedOn('session:milestone', callback),
     sessionDetected: (callback: (data: SessionDetectedEvent) => void) =>

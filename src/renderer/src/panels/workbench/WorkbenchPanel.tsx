@@ -280,7 +280,7 @@ export function WorkbenchPanel() {
       let canvasData: CanvasFile
       try {
         // Parse session events to discover which files Claude touched
-        const sessionEvents = await window.api.project.parseSessions(projectPath!)
+        const sessionEvents = await window.api.workbench.parseSessions(projectPath!)
 
         if (!isMounted.current) return
 
@@ -305,14 +305,14 @@ export function WorkbenchPanel() {
       setIsLoading(false)
 
       // Start watching the project directory
-      window.api.project.watchStart(projectPath!).catch(() => {})
+      window.api.workbench.watchStart(projectPath!).catch(() => {})
     }
 
     loadWorkbench()
 
     return () => {
       isMounted.current = false
-      window.api.project.watchStop().catch(() => {})
+      window.api.workbench.watchStop().catch(() => {})
 
       // Save current workbench state
       const currentData = useCanvasStore.getState().toCanvasFile()
@@ -379,7 +379,7 @@ export function WorkbenchPanel() {
     if (!projectPath) return
     setIsLoading(true)
     try {
-      const sessionEvents = await window.api.project.parseSessions(projectPath)
+      const sessionEvents = await window.api.workbench.parseSessions(projectPath)
       const { nodes } = layoutWorkbench(sessionEvents, projectPath, containerSize)
 
       const terminalNode = nodes.find((n) => n.type === 'terminal')
@@ -471,7 +471,7 @@ export function WorkbenchPanel() {
   const handleEndSession = useCallback(async () => {
     if (!vaultPath || !projectPath) return
 
-    const allSessionEvents = await window.api.project.parseSessions(projectPath)
+    const allSessionEvents = await window.api.workbench.parseSessions(projectPath)
     const sessionBoundary = threadState.milestones.find(
       (milestone) => milestone.type === 'session-switched'
     )

@@ -70,9 +70,12 @@ export interface IpcChannels {
   'claude:watch-stop': { request: void; response: void }
 
   // --- Workbench ---
-  'project:watch-start': { request: { projectPath: string }; response: void }
-  'project:watch-stop': { request: void; response: void }
-  'project:parse-sessions': { request: { projectPath: string }; response: WorkbenchSessionEvent[] }
+  'workbench:watch-start': { request: { projectPath: string }; response: void }
+  'workbench:watch-stop': { request: void; response: void }
+  'workbench:parse-sessions': {
+    request: { projectPath: string }
+    response: WorkbenchSessionEvent[]
+  }
 
   // --- Session Tailing ---
   'session:tail-start': { request: { projectPath: string }; response: void }
@@ -111,7 +114,7 @@ export interface IpcEvents {
     events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
   }
   'claude:activity': ClaudeActivityEvent
-  'project:file-changed': WorkbenchFileChangedEvent
+  'workbench:file-changed': WorkbenchFileChangedEvent
   'session:milestone': SessionMilestone
   'session:detected': SessionDetectedEvent
 }

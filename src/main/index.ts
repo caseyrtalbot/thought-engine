@@ -7,7 +7,7 @@ import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
 import { registerClaudeWatcherIpc, getClaudeWatcher } from './ipc/claude-watcher'
-import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/project'
+import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/workbench'
 import { typedHandle } from './typed-ipc'
 
 const PROD_CSP = [

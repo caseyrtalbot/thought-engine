@@ -9,17 +9,17 @@ const parser = new ProjectSessionParser()
 let tailer: SessionTailer | null = null
 
 export function registerProjectIpc(mainWindow: BrowserWindow): void {
-  typedHandle('project:watch-start', async (args) => {
+  typedHandle('workbench:watch-start', async (args) => {
     await watcher.start(args.projectPath, (event) => {
-      typedSend(mainWindow, 'project:file-changed', event)
+      typedSend(mainWindow, 'workbench:file-changed', event)
     })
   })
 
-  typedHandle('project:watch-stop', async () => {
+  typedHandle('workbench:watch-stop', async () => {
     await watcher.stop()
   })
 
-  typedHandle('project:parse-sessions', async (args) => {
+  typedHandle('workbench:parse-sessions', async (args) => {
     return parser.parse(args.projectPath)
   })
 
