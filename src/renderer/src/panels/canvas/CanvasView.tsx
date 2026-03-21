@@ -42,6 +42,18 @@ export function CanvasView(): React.ReactElement {
   const cardContextMenu = useCanvasStore((s) => s.cardContextMenu)
   const setCardContextMenu = useCanvasStore((s) => s.setCardContextMenu)
   const commandStack = useRef(new CommandStack())
+  const rawFileCount = useVaultStore((s) => {
+    const total = s.artifacts.length
+    if (total === 0) return 0
+    return s.artifacts.filter(
+      (a) =>
+        a.connections.length === 0 &&
+        a.clusters_with.length === 0 &&
+        a.tensions_with.length === 0 &&
+        a.related.length === 0 &&
+        a.tags.length === 0
+    ).length
+  })
 
   // Track container size for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
@@ -352,6 +364,33 @@ export function CanvasView(): React.ReactElement {
       </CanvasSurface>
 
       <ConnectionDragOverlay />
+
+      {/* Hint: files need enrichment */}
+      {rawFileCount > 0 && (
+        <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-14">
+          <div
+            className="text-center px-4 py-2 rounded-full"
+            style={{
+              backgroundColor: 'rgba(20, 20, 20, 0.85)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid var(--color-border-default)'
+            }}
+          >
+            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} without metadata
+            </span>
+            <span
+              className="text-xs mx-2"
+              style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}
+            >
+              |
+            </span>
+            <span className="text-xs" style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>
+              /connect-vault
+            </span>
+          </div>
+        </div>
+      )}
 
       <CanvasMinimap containerWidth={containerSize.width} containerHeight={containerSize.height} />
 

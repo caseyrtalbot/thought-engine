@@ -75,28 +75,40 @@ When using a custom type, pick a short prefix (1-2 chars) that doesn't collide w
 ## Vault Commands
 
 When the user asks you to:
+- \`/connect-vault\` — Read all files, standardize frontmatter, discover connections/tensions across the entire vault. Use this first on a new or raw vault.
 - \`/connect <id1> <id2>\` — Add bidirectional connections between two artifacts
 - \`/interrogate <id>\` — Analyze an artifact: find missing edges, weak signals, logical gaps
 - \`/map\` — Generate a high-level overview of the vault's current ontology
 - \`/status\` — Report vault health: orphan nodes, signal distribution, type coverage
 - \`/promote <id>\` — Suggest signal promotion with justification
 
-## Concept Nodes
+## Inline Links
 
-Inline concept links use \`<node>\` HTML tags in the markdown body:
+Two syntaxes are supported for connecting ideas in body text:
 
+**Wikilinks** — direct edges between files:
+\`\`\`markdown
+Naval recommends [[The Book of Secrets]] for understanding meditation.
+\`\`\`
+Use \`[[File Title]]\` when referencing another file in the vault. The app auto-detects these as graph edges.
+
+**Concept nodes** — shared-concept co-occurrence edges:
 \`\`\`markdown
 Some text about <node>strategy</node> and how it relates to <node>feedback loops</node>.
 \`\`\`
+Use \`<node>term</node>\` for concepts that aren't file names. When two files share the same concept tag, the graph connects them through co-occurrence.
 
-- When two files both link the same concept (e.g., \`<node>strategy</node>\`), the graph shows them connected through that shared concept node.
-- No new file is created when a concept is linked. Connections emerge naturally from shared concepts across files.
-- Concept matching is case-insensitive: \`<node>Strategy</node>\` and \`<node>strategy</node>\` resolve to the same graph node.
-- **Do not use \`[[wikilink]]\` syntax.** Use \`<node>term</node>\` instead.
+Both create graph connections. Use wikilinks for file-to-file references, concept nodes for shared vocabulary.
 
 ## Custom Fields
 
 If you see additional frontmatter fields in existing vault files (e.g., \`source\`, \`frame\`, \`domain\`), propagate them in new files where appropriate. Match the vault's conventions.
+
+## First Session
+
+When you start a new session in this vault, quickly check the state of the files:
+- If most \`.md\` files lack frontmatter, proactively suggest: "I see [N] files without metadata. Want me to run /connect-vault to analyze and connect them?"
+- If files have frontmatter but few edges, suggest: "Your vault has [N] files but only [M] connections. Want me to discover more relationships?"
 
 ## What NOT to Do
 
