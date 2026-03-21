@@ -113,7 +113,10 @@ function ContentArea() {
 
   const handleNavigate = useCallback(
     (id: string) => {
-      setActiveNote(id, null)
+      // Resolve artifact ID to file path via the vault's fileToId reverse lookup
+      const fileToId = useVaultStore.getState().fileToId
+      const path = Object.entries(fileToId).find(([, v]) => v === id)?.[0] ?? null
+      setActiveNote(id, path)
     },
     [setActiveNote]
   )

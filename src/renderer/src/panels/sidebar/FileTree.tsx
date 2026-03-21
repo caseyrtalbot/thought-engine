@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
-import { colors } from '../../design/tokens'
+import { colors, typography } from '../../design/tokens'
 import { RenameInput } from './FileContextMenu'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
@@ -55,6 +55,183 @@ function splitName(name: string): { base: string; ext: string } {
   const dotIdx = name.lastIndexOf('.')
   if (dotIdx <= 0) return { base: name, ext: '' }
   return { base: name.slice(0, dotIdx), ext: name.slice(dotIdx) }
+}
+
+// --- File type icons ---
+
+type FileIconKind =
+  | 'markdown'
+  | 'typescript'
+  | 'javascript'
+  | 'json'
+  | 'yaml'
+  | 'css'
+  | 'html'
+  | 'image'
+  | 'canvas'
+  | 'config'
+  | 'generic'
+
+const ICON_COLORS: Record<FileIconKind, string> = {
+  markdown: '#94a3b8',
+  typescript: '#3178c6',
+  javascript: '#f7df1e',
+  json: '#e6a817',
+  yaml: '#cb4a32',
+  css: '#a855f7',
+  html: '#e34f26',
+  image: '#22d3ee',
+  canvas: '#34d399',
+  config: '#64748b',
+  generic: '#64748b'
+}
+
+function getFileIconKind(filename: string): FileIconKind {
+  const lower = filename.toLowerCase()
+  const ext = lower.slice(lower.lastIndexOf('.') + 1)
+
+  if (ext === 'md') return 'markdown'
+  if (ext === 'ts' || ext === 'tsx' || ext === 'mts') return 'typescript'
+  if (ext === 'js' || ext === 'jsx' || ext === 'mjs' || ext === 'cjs') return 'javascript'
+  if (ext === 'json') return 'json'
+  if (ext === 'yaml' || ext === 'yml') return 'yaml'
+  if (ext === 'css' || ext === 'scss' || ext === 'less') return 'css'
+  if (ext === 'html' || ext === 'htm') return 'html'
+  if (
+    ext === 'png' ||
+    ext === 'jpg' ||
+    ext === 'jpeg' ||
+    ext === 'svg' ||
+    ext === 'gif' ||
+    ext === 'webp' ||
+    ext === 'ico'
+  )
+    return 'image'
+  if (ext === 'canvas') return 'canvas'
+  if (lower.startsWith('.') || ext === 'toml' || ext === 'lock' || ext === 'env') return 'config'
+  return 'generic'
+}
+
+function FileIcon({ filename }: { readonly filename: string }) {
+  const kind = getFileIconKind(filename)
+  const color = ICON_COLORS[kind]
+
+  // All icons are 14x14 inline SVGs
+  const common = {
+    width: 14,
+    height: 14,
+    viewBox: '0 0 16 16',
+    fill: 'none',
+    xmlns: 'http://www.w3.org/2000/svg'
+  }
+  const stroke = {
+    stroke: color,
+    strokeWidth: '1.5',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const
+  }
+
+  switch (kind) {
+    case 'markdown':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M5 10V6l2 2.5L9 6v4" {...stroke} />
+          <path d="M11 8.5V10" {...stroke} />
+          <path d="M11 7V7.01" {...stroke} strokeWidth="2" />
+        </svg>
+      )
+    case 'typescript':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M5.5 6.5h3M7 6.5v4.5" {...stroke} />
+          <path
+            d="M10 6.5c1.2 0 1.5.7 1.5 1.2s-.3 1.3-1.5 1.3c1.2 0 1.5.7 1.5 1.3s-.3 1.2-1.5 1.2"
+            {...stroke}
+          />
+        </svg>
+      )
+    case 'javascript':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M7 6.5v3.5c0 .8-.5 1-1 1" {...stroke} />
+          <path
+            d="M10 6.5c1.2 0 1.5.7 1.5 1.2s-.3 1.3-1.5 1.3c1.2 0 1.5.7 1.5 1.3s-.3 1.2-1.5 1.2"
+            {...stroke}
+          />
+        </svg>
+      )
+    case 'json':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M6 5c-1.5 0-1.5 1.5-1.5 3s0 3 1.5 3" {...stroke} />
+          <path d="M10 5c1.5 0 1.5 1.5 1.5 3s0 3-1.5 3" {...stroke} />
+        </svg>
+      )
+    case 'yaml':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M5.5 5.5L8 8.5 10.5 5.5" {...stroke} />
+          <path d="M8 8.5V11.5" {...stroke} />
+        </svg>
+      )
+    case 'css':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M6 6l-1.5 2.5L6 11" {...stroke} />
+          <path d="M10 6l1.5 2.5L10 11" {...stroke} />
+        </svg>
+      )
+    case 'html':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <path d="M5.5 6l-2 2.5 2 2.5" {...stroke} />
+          <path d="M10.5 6l2 2.5-2 2.5" {...stroke} />
+          <path d="M9 5.5L7 11.5" {...stroke} />
+        </svg>
+      )
+    case 'image':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <circle cx="6" cy="5.5" r="1.5" {...stroke} />
+          <path d="M2.5 11l3-3.5 2 2 2-1.5L14 12" {...stroke} />
+        </svg>
+      )
+    case 'canvas':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <rect x="4" y="4" width="3" height="2.5" rx="0.5" {...stroke} />
+          <rect x="9" y="9" width="3" height="2.5" rx="0.5" {...stroke} />
+          <path d="M7 5.25L9 10.25" {...stroke} strokeDasharray="1.5 1.5" />
+        </svg>
+      )
+    case 'config':
+      return (
+        <svg {...common}>
+          <rect x="2" y="1.5" width="12" height="13" rx="1.5" {...stroke} />
+          <circle cx="8" cy="8" r="2" {...stroke} />
+          <path d="M8 4v2M8 10v2M4 8h2M10 8h2" {...stroke} />
+        </svg>
+      )
+    default:
+      return (
+        <svg {...common}>
+          <path
+            d="M4 1.5h5.5L13 5v8.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 13.5V3A1.5 1.5 0 0 1 4 1.5z"
+            {...stroke}
+          />
+          <path d="M9.5 1.5V5H13" {...stroke} />
+        </svg>
+      )
+  }
 }
 
 /** Inline SVG chevron pointing right, rotated via CSS when expanded */
@@ -168,8 +345,9 @@ function DirectoryRow({
         paddingRight: 8,
         marginBottom: 1,
         color: colors.text.primary,
+        fontFamily: typography.fontFamily.display,
         fontWeight: 400,
-        fontSize: 12,
+        fontSize: 13,
         textTransform: 'uppercase',
         letterSpacing: '0.04em'
       }}
@@ -233,7 +411,7 @@ function FileRow({
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
 }) {
-  const paddingLeft = 8 + node.depth * 16 + 20
+  const paddingLeft = 8 + node.depth * 16 + 4
   const { base, ext } = splitName(node.name)
 
   return (
@@ -265,8 +443,9 @@ function FileRow({
         marginBottom: 1,
         backgroundColor: isActive ? 'rgba(255, 255, 255, 0.10)' : undefined,
         borderLeft: isActive ? `2px solid ${colors.accent.default}` : '2px solid transparent',
+        fontFamily: typography.fontFamily.display,
         fontWeight: 400,
-        fontSize: 12
+        fontSize: 13
       }}
       onMouseEnter={(e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
@@ -275,6 +454,9 @@ function FileRow({
         if (!isActive) e.currentTarget.style.backgroundColor = ''
       }}
     >
+      <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: 0.8 }}>
+        <FileIcon filename={node.name} />
+      </span>
       {isRenaming ? (
         <RenameInput
           initialValue={node.name}
