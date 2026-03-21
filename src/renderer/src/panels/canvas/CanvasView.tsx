@@ -26,6 +26,7 @@ import { ImportPalette } from './ImportPalette'
 import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
+import { findOpenPosition } from './canvas-layout'
 
 export function CanvasView(): React.ReactElement {
   const nodes = useCanvasStore((s) => s.nodes)
@@ -73,6 +74,9 @@ export function CanvasView(): React.ReactElement {
     prevSizeRef.current = containerSize
     // Skip the initial mount (before we have real dimensions)
     if (prev.width === 1920 && prev.height === 1080) return
+    // Skip zero-size transitions (display:none, unmounting)
+    if (containerSize.width === 0 || containerSize.height === 0) return
+    if (prev.width === 0 || prev.height === 0) return
     const dw = containerSize.width - prev.width
     const dh = containerSize.height - prev.height
     if (dw === 0 && dh === 0) return
@@ -186,35 +190,38 @@ export function CanvasView(): React.ReactElement {
         return
       }
 
-      // Grid layout: arrange cards in rows to avoid overlap
+      // Grid layout with collision avoidance against existing cards
       const GAP = 24
       const COLS = Math.min(files.length, 3)
+
+      // Track nodes placed in this batch so they avoid each other
+      const placedInBatch: CanvasNode[] = []
+      const allExisting = [...nodes]
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const col = i % COLS
         const row = Math.floor(i / COLS)
         const size = getDefaultSize(file.type)
-        const x = canvasX + col * (size.width + GAP)
-        const y = canvasY + row * (size.height + GAP)
-        const pos = { x, y }
+        const rawX = canvasX + col * (size.width + GAP)
+        const rawY = canvasY + row * (size.height + GAP)
+        const pos = findOpenPosition({ x: rawX, y: rawY }, size, [...allExisting, ...placedInBatch])
 
+        let node: CanvasNode
         switch (file.type) {
           case 'note': {
-            addNodeWithUndo(createCanvasNode('note', pos, { content: file.path }))
+            node = createCanvasNode('note', pos, { content: file.path })
             break
           }
           case 'image': {
             const alt = file.path.split('/').pop() ?? ''
-            addNodeWithUndo(createCanvasNode('image', pos, { metadata: { src: file.path, alt } }))
+            node = createCanvasNode('image', pos, { metadata: { src: file.path, alt } })
             break
           }
           case 'pdf': {
-            addNodeWithUndo(
-              createCanvasNode('pdf', pos, {
-                metadata: { src: file.path, pageCount: 0, currentPage: 1 }
-              })
-            )
+            node = createCanvasNode('pdf', pos, {
+              metadata: { src: file.path, pageCount: 0, currentPage: 1 }
+            })
             break
           }
           case 'code': {
@@ -226,9 +233,7 @@ export function CanvasView(): React.ReactElement {
             } catch {
               // File unreadable; create card with empty content
             }
-            addNodeWithUndo(
-              createCanvasNode('code', pos, { content, metadata: { language, filename } })
-            )
+            node = createCanvasNode('code', pos, { content, metadata: { language, filename } })
             break
           }
           default: {
@@ -238,13 +243,15 @@ export function CanvasView(): React.ReactElement {
             } catch {
               // File unreadable; create card with empty content
             }
-            addNodeWithUndo(createCanvasNode('text', pos, { content }))
+            node = createCanvasNode('text', pos, { content })
             break
           }
         }
+        placedInBatch.push(node)
+        addNodeWithUndo(node)
       }
     },
-    [addNodeWithUndo]
+    [addNodeWithUndo, nodes]
   )
 
   useEffect(() => {
@@ -385,7 +392,8 @@ export function CanvasView(): React.ReactElement {
                   menuNode,
                   nodes,
                   graph,
-                  fileToId
+                  fileToId,
+                  artifacts
                 )
                 if (newNodes.length > 0 || newEdges.length > 0) {
                   commandStack.current.execute({

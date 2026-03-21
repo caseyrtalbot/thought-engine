@@ -252,6 +252,7 @@ export function GraphPanel() {
   // The physics worker preserves existing node positions across re-inits,
   // so spurious graph ref changes (e.g., vault re-parse after editor flush)
   // won't cause visual spasms.
+  const prevTopologyRef = useRef({ nodeCount: 0, edgeCount: 0 })
   useEffect(() => {
     if (!workerRef.current || graph.nodes.length === 0) return
 
@@ -273,7 +274,13 @@ export function GraphPanel() {
     }
 
     setGraphStats(simNodes.length, simEdges.length)
-    hasAutoFitRef.current = false
+
+    // Only reset auto-fit when topology actually changed (not just a new ref)
+    const prev = prevTopologyRef.current
+    if (simNodes.length !== prev.nodeCount || simEdges.length !== prev.edgeCount) {
+      hasAutoFitRef.current = false
+    }
+    prevTopologyRef.current = { nodeCount: simNodes.length, edgeCount: simEdges.length }
 
     const cmd: PhysicsCommand = { type: 'init', nodes: simNodes, edges: simEdges }
     workerRef.current.postMessage(cmd)

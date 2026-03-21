@@ -1,6 +1,7 @@
 import type { Artifact, KnowledgeGraph, GraphNode, GraphEdge } from '@shared/types'
 import type { CanvasNode, CanvasEdge, CanvasViewport } from '@shared/canvas-types'
 import { createCanvasNode, createCanvasEdge, type CanvasEdgeKind } from '@shared/canvas-types'
+import { computeOptimalEdgeSides } from './canvas-layout'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -172,6 +173,9 @@ export function graphToCanvas(
     return cNode
   })
 
+  // Build lookup for edge side computation
+  const canvasNodeById = new Map(canvasNodes.map((n) => [n.id, n]))
+
   const canvasEdges: CanvasEdge[] = []
   for (const gEdge of edges) {
     const fromId = graphIdToCanvasId.get(gEdge.source)
@@ -179,7 +183,14 @@ export function graphToCanvas(
     if (fromId && toId) {
       const CANVAS_KINDS = new Set<string>(['connection', 'cluster', 'tension'])
       const edgeKind = CANVAS_KINDS.has(gEdge.kind) ? (gEdge.kind as CanvasEdgeKind) : undefined
-      canvasEdges.push(createCanvasEdge(fromId, toId, 'right', 'left', edgeKind))
+      const fromNode = canvasNodeById.get(fromId)
+      const toNode = canvasNodeById.get(toId)
+      if (fromNode && toNode) {
+        const { fromSide, toSide } = computeOptimalEdgeSides(fromNode, toNode)
+        canvasEdges.push(createCanvasEdge(fromId, toId, fromSide, toSide, edgeKind))
+      } else {
+        canvasEdges.push(createCanvasEdge(fromId, toId, 'right', 'left', edgeKind))
+      }
     }
   }
 

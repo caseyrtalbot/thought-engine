@@ -1,11 +1,14 @@
-import type { KnowledgeGraph } from '@shared/types'
+import type { Artifact, KnowledgeGraph } from '@shared/types'
 import type { CanvasNode, CanvasEdge, CanvasEdgeKind } from '@shared/canvas-types'
 import { createCanvasNode, createCanvasEdge } from '@shared/canvas-types'
+import {
+  computeCardSize,
+  computeForceLayout,
+  computeOptimalEdgeSides,
+  type ContentMetrics
+} from './canvas-layout'
 
 const CANVAS_EDGE_KINDS = new Set<string>(['connection', 'cluster', 'tension'])
-
-const RADIAL_DISTANCE = 350
-const CARD_SIZE = { width: 280, height: 200 }
 
 export interface ShowConnectionsResult {
   readonly newNodes: readonly CanvasNode[]
@@ -16,7 +19,8 @@ export function computeShowConnections(
   canvasNode: CanvasNode,
   existingNodes: readonly CanvasNode[],
   graph: KnowledgeGraph,
-  fileToId: Readonly<Record<string, string>>
+  fileToId: Readonly<Record<string, string>>,
+  artifacts: readonly Artifact[]
 ): ShowConnectionsResult {
   const filePath = canvasNode.content
   const idToFile = new Map<string, string>()
@@ -40,20 +44,16 @@ export function computeShowConnections(
   for (const edge of relatedEdges) {
     const neighborId = edge.source === artifactId ? edge.target : edge.source
     const edgeKind = CANVAS_EDGE_KINDS.has(edge.kind) ? (edge.kind as CanvasEdgeKind) : undefined
-    // Deduplicate by neighbor ID
     if (!neighbors.some((n) => n.id === neighborId)) {
       neighbors.push({ id: neighborId, kind: edgeKind })
     }
   }
 
-  // Create new nodes in radial layout around the source card
-  const centerX = canvasNode.position.x + canvasNode.size.width / 2
-  const centerY = canvasNode.position.y + canvasNode.size.height / 2
-  const angleStep = (2 * Math.PI) / neighbors.length
-
-  const newNodes: CanvasNode[] = []
-  const newEdges: CanvasEdge[] = []
-  const neighborCanvasIds = new Map<string, string>()
+  // Build artifact lookup for content-adaptive sizing
+  const artifactById = new Map<string, Artifact>()
+  for (const a of artifacts) {
+    artifactById.set(a.id, a)
+  }
 
   // Map existing canvas nodes by their content (file path) to canvas ID
   const pathToCanvasId = new Map<string, string>()
@@ -61,40 +61,90 @@ export function computeShowConnections(
     pathToCanvasId.set(n.content, n.id)
   }
 
-  for (let i = 0; i < neighbors.length; i++) {
-    const neighbor = neighbors[i]
+  // Phase 1: Determine which neighbors need new cards and compute their sizes
+  interface PendingNode {
+    readonly neighborId: string
+    readonly neighborPath: string
+    readonly kind: CanvasEdgeKind | undefined
+    readonly size: { width: number; height: number }
+    readonly tempId: string
+  }
+
+  const pendingNodes: PendingNode[] = []
+  const existingEdgeTargets: { canvasId: string; kind: CanvasEdgeKind | undefined }[] = []
+
+  for (const neighbor of neighbors) {
     const neighborPath = idToFile.get(neighbor.id)
     if (!neighborPath) continue
 
-    let targetCanvasId: string
-
     if (existingPaths.has(neighborPath)) {
-      // Node already on canvas; just create an edge to it
-      targetCanvasId = pathToCanvasId.get(neighborPath)!
+      existingEdgeTargets.push({
+        canvasId: pathToCanvasId.get(neighborPath)!,
+        kind: neighbor.kind
+      })
     } else {
-      // Create new card at radial position
-      const angle = angleStep * i - Math.PI / 2
-      const x = centerX + Math.cos(angle) * RADIAL_DISTANCE - CARD_SIZE.width / 2
-      const y = centerY + Math.sin(angle) * RADIAL_DISTANCE - CARD_SIZE.height / 2
+      // Compute content-adaptive size from artifact data
+      const artifact = artifactById.get(neighbor.id)
+      const metrics: ContentMetrics = {
+        titleLength: artifact?.title?.length ?? 0,
+        bodyLength: artifact?.body?.length ?? 0,
+        metadataCount: artifact ? Object.keys(artifact.frontmatter).length : 0
+      }
+      const size = computeCardSize(metrics)
 
-      const newNode = createCanvasNode(
-        'note',
-        { x, y },
-        {
-          size: { ...CARD_SIZE },
-          content: neighborPath,
-          metadata: { graphNodeId: neighbor.id }
-        }
-      )
-      newNodes.push(newNode)
-      targetCanvasId = newNode.id
-      pathToCanvasId.set(neighborPath, newNode.id)
+      // Use a temporary ID for force layout (real ID assigned when createCanvasNode is called)
+      const tempId = `pending_${neighbor.id}`
+      pendingNodes.push({
+        neighborId: neighbor.id,
+        neighborPath,
+        kind: neighbor.kind,
+        size,
+        tempId
+      })
     }
+  }
 
-    neighborCanvasIds.set(neighbor.id, targetCanvasId)
+  // Phase 2: Compute force-directed positions for all new cards simultaneously
+  const layoutResult = computeForceLayout({
+    sourceNode: canvasNode,
+    newNodes: pendingNodes.map((p) => ({ id: p.tempId, size: p.size })),
+    existingNodes
+  })
 
-    // Create typed edge from source to neighbor
-    newEdges.push(createCanvasEdge(canvasNode.id, targetCanvasId, 'right', 'left', neighbor.kind))
+  // Phase 3: Create nodes at computed positions with optimal edge sides
+  const newNodes: CanvasNode[] = []
+  const newEdges: CanvasEdge[] = []
+
+  for (const pending of pendingNodes) {
+    const pos = layoutResult.positions.get(pending.tempId) ?? { x: 0, y: 0 }
+
+    const newNode = createCanvasNode('note', pos, {
+      size: { ...pending.size },
+      content: pending.neighborPath,
+      metadata: { graphNodeId: pending.neighborId }
+    })
+    newNodes.push(newNode)
+    pathToCanvasId.set(pending.neighborPath, newNode.id)
+
+    // Compute edge sides from actual positions
+    const targetRect = { position: pos, size: pending.size }
+    const { fromSide, toSide } = computeOptimalEdgeSides(canvasNode, targetRect)
+    newEdges.push(createCanvasEdge(canvasNode.id, newNode.id, fromSide, toSide, pending.kind))
+  }
+
+  // Phase 4: Create edges to nodes that already existed on canvas
+  for (const existing of existingEdgeTargets) {
+    const existingNode = existingNodes.find((n) => n.id === existing.canvasId)
+    if (existingNode) {
+      const { fromSide, toSide } = computeOptimalEdgeSides(canvasNode, existingNode)
+      newEdges.push(
+        createCanvasEdge(canvasNode.id, existing.canvasId, fromSide, toSide, existing.kind)
+      )
+    } else {
+      newEdges.push(
+        createCanvasEdge(canvasNode.id, existing.canvasId, 'right', 'left', existing.kind)
+      )
+    }
   }
 
   return { newNodes, newEdges }
