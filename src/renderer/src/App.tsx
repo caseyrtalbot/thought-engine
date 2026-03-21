@@ -608,7 +608,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const workbenchIsLive = useWorkbenchActionStore((s) => s.isLive)
 
   // All views use floating chrome for a seamless infinite canvas aesthetic
-  const showFloatingSidebar = showSidebar
+  const sidebarExpanded = showSidebar
 
   const toggleTabView = useCallback(
     (type: TabType) => {
@@ -949,7 +949,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         {
           backgroundColor: colors.bg.base,
           color: colors.text.primary,
-          '--sidebar-inset': showSidebar ? '340px' : '64px'
+          '--sidebar-inset': sidebarExpanded ? '340px' : '120px'
         } as React.CSSProperties
       }
     >
@@ -992,17 +992,19 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           </PanelErrorBoundary>
         </div>
       )}
-      {/* Floating sidebar overlay */}
-      {showFloatingSidebar && (
-        <CanvasFloatingSidebar>
-          <PanelErrorBoundary name="Sidebar">
-            <ConnectedSidebar
-              onLoadVault={onLoadVault}
-              onOpenSettings={() => setSettingsOpen(true)}
-            />
-          </PanelErrorBoundary>
-        </CanvasFloatingSidebar>
-      )}
+      {/* Floating sidebar: always visible, collapsed or expanded */}
+      <CanvasFloatingSidebar
+        collapsed={!sidebarExpanded}
+        onToggle={toggleSidebar}
+        vaultName={vaultPath?.split('/').pop()}
+      >
+        <PanelErrorBoundary name="Sidebar">
+          <ConnectedSidebar
+            onLoadVault={onLoadVault}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+        </PanelErrorBoundary>
+      </CanvasFloatingSidebar>
       <CommandPalette
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}
