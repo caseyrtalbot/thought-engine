@@ -2,7 +2,7 @@ import { contextBridge, webUtils } from 'electron'
 import { homedir } from 'os'
 import { typedInvoke, typedOn } from './typed-ipc'
 import type { SessionId, VaultConfig, VaultState } from '../shared/types'
-import type { ClaudeActivityEvent } from '../shared/ipc-channels'
+
 import type {
   WorkbenchFileChangedEvent,
   SessionMilestone,
@@ -68,10 +68,7 @@ const api = {
     openPath: (path: string) => typedInvoke('shell:open-path', { path }),
     trashItem: (path: string) => typedInvoke('shell:trash-item', { path })
   },
-  claude: {
-    watchStart: (configPath: string) => typedInvoke('claude:watch-start', { configPath }),
-    watchStop: () => typedInvoke('claude:watch-stop')
-  },
+
   workbench: {
     watchStart: (projectPath: string) => typedInvoke('workbench:watch-start', { projectPath }),
     watchStop: () => typedInvoke('workbench:watch-stop'),
@@ -103,8 +100,6 @@ const api = {
         events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
       }) => void
     ) => typedOn('vault:files-changed-batch', callback),
-    claudeActivity: (callback: (data: ClaudeActivityEvent) => void) =>
-      typedOn('claude:activity', callback),
     projectFileChanged: (callback: (data: WorkbenchFileChangedEvent) => void) =>
       typedOn('workbench:file-changed', callback),
     sessionMilestone: (callback: (data: SessionMilestone) => void) =>

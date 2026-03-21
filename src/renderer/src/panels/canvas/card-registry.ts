@@ -16,13 +16,6 @@ export const LazyCards: Record<
   markdown: lazy(() => import('./MarkdownCard')),
   image: lazy(() => import('./ImageCard')),
   pdf: lazy(() => import('./PdfCard')),
-  'claude-settings': lazy(() => import('./claude/ClaudeSettingsCard')),
-  'claude-agent': lazy(() => import('./claude/ClaudeAgentCard')),
-  'claude-skill': lazy(() => import('./claude/ClaudeSkillCard')),
-  'claude-rule': lazy(() => import('./claude/ClaudeRuleCard')),
-  'claude-command': lazy(() => import('./claude/ClaudeCommandCard')),
-  'claude-team': lazy(() => import('./claude/ClaudeTeamCard')),
-  'claude-memory': lazy(() => import('./claude/ClaudeMemoryCard')),
   'project-file': lazy(() => import('../../panels/workbench/WorkbenchFileCard')),
   'system-artifact': lazy(() => import('../../panels/workbench/SystemArtifactCard'))
 }

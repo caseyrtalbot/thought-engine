@@ -440,7 +440,7 @@ export function FrontmatterHeader({
         return (
           <div key={key}>
             <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {key.padEnd(12)}
+              {key.padEnd(Math.max(key.length + 1, 12))}
             </span>
             <EditableValue
               value={rawValue}
@@ -502,7 +502,7 @@ function RelationshipRow({ label, ids, onNavigate }: RelationshipRowProps) {
   return (
     <div>
       <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label.padEnd(12)}
+        {label.padEnd(Math.max(label.length + 1, 12))}
       </span>
       {ids.map((id, i) => (
         <span key={id}>

@@ -10,14 +10,7 @@ const LOD_COLORS: Record<string, string> = {
   markdown: '#a78bfa',
   note: '#38bdf8',
   image: '#f472b6',
-  terminal: '#34d399',
-  'claude-settings': '#f59e0b',
-  'claude-agent': '#a78bfa',
-  'claude-skill': '#22d3ee',
-  'claude-rule': '#94a3b8',
-  'claude-command': '#34d399',
-  'claude-team': '#f472b6',
-  'claude-memory': '#fb923c'
+  terminal: '#34d399'
 }
 
 const MINIMAP_WIDTH = 160

@@ -51,7 +51,6 @@ interface SidebarProps {
   onSortChange?: (mode: SortMode) => void
   onFileAction?: (action: FileAction) => void
   onSelectVault?: (path: string) => void
-  onSelectClaudeConfig?: () => void
   onOpenVaultPicker?: () => void
   onRemoveFromHistory?: (path: string) => void
   onOpenSettings?: () => void
@@ -64,7 +63,6 @@ function ActionBar({
   onNewFile,
   onSortChange,
   onSelectVault,
-  onSelectClaudeConfig,
   onOpenVaultPicker,
   onRemoveFromHistory,
   onOpenSettings
@@ -75,7 +73,6 @@ function ActionBar({
   onNewFile?: () => void
   onSortChange?: (mode: SortMode) => void
   onSelectVault?: (path: string) => void
-  onSelectClaudeConfig?: () => void
   onOpenVaultPicker?: () => void
   onRemoveFromHistory?: (path: string) => void
   onOpenSettings?: () => void
@@ -83,14 +80,13 @@ function ActionBar({
   return (
     <div className="flex flex-col gap-1 px-2 py-1">
       <div className="flex items-center">
-        {vaultName && onSelectVault && onSelectClaudeConfig && onOpenVaultPicker ? (
+        {vaultName && onSelectVault && onOpenVaultPicker ? (
           <div className="flex-1 min-w-0">
             <VaultSelector
               currentName={vaultName}
               history={vaultHistory}
               onSelectVault={onSelectVault}
               onOpenPicker={onOpenVaultPicker}
-              onSelectClaudeConfig={onSelectClaudeConfig}
               onRemoveFromHistory={onRemoveFromHistory}
             />
           </div>
@@ -259,7 +255,6 @@ export function Sidebar({
   onSortChange,
   onFileAction,
   onSelectVault,
-  onSelectClaudeConfig,
   onOpenVaultPicker,
   onRemoveFromHistory,
   onOpenSettings
@@ -316,7 +311,6 @@ export function Sidebar({
         onNewFile={onNewFile}
         onSortChange={onSortChange}
         onSelectVault={onSelectVault}
-        onSelectClaudeConfig={onSelectClaudeConfig}
         onOpenVaultPicker={onOpenVaultPicker}
         onRemoveFromHistory={onRemoveFromHistory}
         onOpenSettings={onOpenSettings}

@@ -6,7 +6,7 @@ import { registerFilesystemIpc } from './ipc/filesystem'
 import { registerWatcherIpc } from './ipc/watcher'
 import { registerShellIpc, getShellService } from './ipc/shell'
 import { registerConfigIpc } from './ipc/config'
-import { registerClaudeWatcherIpc, getClaudeWatcher } from './ipc/claude-watcher'
+
 import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/workbench'
 import { typedHandle } from './typed-ipc'
 
@@ -106,7 +106,7 @@ app.whenReady().then(() => {
   const window = createWindow()
   registerWatcherIpc(window)
   registerShellIpc(window)
-  registerClaudeWatcherIpc(window)
+
   registerProjectIpc(window)
 
   app.on('activate', function () {
@@ -116,7 +116,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   getShellService().killAll()
-  getClaudeWatcher().stop()
+
   getProjectWatcher().stop()
   getSessionTailer()?.stop()
 })

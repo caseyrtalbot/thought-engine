@@ -1,7 +1,13 @@
 import type { CanvasNode } from '@shared/canvas-types'
 import { createCanvasNode } from '@shared/canvas-types'
 import type { WorkbenchSessionEvent } from '@shared/workbench-types'
-import type { ZoneLabel } from '../canvas/claude/claude-canvas-layout'
+
+export interface ZoneLabel {
+  readonly text: string
+  readonly x: number
+  readonly y: number
+  readonly color: string
+}
 
 const FILE_CARD_W = 240
 const FILE_CARD_H = 80

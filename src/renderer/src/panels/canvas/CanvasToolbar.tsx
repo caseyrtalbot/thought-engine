@@ -1,5 +1,7 @@
 import { useCanvasStore } from '../../store/canvas-store'
-import { useTabStore, TAB_DEFINITIONS } from '../../store/tab-store'
+import { useVaultStore } from '../../store/vault-store'
+import { createCanvasNode } from '@shared/canvas-types'
+import { generateClaudeMd } from '../../engine/claude-md-template'
 import { colors, borderRadius, floatingPanel } from '../../design/tokens'
 
 interface CanvasToolbarProps {
@@ -21,7 +23,6 @@ export function CanvasToolbar({
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
-  const openTab = useTabStore((s) => s.openTab)
 
   const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
   const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
@@ -156,12 +157,29 @@ export function CanvasToolbar({
       <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
 
       <button
-        onClick={() => {
-          const def = TAB_DEFINITIONS['claude-config']
-          openTab({ id: 'claude-config', type: 'claude-config', label: def.label, closeable: true })
+        onClick={async () => {
+          const vaultPath = useVaultStore.getState().vaultPath
+          if (!vaultPath) return
+
+          // Ensure CLAUDE.md exists
+          const claudeMdPath = `${vaultPath}/CLAUDE.md`
+          const exists = await window.api.fs.fileExists(claudeMdPath)
+          if (!exists) {
+            const vaultName = vaultPath.split('/').pop() ?? 'Vault'
+            await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
+          }
+
+          // Add a terminal card to the canvas with claude as initial command
+          const vp = useCanvasStore.getState().viewport
+          const node = createCanvasNode(
+            'terminal',
+            { x: -vp.x + 200, y: -vp.y + 100 },
+            { metadata: { initialCommand: 'claude' } }
+          )
+          useCanvasStore.getState().addNode(node)
         }}
         style={{ ...btnStyle, color: '#f59e0b' }}
-        title="Claude Config Canvas"
+        title="Start Claude"
       >
         <svg
           width={14}

@@ -15,13 +15,6 @@ const ALL_TYPES: CanvasNodeType[] = [
   'markdown',
   'image',
   'pdf',
-  'claude-settings',
-  'claude-agent',
-  'claude-skill',
-  'claude-rule',
-  'claude-command',
-  'claude-team',
-  'claude-memory',
   'project-file',
   'system-artifact'
 ]

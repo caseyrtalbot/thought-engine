@@ -13,18 +13,6 @@ import {
   type CanvasNodeType,
   type CanvasSide
 } from '@shared/canvas-types'
-import { CLAUDE_TYPE_COLORS } from '../../design/claude-type-colors'
-
-/** Type accent colors for the left border strip on claude cards only */
-const TYPE_ACCENT_COLORS: Partial<Record<CanvasNodeType, string>> = {
-  'claude-settings': CLAUDE_TYPE_COLORS.settings,
-  'claude-agent': CLAUDE_TYPE_COLORS.agents,
-  'claude-skill': CLAUDE_TYPE_COLORS.skills,
-  'claude-rule': CLAUDE_TYPE_COLORS.rules,
-  'claude-command': CLAUDE_TYPE_COLORS.commands,
-  'claude-team': CLAUDE_TYPE_COLORS.teams,
-  'claude-memory': CLAUDE_TYPE_COLORS.memory
-}
 
 interface CardShellProps {
   readonly node: CanvasNode
@@ -45,13 +33,6 @@ export const VALID_CONVERSIONS: Record<CanvasNodeType, readonly CanvasNodeType[]
   image: ['text', 'terminal'],
   terminal: ['text'],
   pdf: ['text', 'terminal'],
-  'claude-settings': ['markdown', 'text'],
-  'claude-agent': ['markdown', 'text'],
-  'claude-skill': ['markdown', 'text'],
-  'claude-rule': ['markdown', 'text'],
-  'claude-command': ['markdown', 'text'],
-  'claude-team': ['markdown', 'text'],
-  'claude-memory': ['markdown', 'text'],
   'project-file': ['text'],
   'system-artifact': ['markdown', 'text']
 } as const
@@ -186,8 +167,6 @@ export function CardShell({
   const [convertMenuOpen, setConvertMenuOpen] = useState(false)
 
   const isActive = node.metadata?.isActive === true
-  const isClaudeType = node.type.startsWith('claude-')
-  const accentColor = TYPE_ACCENT_COLORS[node.type]
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -223,13 +202,11 @@ export function CardShell({
         height: node.size.height,
         backgroundColor: canvasTokens.card,
         borderRadius: canvasTokens.cardRadius,
-        borderLeft: isClaudeType && accentColor ? `3px solid ${accentColor}` : undefined,
         boxShadow: isSelected ? floatingPanel.shadowCardSelected : floatingPanel.shadowCard,
-        color: isClaudeType ? '#e2e8f0' : undefined,
         overflow: 'hidden',
         ...(isActive
           ? ({
-              '--activity-color': accentColor ?? 'rgba(167, 139, 250, 0.3)',
+              '--activity-color': 'rgba(167, 139, 250, 0.3)',
               animation: 'te-card-glow 2s ease-in-out infinite'
             } as React.CSSProperties)
           : {})
@@ -260,22 +237,13 @@ export function CardShell({
         onPointerDown={onDragStart}
       >
         <span className="flex items-center gap-1.5 min-w-0 flex-1">
-          {isActive && (
-            <span
-              className="te-active-dot shrink-0"
-              style={
-                accentColor
-                  ? { background: accentColor, boxShadow: `0 0 6px ${accentColor}44` }
-                  : undefined
-              }
-            />
-          )}
+          {isActive && <span className="te-active-dot shrink-0" />}
           <span
             className="truncate"
             style={{
               fontFamily: typography.fontFamily.mono,
               fontSize: 11,
-              color: isClaudeType ? '#cbd5e1' : colors.text.muted,
+              color: colors.text.muted,
               direction: 'rtl',
               textAlign: 'left',
               unicodeBidi: 'plaintext'

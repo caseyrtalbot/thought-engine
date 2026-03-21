@@ -7,16 +7,6 @@ import type {
 } from './workbench-types'
 import type { SystemArtifactKind } from './system-artifacts'
 
-export type ClaudeActivityKind = 'prompt' | 'session-start' | 'session-end' | 'config-changed'
-
-export interface ClaudeActivityEvent {
-  readonly kind: ClaudeActivityKind
-  readonly timestamp: number
-  readonly filePath?: string
-  readonly promptText?: string
-  readonly sessionId?: string
-}
-
 export interface IpcChannels {
   // --- Filesystem ---
   'fs:read-file': { request: { path: string }; response: string }
@@ -65,10 +55,6 @@ export interface IpcChannels {
   'vault:watch-start': { request: { vaultPath: string }; response: void }
   'vault:watch-stop': { request: void; response: void }
 
-  // --- Claude Watcher ---
-  'claude:watch-start': { request: { configPath: string }; response: void }
-  'claude:watch-stop': { request: void; response: void }
-
   // --- Workbench ---
   'workbench:watch-start': { request: { projectPath: string }; response: void }
   'workbench:watch-stop': { request: void; response: void }
@@ -113,7 +99,7 @@ export interface IpcEvents {
   'vault:files-changed-batch': {
     events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
   }
-  'claude:activity': ClaudeActivityEvent
+
   'workbench:file-changed': WorkbenchFileChangedEvent
   'session:milestone': SessionMilestone
   'session:detected': SessionDetectedEvent

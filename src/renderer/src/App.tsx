@@ -2,10 +2,8 @@ import { lazy, startTransition, Suspense, useState, useCallback, useMemo, useEff
 import { useVaultWorker } from './engine/useVaultWorker'
 import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
-import { SplitPane } from './design/components/SplitPane'
 import { Sidebar } from './panels/sidebar/Sidebar'
 import type { SystemArtifactListItem } from './panels/sidebar/Sidebar'
-import { ClaudeConfigSidebar } from './panels/sidebar/ClaudeConfigSidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
 import { EditorPanel } from './panels/editor/EditorPanel'
 import { ActivityBar } from './components/ActivityBar'
@@ -41,11 +39,7 @@ const LazyCanvasView = lazy(() =>
 const LazySkillsPanel = lazy(() =>
   import('./panels/skills/SkillsPanel').then((module) => ({ default: module.SkillsPanel }))
 )
-const LazyClaudeConfigPanel = lazy(() =>
-  import('./panels/claude-config/ClaudeConfigPanel').then((module) => ({
-    default: module.ClaudeConfigPanel
-  }))
-)
+
 const LazyWorkbenchPanel = lazy(() =>
   import('./panels/workbench/WorkbenchPanel').then((module) => ({
     default: module.WorkbenchPanel
@@ -143,13 +137,7 @@ function ContentArea() {
           </Suspense>
         </KeepAliveSlot>
       )}
-      {openTypes.has('claude-config') && mountedTypes.has('claude-config') && (
-        <KeepAliveSlot active={activeType === 'claude-config'}>
-          <Suspense fallback={<PanelLoadingFallback label="Loading Claude config..." />}>
-            <LazyClaudeConfigPanel />
-          </Suspense>
-        </KeepAliveSlot>
-      )}
+
       {openTypes.has('workbench') && mountedTypes.has('workbench') && (
         <KeepAliveSlot active={activeType === 'workbench'}>
           <Suspense fallback={<PanelLoadingFallback label="Loading workbench..." />}>
@@ -177,8 +165,6 @@ function ConnectedSidebar({
   onLoadVault: (path: string) => Promise<void>
   onOpenSettings?: () => void
 }) {
-  const contentView = useViewStore((s) => s.contentView)
-  const sidebarOpenTab = useTabStore((s) => s.openTab)
   const files = useVaultStore((s) => s.files)
   const config = useVaultStore((s) => s.config)
   const activeWorkspace = useVaultStore((s) => s.activeWorkspace)
@@ -188,7 +174,6 @@ function ConnectedSidebar({
   const fileToId = useVaultStore((s) => s.fileToId)
   const artifactPathById = useVaultStore((s) => s.artifactPathById)
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
-  const setContentView = useViewStore((s) => s.setContentView)
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<'modified' | 'name' | 'type'>('modified')
   const [searchQuery, setSearchQuery] = useState('')
@@ -362,23 +347,9 @@ function ConnectedSidebar({
       flushPendingSave()
       await window.api.vault.watchStop()
       await onLoadVault(path)
-      // If we're on the claude-config view, switch back to editor
-      if (useViewStore.getState().contentView === 'claude-config') {
-        setContentView('editor')
-      }
     },
-    [onLoadVault, setContentView]
+    [onLoadVault]
   )
-
-  const handleSelectClaudeConfig = useCallback(() => {
-    const def = TAB_DEFINITIONS['claude-config']
-    sidebarOpenTab({
-      id: 'claude-config',
-      type: 'claude-config',
-      label: def.label,
-      closeable: true
-    })
-  }, [sidebarOpenTab])
 
   const handleRemoveFromHistory = useCallback(async (pathToRemove: string) => {
     const history = (await window.api.config.read('app', 'vaultHistory')) as string[] | null
@@ -442,19 +413,6 @@ function ConnectedSidebar({
     [files]
   )
 
-  // Show claude config sidebar when on that view
-  if (contentView === 'claude-config') {
-    return (
-      <ClaudeConfigSidebar
-        vaultHistory={vaultHistory}
-        onSelectVault={handleSelectVault}
-        onOpenVaultPicker={handleOpenVaultPicker}
-        onSelectClaudeConfig={handleSelectClaudeConfig}
-        onRemoveFromHistory={handleRemoveFromHistory}
-      />
-    )
-  }
-
   return (
     <Sidebar
       nodes={treeNodes}
@@ -485,7 +443,6 @@ function ConnectedSidebar({
       onSortChange={setSortMode}
       onFileAction={handleFileAction}
       onSelectVault={handleSelectVault}
-      onSelectClaudeConfig={handleSelectClaudeConfig}
       onOpenVaultPicker={handleOpenVaultPicker}
       onRemoveFromHistory={handleRemoveFromHistory}
       onOpenSettings={onOpenSettings}
@@ -554,13 +511,7 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     category: 'command',
     description: 'Open a terminal with Claude CLI in the current vault.'
   },
-  {
-    id: 'cmd:toggle-claude-config',
-    label: 'Toggle Claude Config Canvas',
-    category: 'command',
-    shortcut: '\u21E7\u2318C',
-    description: 'Open or hide the Claude configuration canvas.'
-  },
+
   {
     id: 'cmd:toggle-workbench',
     label: 'Toggle Workbench',
@@ -689,15 +640,10 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onEscape: () => setPaletteOpen(false)
   })
 
-  // Cmd+Shift+C: toggle Claude Config Canvas tab
   // Cmd+Shift+P: toggle Workbench tab
   // Cmd+Shift+G: toggle Graph tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
-        e.preventDefault()
-        toggleTabView('claude-config')
-      }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault()
         toggleTabView('workbench')
@@ -887,9 +833,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
             setContentView('canvas')
           }
           break
-        case 'cmd:toggle-claude-config':
-          toggleTabView('claude-config')
-          break
         case 'cmd:toggle-workbench':
           toggleTabView('workbench')
           break
@@ -964,34 +907,30 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         }
       />
       <ActivityBar floating />
-      {/* Content fills full width; sidebar and terminal float as overlays */}
-      {showTerminal ? (
-        <SplitPane
-          left={
-            <PanelErrorBoundary name="Content">
-              <ContentArea />
-            </PanelErrorBoundary>
-          }
-          right={
-            <div className="panel-card h-full">
-              <PanelErrorBoundary name="Terminal">
-                <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
-                  <LazyTerminalPanel />
-                </Suspense>
-              </PanelErrorBoundary>
-            </div>
-          }
-          initialLeftWidth={480}
-          minLeftWidth={280}
-          minRightWidth={300}
-        />
-      ) : (
+      {/* Content + terminal: both always mounted at stable tree positions */}
+      <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-hidden">
           <PanelErrorBoundary name="Content">
             <ContentArea />
           </PanelErrorBoundary>
         </div>
-      )}
+        {/* Terminal panel: always mounted to preserve PTY sessions, CSS-hidden when collapsed */}
+        <div
+          className="panel-card h-full overflow-hidden"
+          style={{
+            width: showTerminal ? 480 : 0,
+            minWidth: showTerminal ? 300 : 0,
+            transition: 'width 150ms ease-out, min-width 150ms ease-out',
+            borderLeft: showTerminal ? `1px solid ${colors.border.default}` : 'none'
+          }}
+        >
+          <PanelErrorBoundary name="Terminal">
+            <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
+              <LazyTerminalPanel />
+            </Suspense>
+          </PanelErrorBoundary>
+        </div>
+      </div>
       {/* Floating sidebar: always visible, collapsed or expanded */}
       <CanvasFloatingSidebar
         collapsed={!sidebarExpanded}
