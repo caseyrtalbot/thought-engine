@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react'
 import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
-import { colors, typography } from '../../design/tokens'
+import { colors } from '../../design/tokens'
+import { useSettingsStore } from '../../store/settings-store'
+import { buildFontFamilyValue } from '../../design/google-fonts'
 import { RenameInput } from './FileContextMenu'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
@@ -281,6 +283,10 @@ export const FileTree = memo(function FileTree({
     [nodes, collapsedPaths, dirIndex]
   )
 
+  const settingsFontSize = useSettingsStore((s) => s.fontSize)
+  const settingsFontFamily = useSettingsStore((s) => s.fontFamily)
+  const resolvedFont = buildFontFamilyValue(settingsFontFamily)
+
   return (
     <div data-testid="file-tree" className="text-sm select-none px-1 py-1">
       {visibleNodes.map((node) =>
@@ -294,6 +300,8 @@ export const FileTree = memo(function FileTree({
             isRenaming={renamingPath === node.path}
             onRenameConfirm={onRenameConfirm}
             onRenameCancel={onRenameCancel}
+            treeFontSize={settingsFontSize}
+            treeFontFamily={resolvedFont}
           />
         ) : (
           <FileRow
@@ -309,6 +317,8 @@ export const FileTree = memo(function FileTree({
             isRenaming={renamingPath === node.path}
             onRenameConfirm={onRenameConfirm}
             onRenameCancel={onRenameCancel}
+            treeFontSize={settingsFontSize}
+            treeFontFamily={resolvedFont}
           />
         )
       )}
@@ -323,7 +333,9 @@ function DirectoryRow({
   onContextMenu,
   isRenaming,
   onRenameConfirm,
-  onRenameCancel
+  onRenameCancel,
+  treeFontSize,
+  treeFontFamily
 }: {
   node: FlatTreeNode
   isCollapsed: boolean
@@ -332,6 +344,8 @@ function DirectoryRow({
   isRenaming?: boolean
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
+  treeFontSize: number
+  treeFontFamily: string
 }) {
   const paddingLeft = 8 + node.depth * 16
 
@@ -345,9 +359,9 @@ function DirectoryRow({
         paddingRight: 8,
         marginBottom: 1,
         color: colors.text.primary,
-        fontFamily: typography.fontFamily.display,
+        fontFamily: treeFontFamily,
         fontWeight: 400,
-        fontSize: 13,
+        fontSize: treeFontSize - 1,
         textTransform: 'uppercase',
         letterSpacing: '0.04em'
       }}
@@ -397,7 +411,9 @@ function FileRow({
   onContextMenu,
   isRenaming,
   onRenameConfirm,
-  onRenameCancel
+  onRenameCancel,
+  treeFontSize,
+  treeFontFamily
 }: {
   node: FlatTreeNode
   isActive: boolean
@@ -410,6 +426,8 @@ function FileRow({
   isRenaming?: boolean
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
+  treeFontSize: number
+  treeFontFamily: string
 }) {
   const paddingLeft = 8 + node.depth * 16 + 4
   const { base, ext } = splitName(node.name)
@@ -443,9 +461,9 @@ function FileRow({
         marginBottom: 1,
         backgroundColor: isActive ? 'rgba(255, 255, 255, 0.10)' : undefined,
         borderLeft: isActive ? `2px solid ${colors.accent.default}` : '2px solid transparent',
-        fontFamily: typography.fontFamily.display,
+        fontFamily: treeFontFamily,
         fontWeight: 400,
-        fontSize: 13
+        fontSize: treeFontSize
       }}
       onMouseEnter={(e) => {
         if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
