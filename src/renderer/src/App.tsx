@@ -28,7 +28,10 @@ import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile } from '@shared/canvas-types'
 import { openArtifactInEditor } from './system-artifacts/system-artifact-runtime'
-import { placeArtifactOnWorkbench } from './panels/workbench/workbench-artifact-placement'
+import {
+  placeArtifactOnWorkbench,
+  enrichPlacedArtifact
+} from './panels/workbench/workbench-artifact-placement'
 
 const LazyCanvasView = lazy(() =>
   import('./panels/canvas/CanvasView').then((module) => ({ default: module.CanvasView }))
@@ -466,7 +469,10 @@ function ConnectedSidebar({
       onFileSelect={handleFileSelect}
       onFileDoubleClick={handleFileDoubleClick}
       onSystemArtifactSelect={(item) => {
-        placeArtifactOnWorkbench(item)
+        const nodeId = placeArtifactOnWorkbench(item)
+        if (nodeId && vaultPath) {
+          enrichPlacedArtifact(nodeId, item, vaultPath).catch(() => {})
+        }
         openArtifactInEditor(item.path, item.title, item.id)
       }}
       onToggleDirectory={handleToggleDirectory}

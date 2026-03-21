@@ -25,9 +25,9 @@ describe('placeArtifactOnWorkbench', () => {
   it('places a system-artifact node when workbench is active', () => {
     const item = makeItem()
 
-    const placed = placeArtifactOnWorkbench(item)
+    const nodeId = placeArtifactOnWorkbench(item)
 
-    expect(placed).toBe(true)
+    expect(nodeId).toBeTruthy()
     const nodes = useCanvasStore.getState().nodes
     expect(nodes).toHaveLength(1)
     expect(nodes[0].type).toBe('system-artifact')
@@ -43,19 +43,19 @@ describe('placeArtifactOnWorkbench', () => {
   it('does not place when workbench tab is not active', () => {
     useTabStore.setState({ activeTabId: 'editor' })
 
-    const placed = placeArtifactOnWorkbench(makeItem())
+    const nodeId = placeArtifactOnWorkbench(makeItem())
 
-    expect(placed).toBe(false)
+    expect(nodeId).toBeNull()
     expect(useCanvasStore.getState().nodes).toHaveLength(0)
   })
 
   it('skips duplicate placement for same artifact id', () => {
     const item = makeItem()
 
-    placeArtifactOnWorkbench(item)
-    const secondResult = placeArtifactOnWorkbench(item)
+    const firstId = placeArtifactOnWorkbench(item)
+    const secondId = placeArtifactOnWorkbench(item)
 
-    expect(secondResult).toBe(true)
+    expect(secondId).toBe(firstId)
     expect(useCanvasStore.getState().nodes).toHaveLength(1)
   })
 

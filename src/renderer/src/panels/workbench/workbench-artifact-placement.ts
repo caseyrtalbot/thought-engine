@@ -1,3 +1,4 @@
+import matter from 'gray-matter'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useTabStore } from '../../store/tab-store'
 import { createCanvasEdge, createCanvasNode } from '@shared/canvas-types'
@@ -5,21 +6,24 @@ import type { CanvasEdge, CanvasNode, SystemArtifactNodeMeta } from '@shared/can
 import type { SystemArtifactListItem } from '../sidebar/Sidebar'
 import type { SystemArtifactKind } from '@shared/system-artifacts'
 
+export type ArtifactReader = (vaultPath: string, path: string) => Promise<string>
+
 /**
  * If the workbench tab is currently active, place a system artifact card
- * on the canvas near the viewport center. Returns true if a card was placed.
+ * on the canvas near the viewport center. Returns the placed node ID,
+ * or null if placement was skipped.
  */
-export function placeArtifactOnWorkbench(item: SystemArtifactListItem): boolean {
+export function placeArtifactOnWorkbench(item: SystemArtifactListItem): string | null {
   const activeTabId = useTabStore.getState().activeTabId
-  if (activeTabId !== 'workbench') return false
+  if (activeTabId !== 'workbench') return null
 
   const store = useCanvasStore.getState()
 
   // Skip if this artifact is already on the canvas
-  const alreadyPlaced = store.nodes.some(
+  const existing = store.nodes.find(
     (n) => n.type === 'system-artifact' && n.metadata?.artifactId === item.id
   )
-  if (alreadyPlaced) return true
+  if (existing) return existing.id
 
   const { x, y, zoom } = store.viewport
   const viewCenterX = (-x + 400) / zoom
@@ -35,7 +39,7 @@ export function placeArtifactOnWorkbench(item: SystemArtifactListItem): boolean 
   )
 
   store.addNode(node)
-  return true
+  return node.id
 }
 
 function buildBasicMetadata(item: SystemArtifactListItem): Record<string, unknown> {
@@ -189,4 +193,44 @@ export function wireArtifactEdges(nodeId: string, store: CanvasStoreSnapshot): C
   }
 
   return edges
+}
+
+// --- Async enrichment (reads from disk, updates store) ---
+
+const defaultReader: ArtifactReader = (vaultPath, path) =>
+  window.api.vault.readSystemArtifact(vaultPath, path)
+
+/**
+ * After a card is placed with basic metadata, read the full markdown
+ * from disk, parse frontmatter, update the node's metadata, and wire edges.
+ */
+export async function enrichPlacedArtifact(
+  nodeId: string,
+  item: SystemArtifactListItem,
+  vaultPath: string,
+  reader: ArtifactReader = defaultReader
+): Promise<void> {
+  let content: string
+  try {
+    content = await reader(vaultPath, item.path)
+  } catch {
+    return // IPC read failed, keep basic metadata
+  }
+
+  const store = useCanvasStore.getState()
+  // Node may have been removed between placement and enrichment
+  if (!store.nodes.some((n) => n.id === nodeId)) return
+
+  const parsed = matter(content)
+  const frontmatter = parsed.data as Readonly<Record<string, unknown>>
+  const enriched = enrichArtifactMetadata(frontmatter, item.type, item.path)
+
+  useCanvasStore.getState().updateNodeMetadata(nodeId, { ...enriched })
+
+  // Wire edges to other artifacts already on canvas
+  const updatedStore = useCanvasStore.getState()
+  const edges = wireArtifactEdges(nodeId, updatedStore)
+  for (const edge of edges) {
+    useCanvasStore.getState().addEdge(edge)
+  }
 }
