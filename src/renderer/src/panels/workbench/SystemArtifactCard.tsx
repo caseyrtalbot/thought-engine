@@ -1,8 +1,10 @@
 import { useCallback } from 'react'
 import { CardShell } from '../canvas/CardShell'
 import { useCanvasStore } from '../../store/canvas-store'
+import { useVaultStore } from '../../store/vault-store'
 import { colors, getArtifactColor, typography } from '../../design/tokens'
 import { openArtifactInEditor } from '../../system-artifacts/system-artifact-runtime'
+import { restorePatternSnapshot } from './workbench-artifact-placement'
 import type { CanvasNode } from '@shared/canvas-types'
 import type { SystemArtifactKind } from '@shared/system-artifacts'
 
@@ -69,6 +71,7 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
     fileRefCount?: number
     question?: string
     hasSnapshot?: boolean
+    snapshotPath?: string
     commandCount?: number
     fileTouchCount?: number
   }
@@ -80,6 +83,7 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
   const accentColor = getArtifactColor(kind)
 
   const removeNode = useCanvasStore((s) => s.removeNode)
+  const vaultPath = useVaultStore((s) => s.vaultPath)
 
   const handleClose = useCallback(() => {
     removeNode(node.id)
@@ -90,6 +94,12 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
       openArtifactInEditor(filePath, undefined, node.content || filePath)
     }
   }, [filePath, node.content])
+
+  const handleRestore = useCallback(() => {
+    if (meta.snapshotPath && vaultPath) {
+      restorePatternSnapshot(meta.snapshotPath, vaultPath).catch(() => {})
+    }
+  }, [meta.snapshotPath, vaultPath])
 
   return (
     <CardShell
@@ -148,16 +158,19 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
             <StatChip label="refs" value={meta.fileRefCount} />
           )}
           {kind === 'pattern' && meta.hasSnapshot && (
-            <span
-              className="px-1.5 py-0.5 rounded text-[10px]"
+            <button
+              onClick={handleRestore}
+              className="px-1.5 py-0.5 rounded text-[10px] cursor-pointer transition-colors"
               style={{
                 backgroundColor: accentColor + '14',
                 color: accentColor,
+                border: `1px solid ${accentColor}24`,
                 fontFamily: typography.fontFamily.mono
               }}
+              title="Restore this pattern's saved canvas layout"
             >
-              snapshot
-            </span>
+              Restore
+            </button>
           )}
           {meta.signal && meta.signal !== 'untested' && <StatChip label="" value={meta.signal} />}
         </div>

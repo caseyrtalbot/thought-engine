@@ -91,6 +91,7 @@ export interface SystemArtifactNodeMeta {
   readonly fileRefCount: number
   readonly question?: string
   readonly hasSnapshot?: boolean
+  readonly snapshotPath?: string
   readonly commandCount?: number
   readonly fileTouchCount?: number
   readonly connections: readonly string[]

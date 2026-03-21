@@ -131,11 +131,12 @@ export function enrichArtifactMetadata(
   if (kind === 'pattern') {
     // Merge pattern_refs into tensionRefs if they reference tensions
     const patternTensionRefs = uniqueStrings([allTensionRefs, patternRefsField])
+    const snapshotVal = asString(frontmatter.canvas_snapshot)
     return {
       ...base,
       tensionRefs: patternTensionRefs,
-      hasSnapshot:
-        typeof frontmatter.canvas_snapshot === 'string' && frontmatter.canvas_snapshot.length > 0
+      hasSnapshot: !!snapshotVal,
+      snapshotPath: snapshotVal
     }
   }
 
@@ -233,4 +234,38 @@ export async function enrichPlacedArtifact(
   for (const edge of edges) {
     useCanvasStore.getState().addEdge(edge)
   }
+}
+
+// --- Pattern snapshot restore ---
+
+export type FsReader = (path: string) => Promise<string>
+
+const defaultFsReader: FsReader = (path) => window.api.fs.readFile(path)
+
+/**
+ * Load a pattern's saved canvas snapshot and merge its nodes/edges
+ * into the current workbench canvas.
+ */
+export async function restorePatternSnapshot(
+  snapshotPath: string,
+  vaultPath: string,
+  reader: FsReader = defaultFsReader
+): Promise<void> {
+  if (!snapshotPath) return
+
+  const absolutePath = vaultPath + '/' + snapshotPath
+
+  let content: string
+  try {
+    content = await reader(absolutePath)
+  } catch {
+    return // File missing or unreadable
+  }
+
+  const { deserializeCanvas } = await import('../canvas/canvas-io')
+  const snapshot = deserializeCanvas(content)
+
+  if (snapshot.nodes.length === 0 && snapshot.edges.length === 0) return
+
+  useCanvasStore.getState().addNodesAndEdges(snapshot.nodes, snapshot.edges)
 }
