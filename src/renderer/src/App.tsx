@@ -28,6 +28,7 @@ import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile } from '@shared/canvas-types'
 import { openArtifactInEditor } from './system-artifacts/system-artifact-runtime'
+import { placeArtifactOnWorkbench } from './panels/workbench/workbench-artifact-placement'
 
 const LazyCanvasView = lazy(() =>
   import('./panels/canvas/CanvasView').then((module) => ({ default: module.CanvasView }))
@@ -464,7 +465,10 @@ function ConnectedSidebar({
       onWorkspaceSelect={setActiveWorkspace}
       onFileSelect={handleFileSelect}
       onFileDoubleClick={handleFileDoubleClick}
-      onSystemArtifactSelect={(item) => openArtifactInEditor(item.path, item.title, item.id)}
+      onSystemArtifactSelect={(item) => {
+        placeArtifactOnWorkbench(item)
+        openArtifactInEditor(item.path, item.title, item.id)
+      }}
       onToggleDirectory={handleToggleDirectory}
       onNewFile={handleNewFile}
       onSortChange={setSortMode}
@@ -499,8 +503,7 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     label: 'Toggle Sidebar',
     category: 'command',
     shortcut: '\u2318B',
-    description: 'Unavailable in this build.',
-    disabled: true
+    description: 'Show or hide the file browser sidebar.'
   },
   {
     id: 'cmd:toggle-terminal',
@@ -526,15 +529,7 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     id: 'cmd:reindex-vault',
     label: 'Re-index Vault',
     category: 'command',
-    description: 'Unavailable in this build.',
-    disabled: true
-  },
-  {
-    id: 'cmd:activate-claude',
-    label: 'Activate Claude',
-    category: 'command',
-    description: 'Unavailable in this build.',
-    disabled: true
+    description: 'Re-parse all vault files and rebuild the knowledge graph.'
   },
   {
     id: 'cmd:new-canvas',
@@ -570,6 +565,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
+  const [showSidebar, setShowSidebar] = useState(true)
   const files = useVaultStore((s) => s.files)
   const systemFiles = useVaultStore((s) => s.systemFiles)
   const artifacts = useVaultStore((s) => s.artifacts)
@@ -654,6 +650,10 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     setShowTerminal((prev) => !prev)
   }, [])
 
+  const toggleSidebar = useCallback(() => {
+    setShowSidebar((prev) => !prev)
+  }, [])
+
   const goBack = useEditorStore((s) => s.goBack)
   const goForward = useEditorStore((s) => s.goForward)
 
@@ -661,6 +661,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onCommandPalette: () => setPaletteOpen(true),
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
+    onToggleSidebar: toggleSidebar,
     onToggleTerminal: toggleTerminal,
     onCloseTab: handleCloseTab,
     onGoBack: goBack,
@@ -846,9 +847,12 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:open-settings':
           setSettingsOpen(true)
           break
+        case 'cmd:toggle-sidebar':
+          toggleSidebar()
+          break
         case 'cmd:reindex-vault':
-        case 'cmd:activate-claude':
-          return
+          if (vaultPath) await onLoadVault(vaultPath)
+          break
         case 'cmd:new-canvas':
           if (vaultPath) {
             const filename = defaultCanvasFilename([])
@@ -898,9 +902,11 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       handleNewNote,
       toggleView,
       toggleSourceMode,
+      toggleSidebar,
       toggleTerminal,
       setSettingsOpen,
       vaultPath,
+      onLoadVault,
       toggleTabView,
       workbenchAddTerminal,
       workbenchCreateTension,
@@ -928,48 +934,74 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         }
       />
       <ActivityBar />
-      <SplitPane
-        left={
-          <div className="panel-card h-full pt-7">
-            <PanelErrorBoundary name="Sidebar">
-              <ConnectedSidebar
-                onLoadVault={onLoadVault}
-                onOpenSettings={() => setSettingsOpen(true)}
-              />
-            </PanelErrorBoundary>
-          </div>
-        }
-        right={
-          showTerminal ? (
-            <SplitPane
-              left={
-                <PanelErrorBoundary name="Content">
-                  <ContentArea />
-                </PanelErrorBoundary>
-              }
-              right={
-                <div className="panel-card h-full">
-                  <PanelErrorBoundary name="Terminal">
-                    <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
-                      <LazyTerminalPanel />
-                    </Suspense>
+      {showSidebar ? (
+        <SplitPane
+          left={
+            <div className="panel-card h-full pt-7">
+              <PanelErrorBoundary name="Sidebar">
+                <ConnectedSidebar
+                  onLoadVault={onLoadVault}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                />
+              </PanelErrorBoundary>
+            </div>
+          }
+          right={
+            showTerminal ? (
+              <SplitPane
+                left={
+                  <PanelErrorBoundary name="Content">
+                    <ContentArea />
                   </PanelErrorBoundary>
-                </div>
-              }
-              initialLeftWidth={480}
-              minLeftWidth={280}
-              minRightWidth={300}
-            />
-          ) : (
+                }
+                right={
+                  <div className="panel-card h-full">
+                    <PanelErrorBoundary name="Terminal">
+                      <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
+                        <LazyTerminalPanel />
+                      </Suspense>
+                    </PanelErrorBoundary>
+                  </div>
+                }
+                initialLeftWidth={480}
+                minLeftWidth={280}
+                minRightWidth={300}
+              />
+            ) : (
+              <PanelErrorBoundary name="Content">
+                <ContentArea />
+              </PanelErrorBoundary>
+            )
+          }
+          initialLeftWidth={220}
+          minLeftWidth={220}
+          minRightWidth={showTerminal ? 580 : 280}
+        />
+      ) : showTerminal ? (
+        <SplitPane
+          left={
             <PanelErrorBoundary name="Content">
               <ContentArea />
             </PanelErrorBoundary>
-          )
-        }
-        initialLeftWidth={220}
-        minLeftWidth={220}
-        minRightWidth={showTerminal ? 580 : 280}
-      />
+          }
+          right={
+            <div className="panel-card h-full">
+              <PanelErrorBoundary name="Terminal">
+                <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
+                  <LazyTerminalPanel />
+                </Suspense>
+              </PanelErrorBoundary>
+            </div>
+          }
+          initialLeftWidth={480}
+          minLeftWidth={280}
+          minRightWidth={300}
+        />
+      ) : (
+        <PanelErrorBoundary name="Content">
+          <ContentArea />
+        </PanelErrorBoundary>
+      )}
       <CommandPalette
         isOpen={paletteOpen}
         onClose={() => setPaletteOpen(false)}

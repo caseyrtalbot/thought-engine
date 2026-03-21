@@ -23,5 +23,6 @@ export const LazyCards: Record<
   'claude-command': lazy(() => import('./claude/ClaudeCommandCard')),
   'claude-team': lazy(() => import('./claude/ClaudeTeamCard')),
   'claude-memory': lazy(() => import('./claude/ClaudeMemoryCard')),
-  'project-file': lazy(() => import('../../panels/workbench/WorkbenchFileCard'))
+  'project-file': lazy(() => import('../../panels/workbench/WorkbenchFileCard')),
+  'system-artifact': lazy(() => import('../../panels/workbench/SystemArtifactCard'))
 }
