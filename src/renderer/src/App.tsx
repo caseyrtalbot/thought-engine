@@ -339,6 +339,8 @@ function ConnectedSidebar({
     const path = await window.api.fs.selectVault()
     if (!path) return
     flushPendingSave()
+    useCanvasStore.getState().closeCanvas()
+    useViewStore.getState().setContentView('editor')
     await window.api.vault.watchStop()
     await onLoadVault(path)
   }, [onLoadVault])
@@ -346,6 +348,9 @@ function ConnectedSidebar({
   const handleSelectVault = useCallback(
     async (path: string) => {
       flushPendingSave()
+      useCanvasStore.getState().closeCanvas()
+      // Reset to editor view so user doesn't see empty canvas during vault load
+      useViewStore.getState().setContentView('editor')
       await window.api.vault.watchStop()
       await onLoadVault(path)
     },
