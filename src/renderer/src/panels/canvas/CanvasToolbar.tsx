@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { createCanvasNode } from '@shared/canvas-types'
 import { generateClaudeMd } from '../../engine/claude-md-template'
+import { TILE_PATTERNS, type TilePattern } from './canvas-tiling'
 import { colors, borderRadius, floatingPanel } from '../../design/tokens'
 
 interface CanvasToolbarProps {
@@ -23,6 +25,8 @@ export function CanvasToolbar({
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
+  const focusFrames = useCanvasStore((s) => s.focusFrames)
+  const [tileMenuOpen, setTileMenuOpen] = useState(false)
 
   const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
   const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
@@ -156,6 +160,77 @@ export function CanvasToolbar({
 
       <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
 
+      {/* Tiling layout */}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setTileMenuOpen((prev) => !prev)}
+          style={btnStyle}
+          title="Tile layout (Cmd+L)"
+          data-testid="canvas-tile"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <rect x="1" y="1" width="5" height="5" rx="0.5" />
+            <rect x="8" y="1" width="5" height="5" rx="0.5" />
+            <rect x="1" y="8" width="5" height="5" rx="0.5" />
+            <rect x="8" y="8" width="5" height="5" rx="0.5" />
+          </svg>
+        </button>
+        {tileMenuOpen && (
+          <div
+            className="absolute flex flex-col py-1"
+            style={{
+              top: 0,
+              right: '100%',
+              marginRight: 6,
+              minWidth: 150,
+              backgroundColor: colors.bg.elevated,
+              border: `1px solid ${colors.border.default}`,
+              borderRadius: borderRadius.container,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              zIndex: 50
+            }}
+          >
+            {TILE_PATTERNS.map((p) => (
+              <button
+                key={p.id}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80"
+                style={{
+                  color: colors.text.secondary,
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                onClick={() => {
+                  const vp = useCanvasStore.getState().viewport
+                  // Compute viewport center in canvas coordinates
+                  const el = document.querySelector('[data-canvas-surface]')
+                  const w = el?.clientWidth ?? 1920
+                  const h = el?.clientHeight ?? 1080
+                  const centerX = (-vp.x + w / 2) / vp.zoom
+                  const centerY = (-vp.y + h / 2) / vp.zoom
+                  useCanvasStore.getState().applyTileLayout(p.id as TilePattern, {
+                    x: centerX,
+                    y: centerY
+                  })
+                  setTileMenuOpen(false)
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+
       <button
         onClick={async () => {
           const vaultPath = useVaultStore.getState().vaultPath
@@ -193,6 +268,30 @@ export function CanvasToolbar({
           <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
         </svg>
       </button>
+
+      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+
+      <div className="flex flex-col items-center gap-1" style={{ padding: '2px 0' }}>
+        {[1, 2, 3, 4, 5].map((slot) => {
+          const filled = String(slot) in focusFrames
+          return (
+            <button
+              key={slot}
+              onClick={() => useCanvasStore.getState().jumpToFocusFrame(String(slot))}
+              title={`Focus Frame ${slot} (Cmd+${slot})`}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                border: `1.5px solid ${colors.text.muted}`,
+                backgroundColor: filled ? colors.text.muted : 'transparent',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }

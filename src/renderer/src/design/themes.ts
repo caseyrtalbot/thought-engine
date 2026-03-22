@@ -100,8 +100,8 @@ export const THEMES = {
       text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' },
       canvas: {
         surface: '#1e1e1e',
-        card: '#2b2d2f',
-        cardTitleBar: '#252728',
+        card: 'rgba(34, 36, 38, 0.88)',
+        cardTitleBar: 'rgba(28, 30, 32, 0.92)',
         cardBorder: 'rgba(255, 255, 255, 0.06)',
         textHeading: '#e8e8e8',
         blockquoteBar: '#4a4a4a'
@@ -116,8 +116,8 @@ export const THEMES = {
       text: { primary: '#f1f5f9', secondary: '#94a3b8', muted: '#64748b' },
       canvas: {
         surface: '#1a2332',
-        card: '#2a3a4e',
-        cardTitleBar: '#222f42',
+        card: 'rgba(32, 46, 64, 0.88)',
+        cardTitleBar: 'rgba(26, 38, 54, 0.92)',
         cardBorder: 'rgba(255, 255, 255, 0.06)',
         textHeading: '#e2e8f0',
         blockquoteBar: '#475569'
@@ -132,8 +132,8 @@ export const THEMES = {
       text: { primary: '#dcddde', secondary: '#999999', muted: '#666666' },
       canvas: {
         surface: '#222222',
-        card: '#2e2e2e',
-        cardTitleBar: '#282828',
+        card: 'rgba(38, 38, 38, 0.88)',
+        cardTitleBar: 'rgba(32, 32, 32, 0.92)',
         cardBorder: 'rgba(255, 255, 255, 0.06)',
         textHeading: '#e0e0e0',
         blockquoteBar: '#484848'
@@ -148,8 +148,8 @@ export const THEMES = {
       text: { primary: '#eceff4', secondary: '#d8dee9', muted: '#7b88a1' },
       canvas: {
         surface: '#343a48',
-        card: '#404958',
-        cardTitleBar: '#3a424e',
+        card: 'rgba(52, 60, 72, 0.88)',
+        cardTitleBar: 'rgba(46, 54, 64, 0.92)',
         cardBorder: 'rgba(255, 255, 255, 0.06)',
         textHeading: '#eceff4',
         blockquoteBar: '#4c566a'
@@ -164,8 +164,8 @@ export const THEMES = {
       text: { primary: '#e6e8ec', secondary: '#8b8e96', muted: '#4a4c54' },
       canvas: {
         surface: '#111113',
-        card: '#1a1a1d',
-        cardTitleBar: '#161618',
+        card: 'rgba(20, 20, 23, 0.88)',
+        cardTitleBar: 'rgba(16, 16, 19, 0.92)',
         cardBorder: 'rgba(255, 255, 255, 0.06)',
         textHeading: '#e6e8ec',
         blockquoteBar: '#3a3a3e'
@@ -180,8 +180,8 @@ export const THEMES = {
       text: { primary: '#0f172a', secondary: '#475569', muted: '#94a3b8' },
       canvas: {
         surface: '#f0f2f4',
-        card: '#ffffff',
-        cardTitleBar: '#f5f7f9',
+        card: 'rgba(255, 255, 255, 0.90)',
+        cardTitleBar: 'rgba(240, 244, 248, 0.92)',
         cardBorder: 'rgba(0, 0, 0, 0.08)',
         textHeading: '#0f172a',
         blockquoteBar: '#cbd5e1'

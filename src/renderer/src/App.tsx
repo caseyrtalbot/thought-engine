@@ -24,14 +24,15 @@ import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
 import { useCanvasStore } from './store/canvas-store'
 import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
-import { createCanvasFile } from '@shared/canvas-types'
+import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
 import { openArtifactInEditor } from './system-artifacts/system-artifact-runtime'
+import { generateClaudeMd } from './engine/claude-md-template'
 import {
   placeArtifactOnWorkbench,
   enrichPlacedArtifact
 } from './panels/workbench/workbench-artifact-placement'
-import { useTerminalActionStore } from './store/terminal-actions-store'
 import { CanvasFloatingSidebar } from './panels/canvas/CanvasFloatingSidebar'
+import { getCanvasNodeTitle } from './panels/canvas/card-title'
 
 const LazyCanvasView = lazy(() =>
   import('./panels/canvas/CanvasView').then((module) => ({ default: module.CanvasView }))
@@ -47,9 +48,6 @@ const LazyWorkbenchPanel = lazy(() =>
 )
 const LazyGraphPanel = lazy(() =>
   import('./panels/graph/GraphPanel').then((module) => ({ default: module.GraphPanel }))
-)
-const LazyTerminalPanel = lazy(() =>
-  import('./panels/terminal/TerminalPanel').then((module) => ({ default: module.TerminalPanel }))
 )
 const LazyWelcomeScreen = lazy(() =>
   import('./panels/onboarding/WelcomeScreen').then((module) => ({
@@ -338,6 +336,8 @@ function ConnectedSidebar({
     const path = await window.api.fs.selectVault()
     if (!path) return
     flushPendingSave()
+    useCanvasStore.getState().closeCanvas()
+    useViewStore.getState().setContentView('editor')
     await window.api.vault.watchStop()
     await onLoadVault(path)
   }, [onLoadVault])
@@ -345,6 +345,9 @@ function ConnectedSidebar({
   const handleSelectVault = useCallback(
     async (path: string) => {
       flushPendingSave()
+      useCanvasStore.getState().closeCanvas()
+      // Reset to editor view so user doesn't see empty canvas during vault load
+      useViewStore.getState().setContentView('editor')
       await window.api.vault.watchStop()
       await onLoadVault(path)
     },
@@ -474,13 +477,6 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     description: 'Show or hide the file browser sidebar.'
   },
   {
-    id: 'cmd:toggle-terminal',
-    label: 'Toggle Terminal',
-    category: 'command',
-    shortcut: '\u2318`',
-    description: 'Show or hide the integrated terminal split.'
-  },
-  {
     id: 'cmd:toggle-mode',
     label: 'Toggle Source and Rich Mode',
     category: 'command',
@@ -532,7 +528,6 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
 function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showTerminal, setShowTerminal] = useState(false)
   const [showSidebar, setShowSidebar] = useState(true)
   const files = useVaultStore((s) => s.files)
   const systemFiles = useVaultStore((s) => s.systemFiles)
@@ -546,6 +541,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const openTab = useTabStore((s) => s.openTab)
   const closeTab = useTabStore((s) => s.closeTab)
   const activeTabId = useTabStore((s) => s.activeTabId)
+  const canvasNodeCount = useCanvasStore((s) => s.nodes.length)
   const workbenchRefresh = useWorkbenchActionStore((s) => s.refresh)
   const workbenchFitAll = useWorkbenchActionStore((s) => s.fitAll)
   const workbenchAddTerminal = useWorkbenchActionStore((s) => s.addTerminal)
@@ -617,10 +613,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     openArtifactInEditor(path, title)
   }, [files, vaultPath])
 
-  const toggleTerminal = useCallback(() => {
-    setShowTerminal((prev) => !prev)
-  }, [])
-
   const toggleSidebar = useCallback(() => {
     setShowSidebar((prev) => !prev)
   }, [])
@@ -633,7 +625,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
     onToggleSidebar: toggleSidebar,
-    onToggleTerminal: toggleTerminal,
     onCloseTab: handleCloseTab,
     onGoBack: goBack,
     onGoForward: goForward,
@@ -769,9 +760,19 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       }
     ]
 
-    return [...BUILT_IN_COMMANDS, ...workbenchCommands, ...noteItems]
+    const canvasNodes = useCanvasStore.getState().nodes
+    const cardItems: CommandItem[] = canvasNodes.map((node) => ({
+      id: `card:${node.id}`,
+      label: getCanvasNodeTitle(node, artifacts, fileToId),
+      category: 'card' as const,
+      description: node.type
+    }))
+
+    return [...BUILT_IN_COMMANDS, ...workbenchCommands, ...cardItems, ...noteItems]
   }, [
+    artifacts,
     artifactById,
+    canvasNodeCount,
     fileToId,
     milestoneCount,
     paletteFiles,
@@ -790,6 +791,15 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   const handlePaletteSelect = useCallback(
     async (item: CommandItem) => {
+      if (item.id.startsWith('card:')) {
+        const nodeId = item.id.slice(5)
+        setContentView('canvas')
+        setTimeout(() => {
+          useCanvasStore.getState().centerOnNode?.(nodeId)
+        }, 100)
+        return
+      }
+
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
         const file = paletteFiles.find((entry) => entry.path === path)
@@ -807,9 +817,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:toggle-mode':
           toggleSourceMode()
           break
-        case 'cmd:toggle-terminal':
-          toggleTerminal()
-          break
         case 'cmd:open-settings':
           setSettingsOpen(true)
           break
@@ -819,10 +826,26 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:reindex-vault':
           if (vaultPath) await onLoadVault(vaultPath)
           break
-        case 'cmd:activate-claude':
-          setShowTerminal(true)
-          useTerminalActionStore.getState().requestActivateClaude()
+        case 'cmd:activate-claude': {
+          if (!vaultPath) break
+          // Ensure CLAUDE.md exists
+          const claudeMdPath = `${vaultPath}/CLAUDE.md`
+          const exists = await window.api.fs.fileExists(claudeMdPath)
+          if (!exists) {
+            const vaultName = vaultPath.split('/').pop() ?? 'Vault'
+            await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
+          }
+          // Switch to canvas and spawn Claude terminal card
+          setContentView('canvas')
+          const vp = useCanvasStore.getState().viewport
+          const node = createCanvasNode(
+            'terminal',
+            { x: -vp.x + 200, y: -vp.y + 100 },
+            { metadata: { initialCommand: 'claude' } }
+          )
+          useCanvasStore.getState().addNode(node)
           break
+        }
         case 'cmd:new-canvas':
           if (vaultPath) {
             const filename = defaultCanvasFilename([])
@@ -870,7 +893,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       toggleView,
       toggleSourceMode,
       toggleSidebar,
-      toggleTerminal,
       setSettingsOpen,
       vaultPath,
       onLoadVault,
@@ -907,29 +929,10 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         }
       />
       <ActivityBar floating />
-      {/* Content + terminal: both always mounted at stable tree positions */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <PanelErrorBoundary name="Content">
-            <ContentArea />
-          </PanelErrorBoundary>
-        </div>
-        {/* Terminal panel: always mounted to preserve PTY sessions, CSS-hidden when collapsed */}
-        <div
-          className="panel-card h-full overflow-hidden"
-          style={{
-            width: showTerminal ? 480 : 0,
-            minWidth: showTerminal ? 300 : 0,
-            transition: 'width 150ms ease-out, min-width 150ms ease-out',
-            borderLeft: showTerminal ? `1px solid ${colors.border.default}` : 'none'
-          }}
-        >
-          <PanelErrorBoundary name="Terminal">
-            <Suspense fallback={<PanelLoadingFallback label="Loading terminal..." />}>
-              <LazyTerminalPanel />
-            </Suspense>
-          </PanelErrorBoundary>
-        </div>
+      <div className="flex-1 overflow-hidden">
+        <PanelErrorBoundary name="Content">
+          <ContentArea />
+        </PanelErrorBoundary>
       </div>
       {/* Floating sidebar: always visible, collapsed or expanded */}
       <CanvasFloatingSidebar

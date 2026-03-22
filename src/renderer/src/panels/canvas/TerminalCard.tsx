@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -32,6 +32,16 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const zoom = useCanvasStore((s) => s.viewport.zoom)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const initialCwd = typeof node.metadata?.initialCwd === 'string' ? node.metadata.initialCwd : null
+  const homePath = window.api.getHomePath?.() ?? ''
+
+  const displayTitle = useMemo(() => {
+    if (node.metadata?.initialCommand === 'claude') return 'Claude Live'
+    if (!initialCwd) return 'Terminal'
+    if (homePath && initialCwd.startsWith(homePath)) {
+      return '~' + initialCwd.slice(homePath.length)
+    }
+    return initialCwd
+  }, [initialCwd, node.metadata?.initialCommand, homePath])
 
   // Create xterm + PTY session on mount.
   // IMPORTANT: xterm must be mounted BEFORE the PTY is created so the
@@ -39,6 +49,32 @@ export function TerminalCard({ node }: TerminalCardProps) {
   useEffect(() => {
     let sessionId = sessionIdRef.current
     let cancelled = false
+
+    // Validate persisted session ID — it may be stale from a previous app run.
+    // If the PTY no longer exists, clear the ref so createSession() spawns a fresh one.
+    if (sessionId) {
+      try {
+        const processName = window.api.terminal.getProcessName(sessionId)
+        // getProcessName returns a Promise; handle both sync-null and async-null
+        if (processName instanceof Promise) {
+          processName
+            .then((name) => {
+              if (!name && !cancelled) {
+                sessionIdRef.current = null
+              }
+            })
+            .catch(() => {
+              if (!cancelled) sessionIdRef.current = null
+            })
+        } else if (!processName) {
+          sessionIdRef.current = null
+          sessionId = null
+        }
+      } catch {
+        sessionIdRef.current = null
+        sessionId = null
+      }
+    }
 
     // Support metadata-driven cwd and initial command
     const initialCommand =
@@ -308,11 +344,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
   }
 
   return (
-    <CardShell
-      node={node}
-      title={node.metadata?.initialCommand === 'claude' ? 'Claude Live' : 'Terminal'}
-      onClose={handleClose}
-    >
+    <CardShell node={node} title={displayTitle} onClose={handleClose}>
       <div
         className="h-full relative"
         onFocus={handleFocus}
@@ -329,8 +361,9 @@ export function TerminalCard({ node }: TerminalCardProps) {
         style={{
           minHeight: 0,
           overflow: 'hidden',
-          outline: focused ? `1px solid ${colors.accent.default}` : 'none',
-          outlineOffset: -1
+          boxShadow: focused
+            ? `0 0 0 1.5px ${colors.accent.default}, 0 0 12px rgba(0, 229, 191, 0.15)`
+            : undefined
         }}
       >
         {/* Counter-scale wrapper: render xterm at screen pixel resolution.
@@ -348,7 +381,13 @@ export function TerminalCard({ node }: TerminalCardProps) {
           <div
             ref={termContainerRef}
             className="w-full h-full"
-            style={{ padding: '4px 0 0 4px', minHeight: 0 }}
+            style={{
+              padding: '8px 12px',
+              minHeight: 0,
+              background: 'rgba(12, 14, 20, 0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)'
+            }}
           />
         </div>
         {sessionDead && (

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { CanvasNode, CanvasEdge, CanvasViewport, CanvasFile } from '@shared/canvas-types'
 import { getDefaultMetadata } from '@shared/canvas-types'
+import { spatialSort, nextCard, prevCard } from '../panels/canvas/canvas-spatial-nav'
+import { computeTileLayout, type TilePattern } from '../panels/canvas/canvas-tiling'
 
 interface CanvasStore {
   // Document state
@@ -10,9 +12,15 @@ interface CanvasStore {
   readonly viewport: CanvasViewport
   readonly isDirty: boolean
 
+  // Focus Frames: named viewport positions (tmux-style CMD+1-5)
+  readonly focusFrames: Readonly<Record<string, CanvasViewport>>
+
   // Selection
   readonly selectedNodeIds: ReadonlySet<string>
   readonly selectedEdgeId: string | null
+
+  // Spatial navigation: keyboard cursor (independent of selection)
+  readonly focusedCardId: string | null
 
   // Interaction state
   readonly hoveredNodeId: string | null
@@ -22,6 +30,9 @@ interface CanvasStore {
     readonly y: number
     readonly nodeId: string
   } | null
+
+  // Bridge: registered by CanvasView for accurate viewport centering
+  readonly centerOnNode: ((nodeId: string) => void) | null
 
   // Document lifecycle
   loadCanvas: (filePath: string, data: CanvasFile) => void
@@ -53,6 +64,10 @@ interface CanvasStore {
   // Viewport
   setViewport: (viewport: CanvasViewport) => void
 
+  // Focus Frames
+  saveFocusFrame: (slot: string) => void
+  jumpToFocusFrame: (slot: string) => void
+
   // Hover
   setHoveredNode: (id: string | null) => void
 
@@ -61,6 +76,17 @@ interface CanvasStore {
 
   // Card context menu
   setCardContextMenu: (menu: { x: number; y: number; nodeId: string } | null) => void
+
+  // Spatial navigation
+  setFocusedCard: (id: string | null) => void
+  focusNextCard: () => void
+  focusPrevCard: () => void
+
+  // Tiling
+  applyTileLayout: (pattern: TilePattern, viewportCenter: { x: number; y: number }) => void
+
+  // Bridge registration
+  setCenterOnNode: (handler: ((nodeId: string) => void) | null) => void
 
   // Snapshot for persistence
   toCanvasFile: () => CanvasFile
@@ -74,11 +100,14 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   edges: [],
   viewport: INITIAL_VIEWPORT,
   isDirty: false,
+  focusFrames: {},
   selectedNodeIds: new Set(),
   selectedEdgeId: null,
+  focusedCardId: null,
   hoveredNodeId: null,
   focusedTerminalId: null,
   cardContextMenu: null,
+  centerOnNode: null,
 
   loadCanvas: (filePath, data) =>
     set({
@@ -86,9 +115,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       nodes: data.nodes,
       edges: data.edges,
       viewport: data.viewport,
+      focusFrames: data.focusFrames ?? {},
       isDirty: false,
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
+      focusedCardId: null,
       hoveredNodeId: null,
       focusedTerminalId: null,
       cardContextMenu: null
@@ -100,9 +131,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       nodes: [],
       edges: [],
       viewport: INITIAL_VIEWPORT,
+      focusFrames: {},
       isDirty: false,
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
+      focusedCardId: null,
       hoveredNodeId: null,
       cardContextMenu: null,
       focusedTerminalId: null
@@ -143,10 +176,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     })),
 
   updateNodeMetadata: (id, partial) => {
-    // Ephemeral-only updates (isActive) should not mark canvas dirty or trigger auto-save
-    const ephemeralOnly = Object.keys(partial).every((k) =>
-      ['isActive', 'initialCwd', 'initialCommand'].includes(k)
-    )
+    // Only isActive is ephemeral (runtime-only, never persisted).
+    // initialCwd and initialCommand persist to disk for session restoration.
+    const ephemeralOnly = Object.keys(partial).every((k) => k === 'isActive')
     set((s) => ({
       nodes: s.nodes.map((n) =>
         n.id === id ? { ...n, metadata: { ...n.metadata, ...partial } } : n
@@ -192,22 +224,83 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   setViewport: (viewport) => set({ viewport }),
 
+  saveFocusFrame: (slot) => {
+    const { viewport, focusFrames } = get()
+    set({
+      focusFrames: { ...focusFrames, [slot]: { ...viewport } },
+      isDirty: true
+    })
+  },
+
+  jumpToFocusFrame: (slot) => {
+    const frame = get().focusFrames[slot]
+    if (frame) set({ viewport: { ...frame } })
+    // intentionally does NOT set isDirty
+  },
+
   setHoveredNode: (id) => set({ hoveredNodeId: id }),
 
   setFocusedTerminal: (id) => set({ focusedTerminalId: id }),
 
   setCardContextMenu: (menu) => set({ cardContextMenu: menu }),
 
+  setFocusedCard: (id) => set({ focusedCardId: id }),
+
+  focusNextCard: () => {
+    const { nodes, focusedCardId, centerOnNode } = get()
+    const sorted = spatialSort(nodes)
+    const next = nextCard(sorted, focusedCardId)
+    if (next) {
+      set({ focusedCardId: next })
+      centerOnNode?.(next)
+    }
+  },
+
+  focusPrevCard: () => {
+    const { nodes, focusedCardId, centerOnNode } = get()
+    const sorted = spatialSort(nodes)
+    const prev = prevCard(sorted, focusedCardId)
+    if (prev) {
+      set({ focusedCardId: prev })
+      centerOnNode?.(prev)
+    }
+  },
+
+  applyTileLayout: (pattern, viewportCenter) => {
+    const { nodes, selectedNodeIds } = get()
+    // Tile selected cards if any are selected, otherwise tile all
+    const targetNodes =
+      selectedNodeIds.size > 0 ? nodes.filter((n) => selectedNodeIds.has(n.id)) : nodes
+    if (targetNodes.length === 0) return
+    const cards = targetNodes.map((n) => ({ id: n.id, size: n.size }))
+    const positions = computeTileLayout(pattern, viewportCenter, cards)
+    set((s) => ({
+      nodes: s.nodes.map((n) => {
+        const pos = positions.get(n.id)
+        return pos ? { ...n, position: pos } : n
+      }),
+      isDirty: true
+    }))
+  },
+
+  setCenterOnNode: (handler) => set({ centerOnNode: handler }),
+
   toCanvasFile: () => {
-    const { nodes, edges, viewport } = get()
-    // Strip ephemeral state from metadata before persisting
-    const EPHEMERAL_KEYS = new Set(['isActive', 'initialCwd', 'initialCommand'])
+    const { nodes, edges, viewport, focusFrames } = get()
+    // Only strip isActive (runtime-only). initialCwd and initialCommand
+    // persist to disk so terminal cards restore with correct cwd and command.
+    const EPHEMERAL_KEYS = new Set(['isActive'])
     const cleanNodes = nodes.map((n) => ({
       ...n,
       metadata: n.metadata
         ? Object.fromEntries(Object.entries(n.metadata).filter(([k]) => !EPHEMERAL_KEYS.has(k)))
         : {}
     }))
-    return { nodes: cleanNodes, edges: [...edges], viewport: { ...viewport } }
+    return {
+      nodes: cleanNodes,
+      edges: [...edges],
+      viewport: { ...viewport },
+      focusFrames: { ...focusFrames }
+    }
   }
 }))

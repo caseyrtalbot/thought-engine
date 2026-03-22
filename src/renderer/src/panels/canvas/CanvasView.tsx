@@ -237,15 +237,12 @@ export function CanvasView(): React.ReactElement {
             break
           }
           case 'code': {
+            // Create file-view card (read-only live monitor) instead of inline code card
             const language = inferLanguage(file.path)
-            const filename = file.path.split('/').pop() ?? ''
-            let content = ''
-            try {
-              content = await window.api.fs.readFile(file.path)
-            } catch {
-              // File unreadable; create card with empty content
-            }
-            node = createCanvasNode('code', pos, { content, metadata: { language, filename } })
+            node = createCanvasNode('file-view', pos, {
+              content: file.path,
+              metadata: { language, previousLineCount: 0, modified: false }
+            })
             break
           }
           default: {
@@ -268,6 +265,17 @@ export function CanvasView(): React.ReactElement {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Focus Frames: Cmd+1-5 jump, Cmd+Shift+1-5 save
+      if (e.metaKey && e.key >= '1' && e.key <= '5') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          useCanvasStore.getState().saveFocusFrame(e.key)
+        } else {
+          useCanvasStore.getState().jumpToFocusFrame(e.key)
+        }
+        return
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const { selectedEdgeId, removeEdge, selectedNodeIds, removeNode, focusedTerminalId } =
           useCanvasStore.getState()
@@ -284,6 +292,27 @@ export function CanvasView(): React.ReactElement {
             removeNode(id)
           }
         }
+      }
+
+      // J/K spatial card cycling
+      if (e.key === 'j' || e.key === 'k') {
+        // Guard: don't fire in terminals, text inputs, or rich editors
+        if (useCanvasStore.getState().focusedTerminalId) return
+        if (document.activeElement?.tagName === 'TEXTAREA') return
+        if (document.activeElement?.tagName === 'INPUT') return
+        if ((document.activeElement as HTMLElement)?.isContentEditable) return
+
+        e.preventDefault()
+        if (e.key === 'j') {
+          useCanvasStore.getState().focusNextCard()
+        } else {
+          useCanvasStore.getState().focusPrevCard()
+        }
+      }
+
+      // Escape clears focus
+      if (e.key === 'Escape') {
+        useCanvasStore.getState().setFocusedCard(null)
       }
     }
     window.addEventListener('keydown', handler)
@@ -307,11 +336,39 @@ export function CanvasView(): React.ReactElement {
           return
         e.preventDefault()
         setImportOpen(true)
+      } else if (e.key === 'l') {
+        // CMD+L: apply default tile layout (grid-2x2) to viewport center
+        e.preventDefault()
+        const vp = useCanvasStore.getState().viewport
+        const w = containerRef.current?.clientWidth ?? 1920
+        const h = containerRef.current?.clientHeight ?? 1080
+        const centerX = (-vp.x + w / 2) / vp.zoom
+        const centerY = (-vp.y + h / 2) / vp.zoom
+        useCanvasStore.getState().applyTileLayout('grid-2x2', { x: centerX, y: centerY })
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  // Register centerOnNode bridge so external callers (e.g. command palette) can
+  // focus a specific card by ID with smooth viewport centering.
+  useEffect(() => {
+    useCanvasStore.getState().setCenterOnNode((nodeId) => {
+      const node = useCanvasStore.getState().nodes.find((n) => n.id === nodeId)
+      if (!node) return
+      const cx = node.position.x + node.size.width / 2
+      const cy = node.position.y + node.size.height / 2
+      const zoom = useCanvasStore.getState().viewport.zoom
+      useCanvasStore.getState().setViewport({
+        x: containerSize.width / 2 - cx * zoom,
+        y: containerSize.height / 2 - cy * zoom,
+        zoom
+      })
+      useCanvasStore.getState().setSelection(new Set([nodeId]))
+    })
+    return () => useCanvasStore.getState().setCenterOnNode(null)
+  }, [containerSize])
 
   // Auto-save debounce
   useEffect(() => {
