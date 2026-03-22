@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -32,6 +32,16 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const zoom = useCanvasStore((s) => s.viewport.zoom)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const initialCwd = typeof node.metadata?.initialCwd === 'string' ? node.metadata.initialCwd : null
+  const homePath = window.api.getHomePath?.() ?? ''
+
+  const displayTitle = useMemo(() => {
+    if (node.metadata?.initialCommand === 'claude') return 'Claude Live'
+    if (!initialCwd) return 'Terminal'
+    if (homePath && initialCwd.startsWith(homePath)) {
+      return '~' + initialCwd.slice(homePath.length)
+    }
+    return initialCwd
+  }, [initialCwd, node.metadata?.initialCommand, homePath])
 
   // Create xterm + PTY session on mount.
   // IMPORTANT: xterm must be mounted BEFORE the PTY is created so the
@@ -334,11 +344,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
   }
 
   return (
-    <CardShell
-      node={node}
-      title={node.metadata?.initialCommand === 'claude' ? 'Claude Live' : 'Terminal'}
-      onClose={handleClose}
-    >
+    <CardShell node={node} title={displayTitle} onClose={handleClose}>
       <div
         className="h-full relative"
         onFocus={handleFocus}
