@@ -204,6 +204,8 @@ export function CardShell({
         borderRadius: canvasTokens.cardRadius,
         boxShadow: isSelected ? floatingPanel.shadowCardSelected : floatingPanel.shadowCard,
         overflow: 'hidden',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         ...(isActive
           ? ({
               '--activity-color': 'rgba(167, 139, 250, 0.3)',
