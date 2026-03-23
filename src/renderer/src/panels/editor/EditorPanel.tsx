@@ -16,6 +16,7 @@ import { CodeFileEditor } from './CodeFileEditor'
 import { parseFrontmatter } from './markdown-utils'
 import { ConceptNodeMark } from './extensions/concept-node-mark'
 import { MermaidCodeBlock } from './extensions/mermaid-code-block'
+import { SlashCommand } from './extensions/slash-command'
 import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
 import { isSystemArtifactPath } from '@shared/system-artifacts'
@@ -71,7 +72,8 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
       TaskList,
       TaskItem.configure({ nested: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: null, target: null } }),
-      ConceptNodeMark
+      ConceptNodeMark,
+      SlashCommand
     ],
     []
   )
