@@ -178,6 +178,7 @@ export function CanvasView(): React.ReactElement {
     setContextMenu(null)
     setCardContextMenu(null)
     useCanvasStore.getState().unlockCard()
+    useCanvasStore.getState().setFocusedCard(null)
   }, [clearSelection, setCardContextMenu])
 
   const handleAddCard = useCallback(

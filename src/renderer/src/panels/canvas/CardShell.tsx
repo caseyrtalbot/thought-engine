@@ -166,6 +166,7 @@ export function CardShell({
   const setSelection = useCanvasStore((s) => s.setSelection)
   const toggleSelection = useCanvasStore((s) => s.toggleSelection)
   const setHoveredNode = useCanvasStore((s) => s.setHoveredNode)
+  const setFocusedCard = useCanvasStore((s) => s.setFocusedCard)
   const lockCard = useCanvasStore((s) => s.lockCard)
   const unlockCard = useCanvasStore((s) => s.unlockCard)
   const { onDragStart } = useNodeDrag(node.id)
@@ -183,8 +184,9 @@ export function CardShell({
       } else {
         setSelection(new Set([node.id]))
       }
+      setFocusedCard(node.id)
     },
-    [node.id, setSelection, toggleSelection]
+    [node.id, setSelection, toggleSelection, setFocusedCard]
   )
 
   const handleDoubleClick = useCallback(
@@ -385,8 +387,11 @@ export function CardShell({
       </div>
 
       {/* Content area — hidden scrollbars via .canvas-card-content */}
-      <div className="flex-1 canvas-card-content" style={{ minHeight: 0 }}>
+      <div className="flex-1 canvas-card-content relative" style={{ minHeight: 0 }}>
         {children}
+        {/* Pointer-events shield: blocks content interaction until card is focused.
+            First click selects+focuses the card, second click interacts with content. */}
+        {!isFocused && !isLocked && <div className="absolute inset-0 z-[1]" aria-hidden="true" />}
       </div>
 
       {/* Resize handle — only visible on hover */}
