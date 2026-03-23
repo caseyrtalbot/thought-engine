@@ -368,7 +368,7 @@ export function Sidebar({
             'linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.06) 80%, transparent)'
         }}
       />
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hover">
         <FileTree
           nodes={nodes}
           activeFilePath={activeFilePath}
