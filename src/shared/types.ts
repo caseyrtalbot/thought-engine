@@ -133,7 +133,6 @@ export interface VaultConfig {
 
 export interface VaultState {
   version: number
-  idCounters: Record<string, number>
   lastOpenNote: string | null
   panelLayout: { sidebarWidth: number; terminalWidth: number }
   contentView: 'editor' | 'canvas' | 'skills'

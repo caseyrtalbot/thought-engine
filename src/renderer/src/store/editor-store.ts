@@ -50,6 +50,8 @@ function titleFromPath(path: string): string {
   return filename.replace(/\.md$/, '')
 }
 
+const MAX_HISTORY = 100
+
 function pushHistory(
   stack: readonly string[],
   index: number,
@@ -59,7 +61,13 @@ function pushHistory(
   if (truncated[truncated.length - 1] === path) {
     return { stack: truncated, index }
   }
-  return { stack: [...truncated, path], index: truncated.length }
+  const next = [...truncated, path]
+  // Cap history to prevent unbounded growth in long sessions
+  if (next.length > MAX_HISTORY) {
+    const excess = next.length - MAX_HISTORY
+    return { stack: next.slice(excess), index: next.length - excess - 1 }
+  }
+  return { stack: next, index: next.length - 1 }
 }
 
 /**
@@ -159,6 +167,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }
     const tabs = state.openTabs.filter((t) => t.path !== path)
 
+    // Prune mtime entry for the closed file
+    const { [path]: _, ...remainingMtimes } = state.fileMtimes
+    const conflictCleared = state.conflictPath === path ? null : state.conflictPath
+
     if (state.activeNotePath === path) {
       const oldIndex = state.openTabs.findIndex((t) => t.path === path)
       const nextTab = tabs[Math.min(oldIndex, tabs.length - 1)] ?? null
@@ -167,10 +179,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         openTabs: tabs,
         activeNoteId: nextTab?.path ?? null,
         activeNotePath: nextTab?.path ?? null,
-        isDirty: false
+        isDirty: false,
+        fileMtimes: remainingMtimes,
+        conflictPath: conflictCleared
       })
     } else {
-      set({ openTabs: tabs })
+      set({ openTabs: tabs, fileMtimes: remainingMtimes, conflictPath: conflictCleared })
     }
   },
 

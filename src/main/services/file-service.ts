@@ -180,7 +180,6 @@ export class FileService {
 
     const defaultState: VaultState = {
       version: 1,
-      idCounters: {},
       lastOpenNote: null,
       panelLayout: { sidebarWidth: 240, terminalWidth: 400 },
       contentView: 'editor',
