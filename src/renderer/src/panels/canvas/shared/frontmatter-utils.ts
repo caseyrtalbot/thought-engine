@@ -25,11 +25,15 @@ function sortKey(key: string): number {
   return idx >= 0 ? idx : KEY_ORDER.length
 }
 
-function formatValue(value: unknown): string {
-  if (value == null) return ''
-  if (Array.isArray(value)) return JSON.stringify(value)
+function formatValue(value: unknown): string | readonly string[] | null {
+  if (value == null) return null
+  if (Array.isArray(value)) {
+    const items = value.map(String).filter(Boolean)
+    return items.length > 0 ? items : null
+  }
   if (value instanceof Date) return value.toISOString().split('T')[0]
-  return String(value)
+  const str = String(value)
+  return str || null
 }
 
 /** Convert raw frontmatter into displayable entries, filtering internal keys. */
@@ -41,7 +45,7 @@ export function frontmatterToEntries(
   for (const [key, value] of Object.entries(frontmatter)) {
     if (HIDDEN_KEYS.has(key)) continue
     const formatted = formatValue(value)
-    if (!formatted) continue
+    if (formatted === null) continue
     entries.push({ key, value: formatted })
   }
 

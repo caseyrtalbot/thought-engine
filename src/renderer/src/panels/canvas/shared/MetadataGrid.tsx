@@ -2,11 +2,51 @@ import { typography } from '../../../design/tokens'
 
 export interface MetadataEntry {
   readonly key: string
-  readonly value: string
+  readonly value: string | readonly string[]
 }
 
 interface MetadataGridProps {
   readonly entries: readonly MetadataEntry[]
+}
+
+const pillStyle: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '1px 8px',
+  borderRadius: 10,
+  fontSize: 11,
+  fontFamily: typography.fontFamily.mono,
+  backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  color: 'var(--color-text-secondary)',
+  lineHeight: 1.6,
+  whiteSpace: 'nowrap'
+}
+
+function MetadataValue({ value }: { readonly value: string | readonly string[] }) {
+  if (typeof value === 'string') {
+    return (
+      <span
+        style={{
+          fontFamily: typography.fontFamily.mono,
+          fontSize: 13,
+          color: 'var(--color-text-primary)',
+          lineHeight: 1.5,
+          wordBreak: 'break-word'
+        }}
+      >
+        {value}
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1" style={{ paddingTop: 1 }}>
+      {value.map((item, i) => (
+        <span key={i} style={pillStyle}>
+          {item}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export function MetadataGrid({ entries }: MetadataGridProps) {
@@ -17,9 +57,10 @@ export function MetadataGrid({ entries }: MetadataGridProps) {
       style={{
         display: 'grid',
         gridTemplateColumns: 'max-content 1fr',
-        rowGap: 6,
+        rowGap: 8,
         columnGap: 16,
-        marginBottom: 20
+        marginBottom: 20,
+        alignItems: 'start'
       }}
     >
       {entries.map(({ key, value }) => (
@@ -27,28 +68,18 @@ export function MetadataGrid({ entries }: MetadataGridProps) {
           <span
             style={{
               fontFamily: typography.fontFamily.mono,
-              fontSize: 12,
-              color: 'var(--color-text-secondary)',
+              fontSize: 11,
+              color: 'var(--color-text-muted)',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              lineHeight: 1.5,
+              letterSpacing: '0.06em',
+              lineHeight: 1.8,
               userSelect: 'none',
               whiteSpace: 'nowrap'
             }}
           >
             {key.replace(/_/g, '_')}
           </span>
-          <span
-            style={{
-              fontFamily: typography.fontFamily.mono,
-              fontSize: 13,
-              color: 'var(--color-text-primary)',
-              lineHeight: 1.5,
-              wordBreak: 'break-word'
-            }}
-          >
-            {value}
-          </span>
+          <MetadataValue value={value} />
         </div>
       ))}
     </div>

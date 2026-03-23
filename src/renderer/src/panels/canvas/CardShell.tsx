@@ -259,7 +259,7 @@ export function CardShell({
         className="flex items-center justify-between shrink-0 select-none"
         style={{
           height: canvasTokens.titleBarHeight,
-          padding: '0 10px',
+          padding: '0 12px',
           backgroundColor: canvasTokens.cardTitleBar,
           borderBottom: `1px solid ${canvasTokens.cardBorder}`,
           borderRadius: `${canvasTokens.cardRadius}px ${canvasTokens.cardRadius}px 0 0`,
@@ -274,7 +274,7 @@ export function CardShell({
             style={{
               fontFamily: typography.fontFamily.mono,
               fontSize: 11,
-              color: colors.text.muted,
+              color: colors.text.secondary,
               direction: 'rtl',
               textAlign: 'left',
               unicodeBidi: 'plaintext'
