@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import { colors, transitions } from '../../design/tokens'
 
@@ -101,7 +102,10 @@ export function FileContextMenu({ state, onClose, onAction }: FileContextMenuPro
 
   if (!state) return null
 
-  return (
+  // Portal to document.body so the menu escapes the sidebar's stacking context.
+  // The sidebar uses backdropFilter + overflow-hidden, which traps fixed-positioned
+  // children inside its own stacking context and clips them.
+  return createPortal(
     <div
       ref={menuRef}
       className="fixed z-50 min-w-[180px] py-1 rounded-md shadow-xl"
@@ -140,7 +144,8 @@ export function FileContextMenu({ state, onClose, onAction }: FileContextMenuPro
           )}
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   )
 }
 
