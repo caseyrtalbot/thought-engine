@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
-import { colors, floatingPanel } from '../../design/tokens'
+import { floatingPanel } from '../../design/tokens'
 import type { CanvasNode, CanvasViewport } from '@shared/canvas-types'
 
 /** Type-based colors for minimap rectangles (mirrors CardLodPreview) */
@@ -168,10 +168,10 @@ export function CanvasMinimap({
         right: 12,
         width: MINIMAP_WIDTH,
         height: MINIMAP_HEIGHT,
-        backgroundColor: colors.bg.surface,
+        backgroundColor: floatingPanel.glass.bg,
         borderRadius: floatingPanel.borderRadius,
         boxShadow: floatingPanel.shadowCompact,
-        backdropFilter: floatingPanel.blur.compact,
+        backdropFilter: floatingPanel.glass.blur,
         zIndex: 20,
         overflow: 'hidden',
         cursor: 'crosshair'
@@ -189,6 +189,7 @@ export function CanvasMinimap({
             width: Math.max(2, node.size.width * scale),
             height: Math.max(2, node.size.height * scale),
             backgroundColor: LOD_COLORS[node.type] ?? '#94a3b8',
+            opacity: 0.6,
             borderRadius: 1,
             pointerEvents: 'none'
           }}
@@ -203,9 +204,9 @@ export function CanvasMinimap({
           top: toMiniY(vpRect.y),
           width: Math.max(4, vpRect.width * scale),
           height: Math.max(4, vpRect.height * scale),
-          border: `1.5px solid ${colors.accent.default}`,
-          backgroundColor: colors.accent.muted,
-          borderRadius: 1,
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+          borderRadius: 2,
           cursor: 'grab',
           pointerEvents: 'auto'
         }}

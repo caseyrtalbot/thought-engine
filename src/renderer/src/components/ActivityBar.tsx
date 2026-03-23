@@ -112,8 +112,8 @@ export function ActivityBar({ floating }: { readonly floating?: boolean }) {
               padding: '6px 0',
               borderRadius: floatingPanel.borderRadius,
               boxShadow: floatingPanel.shadowCompact,
-              backdropFilter: floatingPanel.blur.compact,
-              backgroundColor: colors.bg.elevated
+              backdropFilter: floatingPanel.glass.blur,
+              backgroundColor: floatingPanel.glass.bg
             }
           : {
               width: 40,

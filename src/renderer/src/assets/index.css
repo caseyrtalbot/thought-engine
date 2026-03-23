@@ -118,10 +118,10 @@ body {
   --color-accent-subtle: color-mix(in srgb, var(--color-accent-default) 15%, transparent);
 
   /* ── Canvas Card Defaults (overridden per theme by ThemeProvider) ── */
-  --canvas-surface-bg: #2a2a2e;
-  --canvas-card-bg: #1e1e22;
-  --canvas-card-title-bg: #1a1a1e;
-  --canvas-card-border: color-mix(in srgb, white 8%, transparent);
+  --canvas-surface-bg: #161618;
+  --canvas-card-bg: rgba(40, 42, 46, 0.88);
+  --canvas-card-title-bg: rgba(34, 36, 40, 0.92);
+  --canvas-card-border: color-mix(in srgb, white 6%, transparent);
   --canvas-text-heading: #e8e8e8;
   --canvas-blockquote-bar: #4a4a4a;
   --canvas-link-cyan: #5cb8c4;

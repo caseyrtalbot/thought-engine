@@ -97,9 +97,9 @@ export const THEMES = {
       },
       text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' },
       canvas: {
-        surface: '#1e1e1e',
-        card: 'rgba(34, 36, 38, 0.88)',
-        cardTitleBar: 'rgba(28, 30, 32, 0.92)',
+        surface: '#161618',
+        card: 'rgba(40, 42, 46, 0.88)',
+        cardTitleBar: 'rgba(34, 36, 40, 0.92)',
         cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e8e8e8',
         blockquoteBar: '#4a4a4a'
@@ -113,9 +113,9 @@ export const THEMES = {
       border: { default: '#475569', subtle: 'color-mix(in srgb, white 8%, transparent)' },
       text: { primary: '#f1f5f9', secondary: '#94a3b8', muted: '#64748b' },
       canvas: {
-        surface: '#1a2332',
-        card: 'rgba(32, 46, 64, 0.88)',
-        cardTitleBar: 'rgba(26, 38, 54, 0.92)',
+        surface: '#141c2a',
+        card: 'rgba(36, 50, 68, 0.88)',
+        cardTitleBar: 'rgba(30, 42, 58, 0.92)',
         cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e2e8f0',
         blockquoteBar: '#475569'
@@ -129,9 +129,9 @@ export const THEMES = {
       border: { default: '#3e3e3e', subtle: 'color-mix(in srgb, white 6%, transparent)' },
       text: { primary: '#dcddde', secondary: '#999999', muted: '#666666' },
       canvas: {
-        surface: '#222222',
-        card: 'rgba(38, 38, 38, 0.88)',
-        cardTitleBar: 'rgba(32, 32, 32, 0.92)',
+        surface: '#1a1a1a',
+        card: 'rgba(42, 42, 44, 0.88)',
+        cardTitleBar: 'rgba(36, 36, 38, 0.92)',
         cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e0e0e0',
         blockquoteBar: '#484848'
@@ -145,9 +145,9 @@ export const THEMES = {
       border: { default: '#4c566a', subtle: 'color-mix(in srgb, white 8%, transparent)' },
       text: { primary: '#eceff4', secondary: '#d8dee9', muted: '#7b88a1' },
       canvas: {
-        surface: '#343a48',
-        card: 'rgba(52, 60, 72, 0.88)',
-        cardTitleBar: 'rgba(46, 54, 64, 0.92)',
+        surface: '#2c3340',
+        card: 'rgba(54, 62, 74, 0.88)',
+        cardTitleBar: 'rgba(48, 56, 66, 0.92)',
         cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#eceff4',
         blockquoteBar: '#4c566a'
@@ -161,9 +161,9 @@ export const THEMES = {
       border: { default: '#2a2a2d', subtle: 'color-mix(in srgb, white 6%, transparent)' },
       text: { primary: '#e6e8ec', secondary: '#8b8e96', muted: '#4a4c54' },
       canvas: {
-        surface: '#111113',
-        card: 'rgba(20, 20, 23, 0.88)',
-        cardTitleBar: 'rgba(16, 16, 19, 0.92)',
+        surface: '#0e0e10',
+        card: 'rgba(26, 26, 30, 0.88)',
+        cardTitleBar: 'rgba(20, 20, 24, 0.92)',
         cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e6e8ec',
         blockquoteBar: '#3a3a3e'
@@ -177,9 +177,9 @@ export const THEMES = {
       border: { default: '#e2e8f0', subtle: 'color-mix(in srgb, black 6%, transparent)' },
       text: { primary: '#0f172a', secondary: '#475569', muted: '#94a3b8' },
       canvas: {
-        surface: '#f0f2f4',
-        card: 'rgba(255, 255, 255, 0.90)',
-        cardTitleBar: 'rgba(240, 244, 248, 0.92)',
+        surface: '#e8ecf0',
+        card: 'rgba(255, 255, 255, 0.92)',
+        cardTitleBar: 'rgba(244, 248, 252, 0.94)',
         cardBorder: 'color-mix(in srgb, black 8%, transparent)',
         textHeading: '#0f172a',
         blockquoteBar: '#cbd5e1'

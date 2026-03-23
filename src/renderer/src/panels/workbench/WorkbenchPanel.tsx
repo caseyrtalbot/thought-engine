@@ -547,10 +547,10 @@ export function WorkbenchPanel() {
         className="absolute top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 px-3 py-2"
         style={{
           left: 'calc(50% - 200px)',
-          backgroundColor: colors.bg.elevated,
+          backgroundColor: floatingPanel.glass.bg,
           borderRadius: floatingPanel.borderRadius,
           boxShadow: floatingPanel.shadowCompact,
-          backdropFilter: floatingPanel.blur.compact
+          backdropFilter: floatingPanel.glass.blur
         }}
       >
         <span

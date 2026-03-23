@@ -4,7 +4,7 @@ import { useVaultStore } from '../../store/vault-store'
 import { createCanvasNode } from '@shared/canvas-types'
 import { generateClaudeMd } from '../../engine/claude-md-template'
 import { TILE_PATTERNS, type TilePattern } from './canvas-tiling'
-import { colors, borderRadius, floatingPanel } from '../../design/tokens'
+import { colors, borderRadius, floatingPanel, typography } from '../../design/tokens'
 
 interface CanvasToolbarProps {
   readonly canUndo: boolean
@@ -37,8 +37,8 @@ export function CanvasToolbar({
   const btnStyle: React.CSSProperties = {
     color: colors.text.secondary,
     backgroundColor: 'transparent',
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: borderRadius.inline,
     display: 'flex',
     alignItems: 'center',
@@ -58,11 +58,11 @@ export function CanvasToolbar({
     <div
       className="absolute top-3 right-3 flex flex-col gap-1 z-30"
       style={{
-        backgroundColor: colors.bg.elevated,
+        backgroundColor: floatingPanel.glass.bg,
         borderRadius: floatingPanel.borderRadius,
         boxShadow: floatingPanel.shadowCompact,
-        backdropFilter: floatingPanel.blur.compact,
-        padding: 6
+        backdropFilter: floatingPanel.glass.blur,
+        padding: 8
       }}
     >
       <button onClick={onAddCard} style={btnStyle} title="Add card" data-testid="canvas-add-card">
@@ -108,7 +108,7 @@ export function CanvasToolbar({
       </button>
       <button
         onClick={resetZoom}
-        style={{ ...btnStyle, fontSize: 10 }}
+        style={{ ...btnStyle, fontSize: 11, fontFamily: typography.fontFamily.mono }}
         title={`${zoomPercent}% — click to reset`}
       >
         {zoomPercent}%
