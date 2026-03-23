@@ -1,6 +1,8 @@
 import { readFile, writeFile, unlink, readdir, mkdir, rename, stat, realpath } from 'fs/promises'
 import { join, extname, dirname } from 'path'
 import { existsSync } from 'fs'
+import { tmpdir } from 'os'
+import { randomUUID } from 'crypto'
 import {
   teDirPath,
   teConfigPath,
@@ -24,9 +26,20 @@ export class FileService {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const tmpPath = path + '.tmp'
-    await writeFile(tmpPath, content, 'utf-8')
-    await rename(tmpPath, path)
+    const tmpPath = join(tmpdir(), `te-write-${randomUUID()}.tmp`)
+    try {
+      await writeFile(tmpPath, content, 'utf-8')
+      await rename(tmpPath, path)
+    } catch (err: unknown) {
+      // Cross-device rename: fall back to same-directory atomic write
+      if ((err as NodeJS.ErrnoException).code === 'EXDEV') {
+        const localTmp = path + '.tmp'
+        await writeFile(localTmp, content, 'utf-8')
+        await rename(localTmp, path)
+      } else {
+        throw err
+      }
+    }
   }
 
   async deleteFile(path: string): Promise<void> {
