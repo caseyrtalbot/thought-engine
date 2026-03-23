@@ -77,8 +77,8 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    display: '"Inter", system-ui, sans-serif',
-    body: '"Inter", system-ui, sans-serif',
+    display: 'inherit',
+    body: 'inherit',
     mono: '"JetBrains Mono", "Fira Code", monospace'
   },
   metadata: {
@@ -126,7 +126,7 @@ export const borderRadius = { container: 6, inline: 4, card: 0, round: '50%' } a
 export const visualLanguage = {
   panelGap: 0,
   cardRadius: 0,
-  borderSubtle: 'rgba(255, 255, 255, 0.08)'
+  borderSubtle: 'color-mix(in srgb, white 8%, transparent)'
 } as const
 
 export const EDGE_KIND_COLORS: Record<string, string> = {

@@ -49,7 +49,7 @@ export function TextCard({ node }: TextCardProps) {
           className="w-full h-full resize-none bg-transparent outline-none p-3 text-sm"
           style={{
             color: colors.text.primary,
-            fontFamily: 'Inter, system-ui, sans-serif'
+            fontFamily: 'inherit'
           }}
         />
       ) : (

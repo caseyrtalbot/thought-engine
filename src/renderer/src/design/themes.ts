@@ -54,11 +54,6 @@ function parseHex(hex: string): [number, number, number] {
   ]
 }
 
-function hexToRgba(hex: string, alpha: number): string {
-  const [r, g, b] = parseHex(hex)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
 function lightenHex(hex: string, factor: number): string {
   const [r, g, b] = parseHex(hex)
   const lighten = (c: number): number => Math.min(255, Math.round(c + (255 - c) * factor))
@@ -74,7 +69,7 @@ export function computeAccentVariants(hex: string): {
   return {
     default: hex,
     hover: lightenHex(hex, 0.2),
-    muted: hexToRgba(hex, 0.1)
+    muted: `color-mix(in srgb, ${hex} 10%, transparent)`
   }
 }
 
@@ -96,13 +91,16 @@ export const THEMES = {
     label: 'Midnight',
     colors: {
       bg: { base: '#141414', surface: '#1f1f1f', elevated: '#2a2a2a' },
-      border: { default: 'rgba(255, 255, 255, 0.08)', subtle: 'rgba(255, 255, 255, 0.04)' },
+      border: {
+        default: 'color-mix(in srgb, white 8%, transparent)',
+        subtle: 'color-mix(in srgb, white 4%, transparent)'
+      },
       text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' },
       canvas: {
         surface: '#1e1e1e',
         card: 'rgba(34, 36, 38, 0.88)',
         cardTitleBar: 'rgba(28, 30, 32, 0.92)',
-        cardBorder: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e8e8e8',
         blockquoteBar: '#4a4a4a'
       }
@@ -112,13 +110,13 @@ export const THEMES = {
     label: 'Slate',
     colors: {
       bg: { base: '#0f172a', surface: '#1e293b', elevated: '#334155' },
-      border: { default: '#475569', subtle: 'rgba(255, 255, 255, 0.08)' },
+      border: { default: '#475569', subtle: 'color-mix(in srgb, white 8%, transparent)' },
       text: { primary: '#f1f5f9', secondary: '#94a3b8', muted: '#64748b' },
       canvas: {
         surface: '#1a2332',
         card: 'rgba(32, 46, 64, 0.88)',
         cardTitleBar: 'rgba(26, 38, 54, 0.92)',
-        cardBorder: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e2e8f0',
         blockquoteBar: '#475569'
       }
@@ -128,13 +126,13 @@ export const THEMES = {
     label: 'Obsidian',
     colors: {
       bg: { base: '#1e1e1e', surface: '#252525', elevated: '#2d2d2d' },
-      border: { default: '#3e3e3e', subtle: 'rgba(255, 255, 255, 0.06)' },
+      border: { default: '#3e3e3e', subtle: 'color-mix(in srgb, white 6%, transparent)' },
       text: { primary: '#dcddde', secondary: '#999999', muted: '#666666' },
       canvas: {
         surface: '#222222',
         card: 'rgba(38, 38, 38, 0.88)',
         cardTitleBar: 'rgba(32, 32, 32, 0.92)',
-        cardBorder: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e0e0e0',
         blockquoteBar: '#484848'
       }
@@ -144,13 +142,13 @@ export const THEMES = {
     label: 'Nord',
     colors: {
       bg: { base: '#2e3440', surface: '#3b4252', elevated: '#434c5e' },
-      border: { default: '#4c566a', subtle: 'rgba(255, 255, 255, 0.08)' },
+      border: { default: '#4c566a', subtle: 'color-mix(in srgb, white 8%, transparent)' },
       text: { primary: '#eceff4', secondary: '#d8dee9', muted: '#7b88a1' },
       canvas: {
         surface: '#343a48',
         card: 'rgba(52, 60, 72, 0.88)',
         cardTitleBar: 'rgba(46, 54, 64, 0.92)',
-        cardBorder: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#eceff4',
         blockquoteBar: '#4c566a'
       }
@@ -160,13 +158,13 @@ export const THEMES = {
     label: 'Opal',
     colors: {
       bg: { base: '#0c0c0e', surface: '#131315', elevated: '#1c1c1f' },
-      border: { default: '#2a2a2d', subtle: 'rgba(255, 255, 255, 0.06)' },
+      border: { default: '#2a2a2d', subtle: 'color-mix(in srgb, white 6%, transparent)' },
       text: { primary: '#e6e8ec', secondary: '#8b8e96', muted: '#4a4c54' },
       canvas: {
         surface: '#111113',
         card: 'rgba(20, 20, 23, 0.88)',
         cardTitleBar: 'rgba(16, 16, 19, 0.92)',
-        cardBorder: 'rgba(255, 255, 255, 0.06)',
+        cardBorder: 'color-mix(in srgb, white 6%, transparent)',
         textHeading: '#e6e8ec',
         blockquoteBar: '#3a3a3e'
       }
@@ -176,13 +174,13 @@ export const THEMES = {
     label: 'Light',
     colors: {
       bg: { base: '#ffffff', surface: '#f8fafc', elevated: '#f1f5f9' },
-      border: { default: '#e2e8f0', subtle: 'rgba(0, 0, 0, 0.06)' },
+      border: { default: '#e2e8f0', subtle: 'color-mix(in srgb, black 6%, transparent)' },
       text: { primary: '#0f172a', secondary: '#475569', muted: '#94a3b8' },
       canvas: {
         surface: '#f0f2f4',
         card: 'rgba(255, 255, 255, 0.90)',
         cardTitleBar: 'rgba(240, 244, 248, 0.92)',
-        cardBorder: 'rgba(0, 0, 0, 0.08)',
+        cardBorder: 'color-mix(in srgb, black 8%, transparent)',
         textHeading: '#0f172a',
         blockquoteBar: '#cbd5e1'
       }

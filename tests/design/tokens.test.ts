@@ -62,7 +62,7 @@ describe('extended design tokens', () => {
   it('has visual language tokens', () => {
     expect(visualLanguage.panelGap).toBe(0)
     expect(visualLanguage.cardRadius).toBe(0)
-    expect(visualLanguage.borderSubtle).toBe('rgba(255, 255, 255, 0.08)')
+    expect(visualLanguage.borderSubtle).toBe('color-mix(in srgb, white 8%, transparent)')
   })
 
   it('has transition timing constants', () => {
