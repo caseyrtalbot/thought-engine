@@ -82,16 +82,31 @@ export function PdfCard({ node }: PdfCardProps): React.ReactElement {
     }
   }, [src, isRemote, node.id, pageCount, updateNodeMetadata])
 
-  // Render current page
+  // Render current page when container has non-zero dimensions.
+  // Uses ResizeObserver to handle the case where the PDF loads before
+  // the card has had its first layout pass (containerWidth would be 0).
+  const [containerWidth, setContainerWidth] = useState(0)
+
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current || !containerRef.current) return
+    const el = containerRef.current
+    if (!el) return
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0
+      if (width > 0) setContainerWidth(width)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!pdfDoc || !canvasRef.current || containerWidth === 0) return
 
     let cancelled = false
 
     pdfDoc.getPage(currentPage).then((page) => {
-      if (cancelled || !canvasRef.current || !containerRef.current) return
+      if (cancelled || !canvasRef.current) return
 
-      const containerWidth = containerRef.current.clientWidth
       const unscaledViewport = page.getViewport({ scale: 1 })
       const scale = containerWidth / unscaledViewport.width
       const viewport = page.getViewport({ scale })
@@ -103,9 +118,7 @@ export function PdfCard({ node }: PdfCardProps): React.ReactElement {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      const canvasEl = canvasRef.current!
-      const renderTask = page.render({ canvas: canvasEl, canvasContext: ctx, viewport })
-      renderTask.promise.catch(() => {
+      page.render({ canvasContext: ctx, viewport }).promise.catch(() => {
         // Render cancelled or failed - ignore
       })
     })
@@ -113,7 +126,7 @@ export function PdfCard({ node }: PdfCardProps): React.ReactElement {
     return () => {
       cancelled = true
     }
-  }, [pdfDoc, currentPage])
+  }, [pdfDoc, currentPage, containerWidth])
 
   // Clean up document on unmount
   useEffect(() => {
