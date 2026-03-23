@@ -22,6 +22,7 @@ interface CardShellProps {
   readonly onClose: () => void
   readonly onOpenInEditor?: () => void
   readonly onContextMenu?: (e: React.MouseEvent) => void
+  readonly titleExtra?: React.ReactNode
 }
 
 /** Valid conversion targets for each card type */
@@ -155,7 +156,8 @@ export function CardShell({
   children,
   onClose,
   onOpenInEditor,
-  onContextMenu
+  onContextMenu,
+  titleExtra
 }: CardShellProps) {
   const copyText = filePath ?? title
   const isSelected = useCanvasStore((s) => s.selectedNodeIds.has(node.id))
@@ -278,6 +280,7 @@ export function CardShell({
           >
             {title}
           </span>
+          {titleExtra}
         </span>
         {node.metadata?.scope === 'project' && (
           <span
@@ -420,7 +423,7 @@ export function CardShell({
               style={style}
               onPointerDown={(e) => {
                 e.stopPropagation()
-                startConnectionDrag(node.id, side, e.clientX, e.clientY)
+                startConnectionDrag(node.id, side, e.clientX, e.clientY, e.nativeEvent)
               }}
               onPointerUp={(e) => {
                 e.stopPropagation()

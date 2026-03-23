@@ -5,6 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
+import { useClaudeContext } from '../../hooks/useClaudeContext'
 import { CardShell } from './CardShell'
 import { colors } from '../../design/tokens'
 import type { CanvasNode } from '@shared/canvas-types'
@@ -25,6 +26,8 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const sessionIdRef = useRef<SessionId | null>(node.content ? toSessionId(node.content) : null)
   const [sessionDead, setSessionDead] = useState(false)
   const [focused, setFocused] = useState(false)
+  const isClaudeCard = node.metadata?.initialCommand === 'claude'
+  const { contextBadge, markError } = useClaudeContext(node, isClaudeCard)
 
   const removeNode = useCanvasStore((s) => s.removeNode)
   const updateContent = useCanvasStore((s) => s.updateNodeContent)
@@ -174,9 +177,64 @@ export function TerminalCard({ node }: TerminalCardProps) {
         if (cancelled) return
         sessionIdRef.current = sessionId
         updateContent(node.id, sessionId)
+
+        // Send initial command ONLY for new sessions (Decision 2A)
+        if (initialCommand) {
+          setTimeout(() => {
+            if (cancelled || !sessionIdRef.current) return
+
+            // For Claude cards: inject spatial context (Decision 1B)
+            if (initialCommand === 'claude') {
+              try {
+                import('../../engine/context-serializer')
+                  .then(({ serializeNeighborhood, escapeForShell }) => {
+                    if (cancelled || !sessionIdRef.current) return
+                    const nodes = useCanvasStore.getState().nodes
+                    const edges = useCanvasStore.getState().edges
+                    console.log(
+                      '[TE:context] serializing for card',
+                      node.id,
+                      'nodes:',
+                      nodes.length,
+                      'edges:',
+                      edges.length
+                    )
+                    const context = serializeNeighborhood(node.id, nodes, edges)
+
+                    console.log(
+                      '[TE:context] context length:',
+                      context.length,
+                      'preview:',
+                      context.slice(0, 100)
+                    )
+                    if (context) {
+                      const escaped = escapeForShell(context)
+                      const cmd = `claude --append-system-prompt $'${escaped}'`
+                      console.log('[TE:context] sending cmd length:', cmd.length)
+                      window.api.terminal.write(sessionIdRef.current!, cmd + '\n')
+                    } else {
+                      window.api.terminal.write(sessionIdRef.current!, 'claude\n')
+                    }
+                  })
+                  .catch((err) => {
+                    console.error('Context injection failed:', err)
+                    window.api.terminal.write(sessionIdRef.current!, 'claude\n')
+                    markError()
+                  })
+              } catch (err) {
+                console.error('Context injection failed:', err)
+                window.api.terminal.write(sessionIdRef.current!, 'claude\n')
+                markError()
+              }
+            } else {
+              // Non-Claude commands: send as-is
+              window.api.terminal.write(sessionIdRef.current!, initialCommand + '\n')
+            }
+          }, 500)
+        }
       }
 
-      // Now that we have a session ID, resize PTY to match terminal
+      // Reattach path: just resize, no command re-injection
       if (termRef.current) {
         const { cols, rows } = termRef.current
         window.api.terminal.resize(sessionId!, cols, rows)
@@ -186,15 +244,6 @@ export function TerminalCard({ node }: TerminalCardProps) {
       requestAnimationFrame(() => {
         if (!cancelled && fitRef.current) fitRef.current.fit()
       })
-
-      // Send initial command after shell has time to initialize
-      if (initialCommand && sessionId) {
-        setTimeout(() => {
-          if (!cancelled && sessionIdRef.current) {
-            window.api.terminal.write(sessionIdRef.current, initialCommand + '\n')
-          }
-        }, 500)
-      }
     }
 
     createSession()
@@ -344,7 +393,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
   }
 
   return (
-    <CardShell node={node} title={displayTitle} onClose={handleClose}>
+    <CardShell node={node} title={displayTitle} onClose={handleClose} titleExtra={contextBadge}>
       <div
         className="h-full relative"
         onFocus={handleFocus}

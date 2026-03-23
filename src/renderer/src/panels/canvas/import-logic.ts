@@ -1,6 +1,11 @@
 import type { Artifact, KnowledgeGraph, GraphNode, GraphEdge } from '@shared/types'
 import type { CanvasNode, CanvasEdge, CanvasViewport } from '@shared/canvas-types'
-import { createCanvasNode, createCanvasEdge, type CanvasEdgeKind } from '@shared/canvas-types'
+import {
+  createCanvasNode,
+  createCanvasEdge,
+  type CanvasEdgeKind,
+  CANVAS_EDGE_KINDS
+} from '@shared/canvas-types'
 import { computeOptimalEdgeSides } from './canvas-layout'
 
 // ---------------------------------------------------------------------------
@@ -181,8 +186,9 @@ export function graphToCanvas(
     const fromId = graphIdToCanvasId.get(gEdge.source)
     const toId = graphIdToCanvasId.get(gEdge.target)
     if (fromId && toId) {
-      const CANVAS_KINDS = new Set<string>(['connection', 'cluster', 'tension'])
-      const edgeKind = CANVAS_KINDS.has(gEdge.kind) ? (gEdge.kind as CanvasEdgeKind) : undefined
+      const edgeKind = CANVAS_EDGE_KINDS.has(gEdge.kind as CanvasEdgeKind)
+        ? (gEdge.kind as CanvasEdgeKind)
+        : undefined
       const fromNode = canvasNodeById.get(fromId)
       const toNode = canvasNodeById.get(toId)
       if (fromNode && toNode) {

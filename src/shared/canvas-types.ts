@@ -72,7 +72,16 @@ export interface CanvasNode {
   readonly metadata: Readonly<Record<string, unknown>>
 }
 
-export type CanvasEdgeKind = 'connection' | 'cluster' | 'tension'
+export type CanvasEdgeKind = 'connection' | 'cluster' | 'tension' | 'causal'
+
+/** Single source of truth for valid canvas edge kinds.
+ *  Import this instead of maintaining local Sets. */
+export const CANVAS_EDGE_KINDS = new Set<CanvasEdgeKind>([
+  'connection',
+  'cluster',
+  'tension',
+  'causal'
+])
 
 export interface CanvasEdge {
   readonly id: string

@@ -1,14 +1,12 @@
 import type { Artifact, KnowledgeGraph } from '@shared/types'
 import type { CanvasNode, CanvasEdge, CanvasEdgeKind } from '@shared/canvas-types'
-import { createCanvasNode, createCanvasEdge } from '@shared/canvas-types'
+import { createCanvasNode, createCanvasEdge, CANVAS_EDGE_KINDS } from '@shared/canvas-types'
 import {
   computeCardSize,
   computeForceLayout,
   computeOptimalEdgeSides,
   type ContentMetrics
 } from './canvas-layout'
-
-const CANVAS_EDGE_KINDS = new Set<string>(['connection', 'cluster', 'tension'])
 
 export interface ShowConnectionsResult {
   readonly newNodes: readonly CanvasNode[]
@@ -43,7 +41,9 @@ export function computeShowConnections(
   const neighbors: { id: string; kind: CanvasEdgeKind | undefined }[] = []
   for (const edge of relatedEdges) {
     const neighborId = edge.source === artifactId ? edge.target : edge.source
-    const edgeKind = CANVAS_EDGE_KINDS.has(edge.kind) ? (edge.kind as CanvasEdgeKind) : undefined
+    const edgeKind = CANVAS_EDGE_KINDS.has(edge.kind as CanvasEdgeKind)
+      ? (edge.kind as CanvasEdgeKind)
+      : undefined
     if (!neighbors.some((n) => n.id === neighborId)) {
       neighbors.push({ id: neighborId, kind: edgeKind })
     }

@@ -3,16 +3,18 @@ import { useCanvasStore } from '../../store/canvas-store'
 import {
   createCanvasEdge,
   createCanvasNode,
+  type CanvasEdgeKind,
   type CanvasSide,
   type CanvasNode
 } from '@shared/canvas-types'
-import { colors } from '../../design/tokens'
+import { colors, EDGE_KIND_COLORS } from '../../design/tokens'
 
 interface DragState {
   fromNodeId: string
   fromSide: CanvasSide
   cursorX: number
   cursorY: number
+  edgeKind: CanvasEdgeKind
 }
 
 // Ref-based event bus avoids stale closures in callbacks
@@ -30,9 +32,15 @@ export function startConnectionDrag(
   fromNodeId: string,
   fromSide: CanvasSide,
   clientX: number,
-  clientY: number
+  clientY: number,
+  event: PointerEvent
 ): void {
-  const state = { fromNodeId, fromSide, cursorX: clientX, cursorY: clientY }
+  const edgeKind: CanvasEdgeKind = event.shiftKey
+    ? 'causal'
+    : event.altKey
+      ? 'tension'
+      : 'connection'
+  const state = { fromNodeId, fromSide, cursorX: clientX, cursorY: clientY, edgeKind }
   dragRef.current = state
   setDragFn?.(state)
 }
@@ -42,7 +50,7 @@ export function endConnectionDrag(toNodeId: string, toSide: CanvasSide): void {
   const drag = dragRef.current
   if (!drag) return
   if (drag.fromNodeId !== toNodeId) {
-    addEdgeFn?.(createCanvasEdge(drag.fromNodeId, toNodeId, drag.fromSide, toSide))
+    addEdgeFn?.(createCanvasEdge(drag.fromNodeId, toNodeId, drag.fromSide, toSide, drag.edgeKind))
   }
   dragRef.current = null
   setDragFn?.(null)
@@ -109,18 +117,19 @@ function DragPreviewLine({ drag }: { drag: DragState }) {
   const cp2y = cy + Math.sin(angle) * offset
 
   const d = `M ${ax} ${ay} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${cx} ${cy}`
+  const edgeColor = EDGE_KIND_COLORS[drag.edgeKind] ?? colors.accent.default
 
   return (
     <svg className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 39 }}>
       <path
         d={d}
         fill="none"
-        stroke={colors.accent.default}
+        stroke={edgeColor}
         strokeWidth={2}
         strokeDasharray="6 3"
         opacity={0.8}
       />
-      <circle cx={cx} cy={cy} r={4} fill={colors.accent.default} opacity={0.6} />
+      <circle cx={cx} cy={cy} r={4} fill={edgeColor} opacity={0.6} />
     </svg>
   )
 }
@@ -140,7 +149,8 @@ export function ConnectionDragOverlay() {
 
     const onMove = (e: PointerEvent) => {
       if (!dragRef.current) return
-      const next = { ...dragRef.current, cursorX: e.clientX, cursorY: e.clientY }
+      const edgeKind: CanvasEdgeKind = e.shiftKey ? 'causal' : e.altKey ? 'tension' : 'connection'
+      const next = { ...dragRef.current, cursorX: e.clientX, cursorY: e.clientY, edgeKind }
       dragRef.current = next
       setDrag(next)
     }
@@ -175,7 +185,8 @@ export function ConnectionDragOverlay() {
               drag.fromNodeId,
               newNode.id,
               drag.fromSide,
-              oppositeSide[drag.fromSide]
+              oppositeSide[drag.fromSide],
+              drag.edgeKind
             )
           )
         }
@@ -194,6 +205,14 @@ export function ConnectionDragOverlay() {
 
   if (!drag) return null
 
+  const edgeColor = EDGE_KIND_COLORS[drag.edgeKind] ?? colors.accent.default
+  const kindLabel = drag.edgeKind.charAt(0).toUpperCase() + drag.edgeKind.slice(1)
+
+  const isFirstDrag = !localStorage.getItem('te-edge-drag-seen')
+  if (isFirstDrag) {
+    localStorage.setItem('te-edge-drag-seen', '1')
+  }
+
   return (
     <>
       <DragPreviewLine drag={drag} />
@@ -205,11 +224,17 @@ export function ConnectionDragOverlay() {
             left: drag.cursorX + 10,
             top: drag.cursorY + 10,
             backgroundColor: colors.bg.elevated,
-            color: colors.accent.default,
-            border: `1px solid ${colors.accent.default}`
+            color: edgeColor,
+            border: `1px solid ${edgeColor}`
           }}
         >
-          Drop on a card to connect
+          <span>{kindLabel}</span>
+          <span style={{ color: colors.text.muted, marginLeft: 8 }}>↓ on card</span>
+          {isFirstDrag && (
+            <div style={{ color: colors.text.muted, fontSize: 10, marginTop: 2 }}>
+              Shift/Opt for edge types
+            </div>
+          )}
         </div>
       </div>
     </>
