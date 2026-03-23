@@ -15,6 +15,10 @@ export function registerFilesystemIpc(): void {
     await fileService.writeFile(args.path, args.content)
   })
 
+  typedHandle('fs:file-mtime', async (args) => {
+    return fileService.getFileMtime(args.path)
+  })
+
   typedHandle('fs:delete-file', async (args) => {
     await fileService.deleteFile(args.path)
   })

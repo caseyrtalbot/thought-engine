@@ -42,6 +42,15 @@ export class FileService {
     }
   }
 
+  async getFileMtime(path: string): Promise<string | null> {
+    try {
+      const s = await stat(path)
+      return s.mtime.toISOString()
+    } catch {
+      return null
+    }
+  }
+
   async deleteFile(path: string): Promise<void> {
     await unlink(path)
   }

@@ -32,6 +32,8 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
   const setContent = useEditorStore((s) => s.setContent)
   const loadContent = useEditorStore((s) => s.loadContent)
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition)
+  const conflictPath = useEditorStore((s) => s.conflictPath)
+  const hasConflict = conflictPath === activeNotePath && activeNotePath !== null
 
   const artifact = useVaultStore((s) =>
     activeNoteId ? (s.artifacts.find((a) => a.id === activeNoteId) ?? null) : null
@@ -162,17 +164,49 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
 
   editorRef.current = editor
 
+  // Conflict resolution: reload from disk or keep local version
+  const handleReloadFromDisk = useCallback(async () => {
+    if (!activeNotePath) return
+    const [fileContent, mtime] = await Promise.all([
+      window.api.fs.readFile(activeNotePath),
+      window.api.fs.fileMtime(activeNotePath)
+    ])
+    loadContent(fileContent)
+    if (mtime) {
+      useEditorStore.getState().setFileMtime(activeNotePath, mtime)
+    }
+    useEditorStore.getState().setConflictPath(null)
+    // Reset the loaded-path ref so the content sync effect re-runs
+    prevLoadedPathRef.current = null
+  }, [activeNotePath, loadContent])
+
+  const handleKeepMine = useCallback(async () => {
+    if (!activeNotePath) return
+    const state = useEditorStore.getState()
+    // Force write, ignoring the mtime mismatch
+    await window.api.fs.writeFile(activeNotePath, state.content)
+    const newMtime = await window.api.fs.fileMtime(activeNotePath)
+    if (newMtime) {
+      useEditorStore.getState().setFileMtime(activeNotePath, newMtime)
+    }
+    useEditorStore.getState().setConflictPath(null)
+    useEditorStore.getState().markSaved()
+  }, [activeNotePath])
+
   // Load file content from disk when active note path changes
   useEffect(() => {
     if (!activeNotePath || activeNotePath === prevLoadedPathRef.current) return
     prevLoadedPathRef.current = activeNotePath
 
-    window.api.fs
-      .readFile(activeNotePath)
-      .then((fileContent) => {
-        // Guard against stale async: only apply if still the active path
-        if (useEditorStore.getState().activeNotePath === activeNotePath) {
-          loadContent(fileContent)
+    // Clear any conflict state for the previous file
+    useEditorStore.getState().setConflictPath(null)
+
+    Promise.all([window.api.fs.readFile(activeNotePath), window.api.fs.fileMtime(activeNotePath)])
+      .then(([fileContent, mtime]) => {
+        if (useEditorStore.getState().activeNotePath !== activeNotePath) return
+        loadContent(fileContent)
+        if (mtime) {
+          useEditorStore.getState().setFileMtime(activeNotePath, mtime)
         }
       })
       .catch(() => {
@@ -205,23 +239,41 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
     }
   }, [content, editor, activeNotePath, setContent])
 
-  // Autosave: debounce writes by 1 second
+  // Autosave: debounce writes by 1 second, with mtime conflict check
   useEffect(() => {
     if (!activeNotePath) return
-    // Capture path and content NOW, not when the timer fires
     const pathToSave = activeNotePath
     const contentToSave = content
 
-    if (!useEditorStore.getState().isDirty) return
+    const state = useEditorStore.getState()
+    if (!state.isDirty) return
+    // Skip autosave while a conflict is active for this file
+    if (state.conflictPath === pathToSave) return
 
     const timer = setTimeout(async () => {
+      // Check if file was modified externally since we loaded it
+      const expectedMtime = useEditorStore.getState().fileMtimes[pathToSave]
+      if (expectedMtime) {
+        const currentMtime = await window.api.fs.fileMtime(pathToSave)
+        if (currentMtime && currentMtime !== expectedMtime) {
+          useEditorStore.getState().setConflictPath(pathToSave)
+          return
+        }
+      }
+
       await window.api.fs.writeFile(pathToSave, contentToSave)
+
+      // Update stored mtime after successful write
+      const newMtime = await window.api.fs.fileMtime(pathToSave)
+      if (newMtime) {
+        useEditorStore.getState().setFileMtime(pathToSave, newMtime)
+      }
+
       if (isSystemArtifactPath(pathToSave)) {
         const { syncSystemArtifactFromDisk } =
           await import('../../system-artifacts/system-artifact-runtime')
         await syncSystemArtifactFromDisk(pathToSave)
       }
-      // Only mark saved if still on the same file
       const current = useEditorStore.getState()
       if (current.activeNotePath === pathToSave) {
         current.markSaved()
@@ -260,6 +312,46 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
 
   return (
     <div className="h-full flex flex-col" style={insetStyle}>
+      {hasConflict && (
+        <div
+          className="flex items-center justify-between px-4 py-2 shrink-0"
+          style={{
+            backgroundColor: 'rgba(234, 179, 8, 0.12)',
+            borderBottom: '1px solid rgba(234, 179, 8, 0.3)',
+            color: '#eab308'
+          }}
+        >
+          <span className="text-xs font-medium">
+            File changed on disk (modified by another process)
+          </span>
+          <span className="flex gap-2">
+            <button
+              className="text-xs px-2 py-0.5 rounded hover:opacity-80"
+              style={{
+                backgroundColor: 'rgba(234, 179, 8, 0.2)',
+                color: '#eab308',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onClick={handleReloadFromDisk}
+            >
+              Reload from disk
+            </button>
+            <button
+              className="text-xs px-2 py-0.5 rounded hover:opacity-80"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                color: colors.text.secondary,
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onClick={handleKeepMine}
+            >
+              Keep my version
+            </button>
+          </span>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto">
         <FrontmatterHeader
           artifact={artifact}

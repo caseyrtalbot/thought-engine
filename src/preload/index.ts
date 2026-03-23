@@ -35,7 +35,8 @@ const api = {
     createFolder: (defaultPath: string) => typedInvoke('fs:create-folder', { defaultPath }),
     mkdir: (path: string) => typedInvoke('fs:mkdir', { path }),
     readBinary: (path: string) => typedInvoke('fs:read-binary', { path }),
-    listAllFiles: (dir: string) => typedInvoke('fs:list-all-files', { dir })
+    listAllFiles: (dir: string) => typedInvoke('fs:list-all-files', { dir }),
+    fileMtime: (path: string) => typedInvoke('fs:file-mtime', { path })
   },
   vault: {
     init: (vaultPath: string) => typedInvoke('vault:init', { vaultPath }),
