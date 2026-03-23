@@ -16,7 +16,7 @@ export function escapeForShell(text: string): string {
     .replace(/'/g, "\\'") // single quotes
     .replace(/\n/g, '\\n') // newlines
     .replace(/\r/g, '\\r') // carriage returns
-    .replace(/\x00/g, '\\x00') // null bytes
+    .replace(new RegExp(String.fromCharCode(0), 'g'), '\\x00') // null bytes
 }
 
 /** Extract a human-readable title from a card. */
