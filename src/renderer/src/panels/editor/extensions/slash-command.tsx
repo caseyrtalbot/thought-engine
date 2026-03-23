@@ -71,6 +71,14 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     }
   },
   {
+    title: 'Callout',
+    description: 'Highlighted block (note, tip, warning)',
+    icon: '\u25A1',
+    command: ({ editor, range }: { editor: any; range: any }) => {
+      editor.chain().focus().deleteRange(range).setCallout('note').run()
+    }
+  },
+  {
     title: 'Divider',
     description: 'Horizontal line',
     icon: '\u2500',

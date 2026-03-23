@@ -1,0 +1,130 @@
+import { describe, it, expect } from 'vitest'
+
+describe('CalloutBlock markdown', () => {
+  const getTokenizer = async () => {
+    const { CalloutBlock } =
+      await import('../../src/renderer/src/panels/editor/extensions/callout-block')
+    return (CalloutBlock.config as Record<string, unknown>).markdownTokenizer as {
+      name: string
+      level: string
+      start: (src: string) => number
+      tokenize: (
+        src: string,
+        tokens: unknown,
+        lexer: { blockTokens: (src: string) => unknown[] }
+      ) => { type: string; raw: string; calloutType: string; tokens: unknown[] } | undefined
+    }
+  }
+
+  const getRenderMarkdown = async () => {
+    const { CalloutBlock } =
+      await import('../../src/renderer/src/panels/editor/extensions/callout-block')
+    return (CalloutBlock.config as Record<string, unknown>).renderMarkdown as (
+      node: { attrs?: { calloutType?: string }; content?: unknown[] },
+      h: {
+        renderChild?: (child: unknown, i: number) => string
+        renderChildren: (c: unknown[]) => string
+      }
+    ) => string
+  }
+
+  const mockLexer = { blockTokens: (src: string) => [{ type: 'paragraph', text: src }] }
+
+  describe('tokenizer.start', () => {
+    it('finds > [!note] in text', async () => {
+      const tokenizer = await getTokenizer()
+      expect(tokenizer.start('some text\n> [!note]\n> content')).toBeGreaterThanOrEqual(0)
+    })
+
+    it('returns -1 when no callout exists', async () => {
+      const tokenizer = await getTokenizer()
+      expect(tokenizer.start('> regular blockquote')).toBe(-1)
+    })
+  })
+
+  describe('tokenizer.tokenize', () => {
+    it('parses a note callout', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!note]\n> This is a note', {}, mockLexer)
+      expect(result).toBeDefined()
+      expect(result!.type).toBe('callout')
+      expect(result!.calloutType).toBe('note')
+    })
+
+    it('parses a warning callout', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!warning]\n> Be careful', {}, mockLexer)
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('warning')
+    })
+
+    it('parses a tip callout', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!tip]\n> Helpful hint', {}, mockLexer)
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('tip')
+    })
+
+    it('parses an important callout', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!important]\n> Critical info', {}, mockLexer)
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('important')
+    })
+
+    it('rejects unknown callout types', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!unknown]\n> Content', {}, mockLexer)
+      expect(result).toBeUndefined()
+    })
+
+    it('does not match regular blockquotes', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> Just a regular blockquote', {}, mockLexer)
+      expect(result).toBeUndefined()
+    })
+
+    it('handles multi-line content', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize(
+        '> [!note]\n> Line one\n> Line two\n> Line three',
+        {},
+        mockLexer
+      )
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('note')
+    })
+
+    it('handles empty callout', async () => {
+      const tokenizer = await getTokenizer()
+      const result = tokenizer.tokenize('> [!note]\n>', {}, mockLexer)
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('note')
+    })
+  })
+
+  describe('renderMarkdown', () => {
+    it('renders a note callout', async () => {
+      const render = await getRenderMarkdown()
+      const node = {
+        attrs: { calloutType: 'note' },
+        content: [{ type: 'paragraph' }]
+      }
+      const helpers = {
+        renderChild: () => 'Content here',
+        renderChildren: () => 'Content here'
+      }
+      const result = render(node, helpers)
+      expect(result).toContain('> [!note]')
+      expect(result).toContain('> Content here')
+    })
+
+    it('renders empty callout', async () => {
+      const render = await getRenderMarkdown()
+      const node = { attrs: { calloutType: 'warning' }, content: undefined }
+      const helpers = { renderChildren: () => '' }
+      const result = render(node, helpers)
+      expect(result).toContain('> [!warning]')
+    })
+  })
+})
