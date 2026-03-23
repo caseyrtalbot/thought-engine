@@ -229,6 +229,7 @@ export function CardShell({
               ? floatingPanel.shadowCardSelected
               : floatingPanel.shadowCard,
         overflow: 'hidden',
+        contain: 'layout style',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         ...(isActive
