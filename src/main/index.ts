@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, session } from 'electron'
+import { execSync } from 'child_process'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -24,6 +25,27 @@ process.on('uncaughtException', (err) => {
   if (err.message === 'write EPIPE') return
   console.error('Uncaught exception:', err)
 })
+
+// Resolve the user's full shell PATH for macOS packaged builds.
+// Finder launches inherit launchd's minimal PATH, which excludes Homebrew,
+// nvm, pyenv, and other tools installed in the user's shell profile.
+if (process.platform === 'darwin' && app.isPackaged) {
+  try {
+    const shell = process.env.SHELL || '/bin/zsh'
+    const fullPath = execSync(`${shell} -l -c 'printf "%s" "$PATH"'`, {
+      encoding: 'utf-8',
+      timeout: 5000
+    })
+    if (fullPath) process.env.PATH = fullPath
+  } catch {
+    // Fall back to existing PATH if shell resolution fails
+  }
+}
+
+// Ensure LANG is set for proper UTF-8 handling in child processes
+if (!process.env.LANG) {
+  process.env.LANG = 'en_US.UTF-8'
+}
 
 let mainWindow: BrowserWindow | null = null
 
