@@ -379,7 +379,7 @@ export function FrontmatterHeader({
         fontSize: '11px',
         color: colors.text.muted,
         lineHeight: 1.8,
-        maxWidth: '42rem',
+        maxWidth: '48rem',
         margin: '0 auto',
         marginBottom: '2em'
       }}

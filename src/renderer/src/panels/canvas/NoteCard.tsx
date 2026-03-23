@@ -9,7 +9,7 @@ import { getCanvasEditorExtensions } from './shared/tiptap-config'
 import { CardBadge } from './shared/CardBadge'
 import { MetadataGrid } from './shared/MetadataGrid'
 import { frontmatterToEntries } from './shared/frontmatter-utils'
-import { colors, canvasTokens } from '../../design/tokens'
+import { colors } from '../../design/tokens'
 import type { CanvasNode } from '@shared/canvas-types'
 
 interface NoteCardProps {
@@ -152,19 +152,6 @@ export function NoteCard({ node }: NoteCardProps) {
             </div>
 
             {metadataEntries.length > 0 && <MetadataGrid entries={metadataEntries} />}
-
-            <h1
-              style={{
-                fontSize: 28,
-                fontWeight: 700,
-                lineHeight: 1.2,
-                color: canvasTokens.textHeading,
-                marginBottom: 16,
-                letterSpacing: '-0.01em'
-              }}
-            >
-              {title}
-            </h1>
 
             <div className="canvas-prose">{editor && <EditorContent editor={editor} />}</div>
           </div>

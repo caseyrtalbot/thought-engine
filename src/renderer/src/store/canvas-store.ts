@@ -22,6 +22,9 @@ interface CanvasStore {
   // Spatial navigation: keyboard cursor (independent of selection)
   readonly focusedCardId: string | null
 
+  // Focus lock: double-click a card to lock viewport and enable card scrolling
+  readonly lockedCardId: string | null
+
   // Interaction state
   readonly hoveredNodeId: string | null
   readonly focusedTerminalId: string | null
@@ -82,6 +85,10 @@ interface CanvasStore {
   focusNextCard: () => void
   focusPrevCard: () => void
 
+  // Focus lock
+  lockCard: (id: string) => void
+  unlockCard: () => void
+
   // Tiling
   applyTileLayout: (pattern: TilePattern, viewportCenter: { x: number; y: number }) => void
 
@@ -104,6 +111,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedNodeIds: new Set(),
   selectedEdgeId: null,
   focusedCardId: null,
+  lockedCardId: null,
   hoveredNodeId: null,
   focusedTerminalId: null,
   cardContextMenu: null,
@@ -120,6 +128,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
       focusedCardId: null,
+      lockedCardId: null,
       hoveredNodeId: null,
       focusedTerminalId: null,
       cardContextMenu: null
@@ -136,6 +145,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       selectedNodeIds: new Set(),
       selectedEdgeId: null,
       focusedCardId: null,
+      lockedCardId: null,
       hoveredNodeId: null,
       cardContextMenu: null,
       focusedTerminalId: null
@@ -265,6 +275,14 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       centerOnNode?.(prev)
     }
   },
+
+  lockCard: (id) => {
+    const { centerOnNode } = get()
+    set({ lockedCardId: id, focusedCardId: id, selectedNodeIds: new Set([id]) })
+    centerOnNode?.(id)
+  },
+
+  unlockCard: () => set({ lockedCardId: null }),
 
   applyTileLayout: (pattern, viewportCenter) => {
     const { nodes, selectedNodeIds } = get()

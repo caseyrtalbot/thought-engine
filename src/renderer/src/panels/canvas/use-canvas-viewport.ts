@@ -39,6 +39,16 @@ export function useCanvasViewport(
       const target = e.target as HTMLElement
       if (target.closest('.xterm')) return
 
+      // Focus lock: let wheel events pass through to the locked card's content
+      const { lockedCardId } = useCanvasStore.getState()
+      if (lockedCardId) {
+        // Allow native scroll inside the locked card's content area
+        if (target.closest('.canvas-card-content')) return
+        // Block canvas interaction outside the locked card
+        e.preventDefault()
+        return
+      }
+
       e.preventDefault()
       const { viewport, setViewport } = useCanvasStore.getState()
       const container = containerRef.current
@@ -73,6 +83,9 @@ export function useCanvasViewport(
   )
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Block panning while a card is focus-locked
+    if (useCanvasStore.getState().lockedCardId) return
+
     // Middle-click or Space+left-click to pan
     const shouldPan = e.button === 1 || (e.button === 0 && spaceHeld.current)
     if (!shouldPan) return

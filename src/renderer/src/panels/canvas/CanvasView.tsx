@@ -176,6 +176,7 @@ export function CanvasView(): React.ReactElement {
     clearSelection()
     setContextMenu(null)
     setCardContextMenu(null)
+    useCanvasStore.getState().unlockCard()
   }, [clearSelection, setCardContextMenu])
 
   const handleAddCard = useCallback(
@@ -310,9 +311,14 @@ export function CanvasView(): React.ReactElement {
         }
       }
 
-      // Escape clears focus
+      // Escape clears focus lock first, then keyboard focus
       if (e.key === 'Escape') {
-        useCanvasStore.getState().setFocusedCard(null)
+        const { lockedCardId } = useCanvasStore.getState()
+        if (lockedCardId) {
+          useCanvasStore.getState().unlockCard()
+        } else {
+          useCanvasStore.getState().setFocusedCard(null)
+        }
       }
     }
     window.addEventListener('keydown', handler)

@@ -160,9 +160,12 @@ export function CardShell({
   const copyText = filePath ?? title
   const isSelected = useCanvasStore((s) => s.selectedNodeIds.has(node.id))
   const isFocused = useCanvasStore((s) => s.focusedCardId === node.id)
+  const isLocked = useCanvasStore((s) => s.lockedCardId === node.id)
   const setSelection = useCanvasStore((s) => s.setSelection)
   const toggleSelection = useCanvasStore((s) => s.toggleSelection)
   const setHoveredNode = useCanvasStore((s) => s.setHoveredNode)
+  const lockCard = useCanvasStore((s) => s.lockCard)
+  const unlockCard = useCanvasStore((s) => s.unlockCard)
   const { onDragStart } = useNodeDrag(node.id)
   const { onResizeStart } = useNodeResize(node.id, node.type)
   const [hovered, setHovered] = useState(false)
@@ -182,6 +185,18 @@ export function CardShell({
     [node.id, setSelection, toggleSelection]
   )
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (isLocked) {
+        unlockCard()
+      } else {
+        lockCard(node.id)
+      }
+    },
+    [node.id, isLocked, lockCard, unlockCard]
+  )
+
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       if (!isConnectionDragActive()) return
@@ -196,7 +211,7 @@ export function CardShell({
   return (
     <div
       data-canvas-node
-      className={`absolute flex flex-col canvas-card${isFocused ? ' canvas-card--focused' : ''}`}
+      className={`absolute flex flex-col canvas-card${isFocused ? ' canvas-card--focused' : ''}${isLocked ? ' canvas-card--locked' : ''}`}
       style={{
         left: node.position.x,
         top: node.position.y,
@@ -204,11 +219,13 @@ export function CardShell({
         height: node.size.height,
         backgroundColor: canvasTokens.card,
         borderRadius: canvasTokens.cardRadius,
-        boxShadow: isFocused
-          ? '0 0 0 2px var(--color-accent-default), 0 0 16px rgba(0, 229, 191, 0.2), 0 4px 24px rgba(0,0,0,0.4)'
-          : isSelected
-            ? floatingPanel.shadowCardSelected
-            : floatingPanel.shadowCard,
+        boxShadow: isLocked
+          ? '0 0 0 2px var(--color-accent-default), 0 0 24px rgba(0, 229, 191, 0.3), 0 4px 32px rgba(0,0,0,0.5)'
+          : isFocused
+            ? '0 0 0 2px var(--color-accent-default), 0 0 16px rgba(0, 229, 191, 0.2), 0 4px 24px rgba(0,0,0,0.4)'
+            : isSelected
+              ? floatingPanel.shadowCardSelected
+              : floatingPanel.shadowCard,
         overflow: 'hidden',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -220,6 +237,7 @@ export function CardShell({
           : {})
       }}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onContextMenu={onContextMenu}
       onPointerUp={handlePointerUp}
       onMouseEnter={() => {
