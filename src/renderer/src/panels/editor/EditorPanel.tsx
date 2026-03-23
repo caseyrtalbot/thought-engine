@@ -19,6 +19,7 @@ import { MermaidCodeBlock } from './extensions/mermaid-code-block'
 import { SlashCommand } from './extensions/slash-command'
 import { CalloutBlock } from './extensions/callout-block'
 import { HighlightMark } from './extensions/highlight-mark'
+import DragHandle from '@tiptap/extension-drag-handle'
 import { EditorBubbleMenu } from './EditorBubbleMenu'
 import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
@@ -78,6 +79,14 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
       ConceptNodeMark,
       CalloutBlock,
       HighlightMark,
+      DragHandle.configure({
+        render() {
+          const el = document.createElement('div')
+          el.className = 'te-drag-handle'
+          el.innerHTML = '⠿'
+          return el
+        }
+      }),
       SlashCommand
     ],
     []
