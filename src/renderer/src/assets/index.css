@@ -32,6 +32,11 @@
   to { stroke-dashoffset: -20; }
 }
 
+@keyframes te-zoom-fade {
+  0%, 75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;

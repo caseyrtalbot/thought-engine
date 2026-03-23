@@ -22,6 +22,7 @@ import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasMinimap } from './CanvasMinimap'
+import { ZoomIndicator } from './ZoomIndicator'
 import { ImportPalette } from './ImportPalette'
 import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
@@ -427,6 +428,8 @@ export function CanvasView(): React.ReactElement {
       </CanvasSurface>
 
       <ConnectionDragOverlay />
+
+      <ZoomIndicator />
 
       {/* Hint: files need enrichment */}
       {rawFileCount > 0 && (
