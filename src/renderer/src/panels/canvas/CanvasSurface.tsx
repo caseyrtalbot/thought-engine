@@ -65,7 +65,7 @@ function buildGridSvg(params: GridParams): string {
 
 interface CanvasSurfaceProps {
   readonly children: React.ReactNode
-  readonly onDoubleClick: (
+  readonly onContextMenu: (
     canvasX: number,
     canvasY: number,
     screenX: number,
@@ -77,7 +77,7 @@ interface CanvasSurfaceProps {
 
 export function CanvasSurface({
   children,
-  onDoubleClick,
+  onContextMenu,
   onBackgroundClick,
   onFileDrop
 }: CanvasSurfaceProps): React.ReactElement {
@@ -95,8 +95,9 @@ export function CanvasSurface({
     return () => el.removeEventListener('wheel', handler)
   }, [onWheel])
 
-  const handleDoubleClick = useCallback(
+  const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
+      e.preventDefault()
       // Only trigger on background clicks (not on cards)
       if ((e.target as HTMLElement).closest('[data-canvas-node]')) return
       const rect = containerRef.current?.getBoundingClientRect()
@@ -105,9 +106,9 @@ export function CanvasSurface({
       // Convert screen coords to canvas coords
       const canvasX = (e.clientX - rect.left - viewport.x) / viewport.zoom
       const canvasY = (e.clientY - rect.top - viewport.y) / viewport.zoom
-      onDoubleClick(canvasX, canvasY, e.clientX, e.clientY)
+      onContextMenu(canvasX, canvasY, e.clientX, e.clientY)
     },
-    [viewport, onDoubleClick]
+    [viewport, onContextMenu]
   )
 
   const handleClick = useCallback(
@@ -244,7 +245,7 @@ export function CanvasSurface({
         onPointerDown(e)
         onSelectionStart(e)
       }}
-      onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}

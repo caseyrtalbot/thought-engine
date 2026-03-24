@@ -352,9 +352,9 @@ export function WorkbenchPanel() {
     clearSelection()
   }, [clearSelection])
 
-  const handleDoubleClick = useCallback(
+  const handleContextMenu = useCallback(
     (canvasX: number, canvasY: number, _screenX: number, _screenY: number) => {
-      // Find the node under the double-click position
+      // Find the node under the right-click position
       const currentNodes = useCanvasStore.getState().nodes
       const hit = currentNodes.find(
         (n) =>
@@ -623,7 +623,7 @@ export function WorkbenchPanel() {
         />
       </div>
 
-      <CanvasSurface onDoubleClick={handleDoubleClick} onBackgroundClick={handleBackgroundClick}>
+      <CanvasSurface onContextMenu={handleContextMenu} onBackgroundClick={handleBackgroundClick}>
         <EdgeLayer />
         {/* Zone labels removed — cards have type badges and title bars that
             communicate grouping. Fixed labels break once users drag cards. */}

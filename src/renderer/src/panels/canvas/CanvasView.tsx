@@ -168,7 +168,7 @@ export function CanvasView(): React.ReactElement {
     canvasY: number
   } | null>(null)
 
-  const handleDoubleClick = useCallback(
+  const handleContextMenu = useCallback(
     (canvasX: number, canvasY: number, screenX: number, screenY: number) => {
       setContextMenu({ x: screenX, y: screenY, canvasX, canvasY })
     },
@@ -410,7 +410,7 @@ export function CanvasView(): React.ReactElement {
       />
       {/* eslint-enable react-hooks/refs */}
       <CanvasSurface
-        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
         onBackgroundClick={handleBackgroundClick}
         onFileDrop={handleFileDrop}
       >
