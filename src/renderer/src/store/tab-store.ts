@@ -168,7 +168,7 @@ export const useTabStore = create<TabStore>()(
     }),
     {
       name: 'thought-engine-tabs',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState) =>
         normalizePersistedTabState(persistedState as PersistedTabSnapshot),
