@@ -27,14 +27,14 @@ function extractFilePath(node: CanvasNode): string | null {
 }
 
 /** Options for building canvas context. */
-export interface CanvasContextOptions {
+interface CanvasContextOptions {
   /** Path where auto-notify writes updated context. Included in prompt
    *  so Claude knows where to read mid-session updates. */
   readonly contextFilePath?: string
 }
 
 /** Result from context building. */
-export interface CanvasContextResult {
+interface CanvasContextResult {
   /** The system prompt text to inject. */
   readonly text: string
   /** Number of file cards on the canvas (for badge). */

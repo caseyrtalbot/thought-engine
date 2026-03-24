@@ -3,7 +3,7 @@
  * Handles frontmatter extraction and legacy wikilink migration.
  */
 
-export interface ParsedFrontmatter {
+interface ParsedFrontmatter {
   /** Raw YAML block including delimiters, for lossless round-tripping */
   readonly raw: string
   /** Parsed key-value pairs for display in properties panel */

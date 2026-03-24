@@ -14,7 +14,7 @@ export interface CommandItem {
   matchIndices?: number[]
 }
 
-export type SearchCallback = (query: string) => CommandItem[]
+type SearchCallback = (query: string) => CommandItem[]
 
 interface CommandPaletteProps {
   isOpen: boolean

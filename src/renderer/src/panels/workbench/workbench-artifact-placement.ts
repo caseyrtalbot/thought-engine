@@ -6,7 +6,7 @@ import type { CanvasEdge, CanvasNode, SystemArtifactNodeMeta } from '@shared/can
 import type { SystemArtifactListItem } from '../sidebar/Sidebar'
 import type { SystemArtifactKind } from '@shared/system-artifacts'
 
-export type ArtifactReader = (vaultPath: string, path: string) => Promise<string>
+type ArtifactReader = (vaultPath: string, path: string) => Promise<string>
 
 /**
  * If the workbench tab is currently active, place a system artifact card
@@ -256,7 +256,7 @@ export async function enrichPlacedArtifact(
 
 // --- Pattern snapshot restore ---
 
-export type FsReader = (path: string) => Promise<string>
+type FsReader = (path: string) => Promise<string>
 
 const defaultFsReader: FsReader = (path) => window.api.fs.readFile(path)
 

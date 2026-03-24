@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 type WorkbenchActionHandler = (() => void | Promise<void>) | null
 
-export interface WorkbenchActionRegistration {
+interface WorkbenchActionRegistration {
   readonly refresh: WorkbenchActionHandler
   readonly fitAll: WorkbenchActionHandler
   readonly addTerminal: WorkbenchActionHandler

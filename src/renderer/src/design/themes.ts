@@ -25,12 +25,12 @@ interface StructuralColors {
   canvas: CanvasColors
 }
 
-export interface ThemeDefinition {
+interface ThemeDefinition {
   label: string
   colors: StructuralColors
 }
 
-export interface AccentDefinition {
+interface AccentDefinition {
   label: string
   value: string
 }
@@ -61,7 +61,7 @@ function lightenHex(hex: string, factor: number): string {
   return `#${toHex(lighten(r))}${toHex(lighten(g))}${toHex(lighten(b))}`
 }
 
-export function computeAccentVariants(hex: string): {
+function computeAccentVariants(hex: string): {
   default: string
   hover: string
   muted: string

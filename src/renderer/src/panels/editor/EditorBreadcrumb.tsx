@@ -1,6 +1,6 @@
 import { colors, transitions } from '../../design/tokens'
 
-export interface BreadcrumbSegment {
+interface BreadcrumbSegment {
   readonly name: string
   readonly path: string
   readonly isFile: boolean

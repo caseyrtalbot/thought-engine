@@ -3,17 +3,7 @@
 // Use the constructor functions to create values of these types.
 // ---------------------------------------------------------------------------
 
-export type ArtifactId = string & { readonly __brand: 'ArtifactId' }
-export type FilePath = string & { readonly __brand: 'FilePath' }
 export type SessionId = string & { readonly __brand: 'SessionId' }
-
-export function artifactId(id: string): ArtifactId {
-  return id as ArtifactId
-}
-
-export function filePath(path: string): FilePath {
-  return path as FilePath
-}
 
 export function sessionId(id: string): SessionId {
   return id as SessionId
@@ -93,12 +83,6 @@ export const RELATIONSHIP_KINDS = [
   'co-occurrence'
 ] as const
 export type RelationshipKind = (typeof RELATIONSHIP_KINDS)[number]
-
-export interface Relationship {
-  source: string
-  target: string
-  kind: RelationshipKind
-}
 
 export interface GraphNode {
   id: string

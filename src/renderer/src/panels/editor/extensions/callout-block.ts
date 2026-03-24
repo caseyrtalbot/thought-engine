@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { MarkdownTokenizer, MarkdownToken } from '@tiptap/core'
 
-export type CalloutType = 'note' | 'warning' | 'tip' | 'important'
+type CalloutType = 'note' | 'warning' | 'tip' | 'important'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {

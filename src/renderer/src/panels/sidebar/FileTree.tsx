@@ -34,7 +34,7 @@ function indentBorderStyle(depth: number, isActive?: boolean): React.CSSProperti
   }
 }
 
-export interface FileTreeProps {
+interface FileTreeProps {
   nodes: FlatTreeNode[]
   activeFilePath: string | null
   collapsedPaths: Set<string>
@@ -290,7 +290,7 @@ function DirectoryRow({
     <div
       onClick={() => onToggleDirectory(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, true)}
-      className="flex items-center py-[5px] cursor-pointer rounded transition-colors"
+      className="flex items-center py-[5px] cursor-pointer transition-colors"
       style={{
         paddingLeft: node.depth === 0 ? 8 : undefined,
         paddingRight: 8,
@@ -392,7 +392,7 @@ function FileRow({
       onClick={() => onFileSelect(node.path)}
       onDoubleClick={() => (onFileDoubleClick ?? onFileSelect)(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, false)}
-      className="flex items-center py-[5px] cursor-pointer rounded transition-colors"
+      className="flex items-center py-[5px] cursor-pointer transition-colors"
       style={{
         paddingLeft: node.depth === 0 ? 24 : undefined,
         paddingRight: 8,

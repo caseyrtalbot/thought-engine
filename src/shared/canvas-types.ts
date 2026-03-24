@@ -33,13 +33,6 @@ export interface PdfNodeMeta {
   readonly currentPage: number
 }
 
-export interface ProjectFileNodeMeta {
-  readonly relativePath: string
-  readonly language: string
-  readonly touchCount: number
-  readonly lastTouchedBy: string | null
-}
-
 export interface SystemArtifactNodeMeta {
   readonly artifactKind: 'session' | 'pattern' | 'tension'
   readonly artifactId: string
@@ -55,12 +48,6 @@ export interface SystemArtifactNodeMeta {
   readonly fileTouchCount?: number
   readonly connections: readonly string[]
   readonly tensionRefs: readonly string[]
-}
-
-export interface FileViewNodeMeta {
-  readonly language: string
-  readonly previousLineCount: number
-  readonly modified: boolean
 }
 
 export interface CanvasNode {
@@ -145,7 +132,7 @@ export function getDefaultSize(type: CanvasNodeType): { width: number; height: n
 
 // --- Card display metadata for menus and UI ---
 
-export interface CardTypeInfo {
+interface CardTypeInfo {
   readonly label: string
   readonly icon: string
   readonly category: 'content' | 'media' | 'tools'

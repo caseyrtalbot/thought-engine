@@ -41,13 +41,3 @@ export function defaultCanvasFilename(existingNames: readonly string[]): string 
 export async function saveCanvas(path: string, file: CanvasFile): Promise<void> {
   await window.api.fs.writeFile(path, serializeCanvas(file))
 }
-
-/** Load canvas file from disk via IPC. */
-export async function loadCanvas(path: string): Promise<CanvasFile> {
-  try {
-    const content = await window.api.fs.readFile(path)
-    return deserializeCanvas(content)
-  } catch {
-    return createCanvasFile()
-  }
-}

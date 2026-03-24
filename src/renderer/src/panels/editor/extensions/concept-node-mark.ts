@@ -1,7 +1,7 @@
 import { Mark, mergeAttributes } from '@tiptap/core'
 import type { MarkdownTokenizer } from '@tiptap/core'
 
-export interface ConceptNodeMarkOptions {
+interface ConceptNodeMarkOptions {
   HTMLAttributes: Record<string, unknown>
 }
 

@@ -21,13 +21,13 @@ interface ForceLayoutNode {
   readonly size: { readonly width: number; readonly height: number }
 }
 
-export interface ForceLayoutInput {
+interface ForceLayoutInput {
   readonly sourceNode: CanvasNode
   readonly newNodes: readonly ForceLayoutNode[]
   readonly existingNodes: readonly CanvasNode[]
 }
 
-export interface ForceLayoutResult {
+interface ForceLayoutResult {
   readonly positions: ReadonlyMap<string, { x: number; y: number }>
 }
 

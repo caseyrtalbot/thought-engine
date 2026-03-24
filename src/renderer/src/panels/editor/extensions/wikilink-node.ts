@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core'
 import type { MarkdownTokenizer } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
-export interface WikilinkNodeOptions {
+interface WikilinkNodeOptions {
   HTMLAttributes: Record<string, unknown>
   onNavigate?: (target: string) => void
 }

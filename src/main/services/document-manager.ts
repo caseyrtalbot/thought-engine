@@ -3,7 +3,7 @@ import { FileService } from './file-service'
 const AUTOSAVE_DELAY_MS = 1000
 const PENDING_WRITE_TIMEOUT_MS = 2000
 
-export interface Document {
+interface Document {
   readonly path: string
   content: string
   lastSavedContent: string
@@ -14,18 +14,18 @@ export interface Document {
   saveTimeout: ReturnType<typeof setTimeout> | null
 }
 
-export interface DocumentOpenResult {
+interface DocumentOpenResult {
   readonly content: string
   readonly version: number
 }
 
-export interface DocumentContentResult {
+interface DocumentContentResult {
   readonly content: string
   readonly version: number
   readonly dirty: boolean
 }
 
-export type DocumentEventCallback = (
+type DocumentEventCallback = (
   event:
     | { type: 'external-change'; path: string; content: string }
     | { type: 'conflict'; path: string; diskContent: string }

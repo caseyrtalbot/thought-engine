@@ -5,7 +5,7 @@ export interface BatchedEvent {
   readonly event: FileEvent
 }
 
-export type BatchFlushCallback = (events: BatchedEvent[]) => void
+type BatchFlushCallback = (events: BatchedEvent[]) => void
 
 /**
  * Collapse rapid event sequences for the same path into a single net event.

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { useTabStore, TAB_DEFINITIONS } from './tab-store'
 import type { TabType } from './tab-store'
 
-export type ContentView = TabType
+type ContentView = TabType
 
 interface ViewStore {
   readonly contentView: ContentView

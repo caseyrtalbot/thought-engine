@@ -5,7 +5,7 @@ import { serializeFrontmatter } from './markdown-utils'
 
 // ── Types ──
 
-export interface MetadataEntry {
+interface MetadataEntry {
   readonly label: string
   readonly value: string
 }

@@ -90,7 +90,7 @@ export const GOOGLE_FONTS: readonly GoogleFontEntry[] = [
 ] as const
 
 /** The built-in system font option (not from Google Fonts) */
-export const SYSTEM_FONT_ENTRY: GoogleFontEntry = {
+const SYSTEM_FONT_ENTRY: GoogleFontEntry = {
   name: 'System',
   category: 'sans-serif',
   weights: [400, 500, 600, 700]

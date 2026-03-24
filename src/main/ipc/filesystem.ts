@@ -1,6 +1,7 @@
 import { dialog, shell } from 'electron'
 import { FileService } from '../services/file-service'
-import { teConfigPath, teStatePath, assertWithinVault, TE_DIR } from '../utils/paths'
+import { teConfigPath, teStatePath, assertWithinVault } from '../utils/paths'
+import { TE_DIR } from '@shared/constants'
 import { typedHandle } from '../typed-ipc'
 import type { VaultConfig, VaultState } from '../../shared/types'
 

@@ -11,9 +11,6 @@ export interface SimNode {
   readonly isGhost: boolean
 }
 
-/** Compact position buffer layout: [x0, y0, x1, y1, ...] */
-export type PositionBuffer = Float32Array
-
 /** Messages from main thread → physics worker */
 export type PhysicsCommand =
   | {

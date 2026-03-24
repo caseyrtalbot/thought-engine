@@ -10,7 +10,7 @@
  *   Main (batch IPC) → VaultEventHub → path-indexed dispatch → components
  */
 
-export interface FileChangeEvent {
+interface FileChangeEvent {
   readonly path: string
   readonly event: 'add' | 'change' | 'unlink'
 }

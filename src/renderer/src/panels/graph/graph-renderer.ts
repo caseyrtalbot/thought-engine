@@ -48,7 +48,7 @@ const SELECTION_RING_COLOR = 0x60a5fa
 // GraphRenderer
 // ---------------------------------------------------------------------------
 
-export interface DisplayOptions {
+interface DisplayOptions {
   readonly showEdges: boolean
   readonly showGhostNodes: boolean
   readonly showOrphanNodes: boolean

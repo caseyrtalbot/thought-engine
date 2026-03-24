@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 
 import { colors, transitions, floatingPanel } from '../../design/tokens'
 
-export interface ContextMenuAction {
+interface ContextMenuAction {
   readonly id: string
   readonly label: string
   readonly shortcut?: string

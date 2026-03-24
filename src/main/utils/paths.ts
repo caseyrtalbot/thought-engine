@@ -1,10 +1,9 @@
 import { join, resolve, normalize } from 'path'
 import { SYSTEM_ARTIFACT_DIRECTORIES, type SystemArtifactKind } from '@shared/system-artifacts'
-export { TE_DIR } from '@shared/constants'
 import { TE_DIR } from '@shared/constants'
-export const CONFIG_FILE = 'config.json'
-export const STATE_FILE = 'state.json'
-export const ARTIFACTS_DIR = 'artifacts'
+const CONFIG_FILE = 'config.json'
+const STATE_FILE = 'state.json'
+const ARTIFACTS_DIR = 'artifacts'
 
 export function teConfigPath(vaultPath: string): string {
   return join(vaultPath, TE_DIR, CONFIG_FILE)

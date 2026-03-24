@@ -16,7 +16,7 @@ import { TagBrowser } from './TagBrowser'
 
 type SortMode = 'modified' | 'name' | 'type'
 
-export interface FileAction {
+interface FileAction {
   readonly actionId: string
   readonly path: string
   readonly isDirectory: boolean
