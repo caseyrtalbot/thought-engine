@@ -29,6 +29,7 @@ import { colors } from './design/tokens'
 import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import pLimit from 'p-limit'
+import { SearchEngine } from './engine/search-engine'
 import { vaultEvents } from './engine/vault-event-hub'
 import { rehydrateUiState, flushVaultState, subscribeVaultPersist } from './store/vault-persist'
 import { rehydrateUiStore } from './store/ui-store'
@@ -600,7 +601,27 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const systemFiles = useVaultStore((s) => s.systemFiles)
   const artifacts = useVaultStore((s) => s.artifacts)
   const fileToId = useVaultStore((s) => s.fileToId)
+  const artifactPathById = useVaultStore((s) => s.artifactPathById)
   const vaultPath = useVaultStore((s) => s.vaultPath)
+  const searchEngineRef = useRef(new SearchEngine())
+
+  // Sync search engine whenever artifacts change
+  useEffect(() => {
+    const search = searchEngineRef.current
+    search.clear()
+    for (const artifact of artifacts) {
+      const path = artifactPathById[artifact.id]
+      if (path) {
+        search.upsert({
+          id: artifact.id,
+          title: artifact.title,
+          tags: artifact.tags,
+          body: artifact.body,
+          path
+        })
+      }
+    }
+  }, [artifacts, artifactPathById])
   const contentView = useViewStore((s) => s.contentView)
   const setContentView = useViewStore((s) => s.setContentView)
   const mode = useEditorStore((s) => s.mode)
@@ -857,6 +878,19 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     workbenchToggleThread
   ])
 
+  const handlePaletteSearch = useCallback((query: string): CommandItem[] => {
+    const hits = searchEngineRef.current.search(query)
+    return hits.map((hit) => ({
+      id: `note:${hit.path}`,
+      label: hit.title,
+      category: 'search' as const,
+      description: hit.snippet,
+      folderPath: hit.path,
+      artifactType: undefined,
+      keywords: [hit.path]
+    }))
+  }, [])
+
   const handlePaletteSelect = useCallback(
     async (item: CommandItem) => {
       if (item.id.startsWith('card:')) {
@@ -1010,6 +1044,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         onClose={() => setPaletteOpen(false)}
         items={paletteItems}
         onSelect={handlePaletteSelect}
+        onSearch={handlePaletteSearch}
       />
       <SettingsModal
         isOpen={settingsOpen}

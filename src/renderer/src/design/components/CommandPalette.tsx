@@ -4,7 +4,7 @@ import { colors, getArtifactColor, typography } from '../tokens'
 export interface CommandItem {
   id: string
   label: string
-  category: 'note' | 'command' | 'card'
+  category: 'note' | 'command' | 'card' | 'search'
   description?: string
   keywords?: readonly string[]
   disabled?: boolean
@@ -14,17 +14,21 @@ export interface CommandItem {
   matchIndices?: number[]
 }
 
+export type SearchCallback = (query: string) => CommandItem[]
+
 interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
   items: ReadonlyArray<CommandItem>
   onSelect: (item: CommandItem) => void
+  onSearch?: SearchCallback
 }
 
 const CATEGORY_LABELS: Record<CommandItem['category'], string> = {
   note: 'Notes',
   command: 'Actions',
-  card: 'Canvas Cards'
+  card: 'Canvas Cards',
+  search: 'Body Matches'
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -110,7 +114,7 @@ export function filterItems(
 function groupByCategory(
   items: ReadonlyArray<CommandItem>
 ): ReadonlyArray<{ category: CommandItem['category']; items: ReadonlyArray<CommandItem> }> {
-  const categoryOrder: readonly CommandItem['category'][] = ['command', 'card', 'note']
+  const categoryOrder: readonly CommandItem['category'][] = ['command', 'card', 'note', 'search']
   return categoryOrder
     .map((category) => ({
       category,
@@ -143,24 +147,62 @@ export function CommandPalette({ isOpen, ...rest }: CommandPaletteProps) {
 }
 
 // Inner component: owns all state, mounts/unmounts with isOpen
-function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPaletteProps, 'isOpen'>) {
+function CommandPaletteInner({
+  onClose,
+  items,
+  onSelect,
+  onSearch
+}: Omit<CommandPaletteProps, 'isOpen'>) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [searchResults, setSearchResults] = useState<ReadonlyArray<CommandItem>>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const filtered = useMemo(() => filterItems(items, query), [items, query])
-  const groups = useMemo(() => groupByCategory(filtered), [filtered])
+
+  const allItems = useMemo(() => [...filtered, ...searchResults], [filtered, searchResults])
+  const groups = useMemo(() => groupByCategory(allItems), [allItems])
 
   // Focus input on mount
   useEffect(() => {
     requestAnimationFrame(() => inputRef.current?.focus())
   }, [])
 
-  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value)
-    setSelectedIndex(0)
+  // Cleanup search timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
   }, [])
+
+  const runDebouncedSearch = useCallback(
+    (q: string) => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+      if (!onSearch || !q.trim() || q.startsWith('>') || q.startsWith('/')) {
+        setSearchResults([])
+        return
+      }
+      searchTimerRef.current = setTimeout(() => {
+        const results = onSearch(q)
+        const currentFiltered = filterItems(items, q)
+        const filteredIds = new Set(currentFiltered.map((item) => item.id))
+        setSearchResults(results.filter((r) => !filteredIds.has(r.id)))
+      }, 150)
+    },
+    [onSearch, items]
+  )
+
+  const handleQueryChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+      setQuery(value)
+      setSelectedIndex(0)
+      runDebouncedSearch(value)
+    },
+    [runDebouncedSearch]
+  )
 
   const handleSelect = useCallback(
     (item: CommandItem) => {
@@ -181,26 +223,26 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
 
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((prev) => (prev + 1) % filtered.length || 0)
+        setSelectedIndex((prev) => (prev + 1) % allItems.length || 0)
         return
       }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length || 0)
+        setSelectedIndex((prev) => (prev - 1 + allItems.length) % allItems.length || 0)
         return
       }
 
       if (e.key === 'Enter') {
         e.preventDefault()
-        const item = filtered[selectedIndex]
+        const item = allItems[selectedIndex]
         if (item) {
           handleSelect(item)
         }
         return
       }
     },
-    [filtered, selectedIndex, handleSelect, onClose]
+    [allItems, selectedIndex, handleSelect, onClose]
   )
 
   useEffect(() => {
@@ -252,13 +294,13 @@ function CommandPaletteInner({ onClose, items, onSelect }: Omit<CommandPalettePr
             className="mt-2 flex items-center justify-between text-[11px]"
             style={{ color: colors.text.muted }}
           >
-            <span>Search titles, paths, artifact types, and action aliases.</span>
+            <span>Search titles, body content, tags, and actions.</span>
             <span style={{ fontFamily: typography.fontFamily.mono }}>{'>'} actions</span>
           </div>
         </div>
 
         <div ref={listRef} role="listbox" className="max-h-80 overflow-y-auto py-2">
-          {filtered.length === 0 && (
+          {allItems.length === 0 && (
             <div className="px-4 py-6 text-center text-sm" style={{ color: colors.text.muted }}>
               No results found
             </div>

@@ -68,6 +68,7 @@
     "electron-store": "^11.0.2",
     "gray-matter": "^4.0.3",
     "mermaid": "^11.13.0",
+    "minisearch": "^7.2.0",
     "node-pty": "^1.1.0",
     "p-limit": "^7.3.0",
     "pdfjs-dist": "^5.5.207",
