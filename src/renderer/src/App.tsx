@@ -1,4 +1,13 @@
-import { lazy, startTransition, Suspense, useState, useCallback, useMemo, useEffect } from 'react'
+import {
+  lazy,
+  startTransition,
+  Suspense,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef
+} from 'react'
 import { useVaultWorker } from './engine/useVaultWorker'
 import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
@@ -525,6 +534,60 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
   }
 ]
 
+function ResizableSidebar({
+  onLoadVault,
+  onOpenSettings
+}: {
+  onLoadVault: (path: string) => Promise<void>
+  onOpenSettings: () => void
+}) {
+  const [width, setWidth] = useState(264)
+  const dragging = useRef(false)
+  const activityBarWidth = 48
+
+  const handleMouseDown = useCallback(() => {
+    dragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return
+      const newWidth = e.clientX - activityBarWidth
+      setWidth(Math.max(200, Math.min(newWidth, 500)))
+    }
+
+    const onUp = () => {
+      dragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
+
+  return (
+    <>
+      <aside
+        className="h-full flex flex-col shrink-0 overflow-hidden pt-8"
+        style={{
+          width,
+          backgroundColor: 'rgba(22, 22, 24, 0.72)',
+          backdropFilter: 'blur(24px) saturate(1.3)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.3)'
+        }}
+      >
+        <PanelErrorBoundary name="Sidebar">
+          <ConnectedSidebar onLoadVault={onLoadVault} onOpenSettings={onOpenSettings} />
+        </PanelErrorBoundary>
+      </aside>
+      <div className="panel-divider" onMouseDown={handleMouseDown} />
+    </>
+  )
+}
+
 function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -927,25 +990,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       />
       {/* Docked activity bar */}
       <ActivityBar />
-      {/* Docked sidebar */}
+      {/* Docked sidebar with draggable divider */}
       {sidebarExpanded && (
-        <aside
-          className="h-full flex flex-col shrink-0 overflow-hidden pt-8"
-          style={{
-            width: 264,
-            backgroundColor: 'rgba(22, 22, 24, 0.72)',
-            backdropFilter: 'blur(24px) saturate(1.3)',
-            WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.03)'
-          }}
-        >
-          <PanelErrorBoundary name="Sidebar">
-            <ConnectedSidebar
-              onLoadVault={onLoadVault}
-              onOpenSettings={() => setSettingsOpen(true)}
-            />
-          </PanelErrorBoundary>
-        </aside>
+        <ResizableSidebar onLoadVault={onLoadVault} onOpenSettings={() => setSettingsOpen(true)} />
       )}
       {/* Content area fills remaining space */}
       <div className="flex-1 overflow-hidden">
