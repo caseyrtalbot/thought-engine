@@ -96,6 +96,9 @@ export interface IpcChannels {
     response: { content: string; version: number; dirty: boolean } | null
   }
 
+  // --- App Lifecycle ---
+  'app:quit-ready': { request: void; response: void }
+
   // --- Window ---
   'window:minimize': { request: void; response: void }
   'window:maximize': { request: void; response: void }
@@ -109,7 +112,6 @@ export interface IpcChannels {
 export interface IpcEvents {
   'terminal:data': { sessionId: SessionId; data: string }
   'terminal:exit': { sessionId: SessionId; code: number }
-  'vault:file-changed': { path: string; event: 'add' | 'change' | 'unlink' }
   'vault:files-changed-batch': {
     events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
   }
@@ -119,6 +121,9 @@ export interface IpcEvents {
   'session:detected': SessionDetectedEvent
 
   // Document Manager events (main -> renderer)
+  // App Lifecycle events (main -> renderer)
+  'app:will-quit': Record<string, never>
+
   'doc:external-change': { path: string; content: string }
   'doc:conflict': { path: string; diskContent: string }
   'doc:saved': { path: string }

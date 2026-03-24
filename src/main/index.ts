@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, session } from 'electron'
+import { app, shell, BrowserWindow, session, ipcMain } from 'electron'
 import { execSync } from 'child_process'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -10,7 +10,7 @@ import { registerConfigIpc } from './ipc/config'
 
 import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/workbench'
 import { registerDocumentIpc, getDocumentManager } from './ipc/documents'
-import { typedHandle } from './typed-ipc'
+import { typedHandle, typedSend } from './typed-ipc'
 
 const PROD_CSP = [
   "default-src 'self'",
@@ -145,14 +145,47 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('before-quit', async () => {
-  // Flush all dirty documents before quitting
-  await getDocumentManager().flushAll()
+// Coordinated quit: block quit → signal renderer to flush vault state → flush documents → quit
+let quitCleanupDone = false
 
-  getShellService().killAll()
+typedHandle('app:quit-ready', () => {
+  // Renderer has finished flushing vault state; no-op handler, resolved via ipcMain listener below
+})
 
-  getProjectWatcher().stop()
-  getSessionTailer()?.stop()
+app.on('before-quit', (event) => {
+  if (quitCleanupDone) return // Cleanup already done, let quit proceed
+
+  event.preventDefault() // Block quit until async cleanup completes
+
+  const cleanup = async (): Promise<void> => {
+    // Step 1: Signal renderer to flush vault state, wait up to 500ms
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      try {
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            ipcMain.once('app:quit-ready', () => resolve())
+            typedSend(mainWindow!, 'app:will-quit', {})
+          }),
+          new Promise<void>((resolve) => setTimeout(resolve, 500))
+        ])
+      } catch {
+        // Timeout or error, proceed with quit anyway
+      }
+    }
+
+    // Step 2: Flush all dirty documents
+    await getDocumentManager().flushAll()
+
+    // Step 3: Clean up services
+    getShellService().killAll()
+    getProjectWatcher().stop()
+    getSessionTailer()?.stop()
+  }
+
+  cleanup().finally(() => {
+    quitCleanupDone = true
+    app.quit()
+  })
 })
 
 app.on('window-all-closed', () => {

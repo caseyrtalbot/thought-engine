@@ -1,4 +1,6 @@
 import type { VaultState, UiPersistedState } from '@shared/types'
+import { notifyError } from '../utils/error-logger'
+import { flushCanvasSave } from './canvas-autosave'
 import { useVaultStore } from './vault-store'
 import { useEditorStore } from './editor-store'
 import { useViewStore } from './view-store'
@@ -97,8 +99,27 @@ export function flushVaultState(): void {
   const vaultPath = useVaultStore.getState().vaultPath
   if (!vaultPath) return
   const state = gatherVaultState()
-  // Fire-and-forget: best-effort persist on close
-  window.api.vault.writeState(vaultPath, state).catch(() => {})
+  // Fire-and-forget: best-effort persist on close (Slice 2 will add coordinated quit)
+  window.api.vault
+    .writeState(vaultPath, state)
+    .catch((err) =>
+      notifyError('vault-persist-flush', err, 'Failed to save workspace state on close')
+    )
+}
+
+/**
+ * Coordinated quit handler. Called by main process via `app:will-quit` event.
+ * Awaits the vault state write, then signals main that it's safe to quit.
+ */
+export function registerQuitHandler(): () => void {
+  return window.api.on.appWillQuit(async () => {
+    if (persistTimer !== null) {
+      clearTimeout(persistTimer)
+      persistTimer = null
+    }
+    await Promise.all([writePersist(), flushCanvasSave()])
+    window.api.lifecycle.quitReady()
+  })
 }
 
 /**

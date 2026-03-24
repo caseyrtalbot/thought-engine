@@ -28,7 +28,9 @@ export function registerWatcherIpc(mainWindow: BrowserWindow): void {
         const docManager = getDocumentManager()
         for (const { path, event } of events) {
           if (event === 'change' && docManager.documents.has(path)) {
-            docManager.handleExternalChange(path).catch(() => {})
+            docManager.handleExternalChange(path).catch((err) => {
+              console.error(`[watcher] Failed to handle external change for ${path}:`, err)
+            })
           }
         }
       },

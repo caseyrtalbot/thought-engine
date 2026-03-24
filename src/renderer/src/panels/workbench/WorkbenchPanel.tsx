@@ -1,4 +1,5 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { logError, notifyError } from '../../utils/error-logger'
 import { CanvasSurface } from '../canvas/CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useWorkbenchStore } from '../../store/workbench-store'
@@ -273,7 +274,7 @@ export function WorkbenchPanel() {
       setIsLoading(true)
 
       // Migrate legacy filename before anything reads from disk
-      await migrateWorkbenchFile(projectPath!).catch(() => {})
+      await migrateWorkbenchFile(projectPath!).catch((err) => logError('workbench-migrate', err))
 
       const canvasPath = getWorkbenchPath(projectPath!)
 
@@ -305,21 +306,25 @@ export function WorkbenchPanel() {
       setIsLoading(false)
 
       // Start watching the project directory
-      window.api.workbench.watchStart(projectPath!).catch(() => {})
+      window.api.workbench
+        .watchStart(projectPath!)
+        .catch((err) => logError('workbench-watch-start', err))
     }
 
     loadWorkbench()
 
     return () => {
       isMounted.current = false
-      window.api.workbench.watchStop().catch(() => {})
+      window.api.workbench.watchStop().catch((err) => logError('workbench-watch-stop', err))
 
       // Save current workbench state
       const currentData = useCanvasStore.getState().toCanvasFile()
       setCachedData(currentData)
       if (projectPath) {
         const canvasPath = getWorkbenchPath(projectPath)
-        saveCanvas(canvasPath, currentData).catch(() => {})
+        saveCanvas(canvasPath, currentData).catch((err) =>
+          notifyError('workbench-save', err, 'Failed to save workbench canvas')
+        )
       }
 
       // Restore vault canvas

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { logError } from '../../utils/error-logger'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
@@ -84,7 +85,7 @@ export function NoteCard({ node }: NoteCardProps) {
             const bodyStart = fmEnd > 0 ? fmEnd + 3 : 0
             setBody(content.slice(bodyStart).trim())
           })
-          .catch(() => {})
+          .catch((err) => logError('note-card-reload', err))
       }
     })
     return () => {

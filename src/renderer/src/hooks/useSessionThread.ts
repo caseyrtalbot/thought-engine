@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { SessionMilestone } from '@shared/workbench-types'
+import { logError } from '../utils/error-logger'
 
 const MAX_MILESTONES = 50
 const IDLE_TIMEOUT_MS = 10000
@@ -24,11 +25,11 @@ export function useSessionThread(projectPath: string | null, enabled: boolean): 
   // Start/stop tailing based on enabled flag
   useEffect(() => {
     if (!enabled || !projectPath) {
-      window.api.workbench.tailStop().catch(() => {})
+      window.api.workbench.tailStop().catch((err) => logError('session-tail-stop', err))
       return
     }
 
-    window.api.workbench.tailStart(projectPath).catch(() => {})
+    window.api.workbench.tailStart(projectPath).catch((err) => logError('session-tail-start', err))
 
     const unsubMilestone = window.api.on.sessionMilestone((milestone) => {
       lastEventTimeRef.current = Date.now()
@@ -48,7 +49,7 @@ export function useSessionThread(projectPath: string | null, enabled: boolean): 
 
     return () => {
       unsubMilestone()
-      window.api.workbench.tailStop().catch(() => {})
+      window.api.workbench.tailStop().catch((err) => logError('session-tail-stop', err))
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null

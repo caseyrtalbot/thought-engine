@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { logError } from '../utils/error-logger'
 import { useCanvasStore } from '../store/canvas-store'
 import { useVaultStore } from '../store/vault-store'
 import { colors, typography } from '../design/tokens'
@@ -79,7 +80,9 @@ export function useClaudeContext(node: CanvasNode, isClaudeCard: boolean): Claud
       const currentVaultPath = vaultPathRef.current ?? useVaultStore.getState().vaultPath
       if (currentVaultPath) {
         const contextPath = `${currentVaultPath}/${TE_DIR}/context-${node.id}.txt`
-        window.api.fs.deleteFile(contextPath).catch(() => {})
+        window.api.fs
+          .deleteFile(contextPath)
+          .catch((err) => logError('claude-context-cleanup', err))
       }
     }
   }, [isClaudeCard, node.id])

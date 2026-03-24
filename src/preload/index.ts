@@ -101,8 +101,6 @@ const api = {
       typedOn('terminal:data', callback),
     terminalExit: (callback: (data: { sessionId: SessionId; code: number }) => void) =>
       typedOn('terminal:exit', callback),
-    fileChanged: (callback: (data: { path: string; event: 'add' | 'change' | 'unlink' }) => void) =>
-      typedOn('vault:file-changed', callback),
     filesChangedBatch: (
       callback: (data: {
         events: readonly { path: string; event: 'add' | 'change' | 'unlink' }[]
@@ -118,7 +116,12 @@ const api = {
       typedOn('doc:external-change', callback),
     docConflict: (callback: (data: { path: string; diskContent: string }) => void) =>
       typedOn('doc:conflict', callback),
-    docSaved: (callback: (data: { path: string }) => void) => typedOn('doc:saved', callback)
+    docSaved: (callback: (data: { path: string }) => void) => typedOn('doc:saved', callback),
+    appWillQuit: (callback: (data: Record<string, never>) => void) =>
+      typedOn('app:will-quit', callback)
+  },
+  lifecycle: {
+    quitReady: () => typedInvoke('app:quit-ready')
   }
 }
 

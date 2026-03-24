@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { logError } from '../../utils/error-logger'
 import { CardShell } from '../canvas/CardShell'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
@@ -97,7 +98,9 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
 
   const handleRestore = useCallback(() => {
     if (meta.snapshotPath && vaultPath) {
-      restorePatternSnapshot(meta.snapshotPath, vaultPath).catch(() => {})
+      restorePatternSnapshot(meta.snapshotPath, vaultPath).catch((err) =>
+        logError('snapshot-restore', err)
+      )
     }
   }, [meta.snapshotPath, vaultPath])
 

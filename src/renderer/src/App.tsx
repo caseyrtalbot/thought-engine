@@ -8,6 +8,9 @@ import {
   useEffect,
   useRef
 } from 'react'
+import { logError } from './utils/error-logger'
+import { withTimeout } from './utils/ipc-timeout'
+import { perfMark, perfMeasure } from './utils/perf-marks'
 import { useVaultWorker } from './engine/useVaultWorker'
 import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
@@ -31,8 +34,14 @@ import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import pLimit from 'p-limit'
 import { SearchEngine } from './engine/search-engine'
 import { vaultEvents } from './engine/vault-event-hub'
-import { rehydrateUiState, flushVaultState, subscribeVaultPersist } from './store/vault-persist'
+import {
+  rehydrateUiState,
+  flushVaultState,
+  subscribeVaultPersist,
+  registerQuitHandler
+} from './store/vault-persist'
 import { rehydrateUiStore } from './store/ui-store'
+import { subscribeCanvasAutosave } from './store/canvas-autosave'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
@@ -207,7 +216,7 @@ function ConnectedSidebar({
           window.api.config.write('app', 'vaultHistory', valid)
         }
       })
-      .catch(() => {})
+      .catch((err) => logError('vault-history', err))
   }, [])
 
   const vaultName = vaultPath?.split('/').pop() ?? 'Machina'
@@ -469,7 +478,9 @@ function ConnectedSidebar({
       onSystemArtifactSelect={(item) => {
         const nodeId = placeArtifactOnWorkbench(item)
         if (nodeId && vaultPath) {
-          enrichPlacedArtifact(nodeId, item, vaultPath).catch(() => {})
+          enrichPlacedArtifact(nodeId, item, vaultPath).catch((err) =>
+            logError('enrich-artifact', err)
+          )
         }
         openArtifactInEditor(item.path, item.title, item.id)
       }}
@@ -1137,6 +1148,7 @@ export default function App() {
 
   const orchestrateLoad = useCallback(
     async (path: string) => {
+      perfMark('vault-load-start')
       await window.api.vault.init(path)
       await loadVault(path)
       const state = useVaultStore.getState().state
@@ -1168,10 +1180,14 @@ export default function App() {
       const limit = pLimit(12)
       const filesWithContent = await Promise.all(
         mdPaths.map((p) =>
-          limit(async () => ({ path: p, content: await window.api.fs.readFile(p) }))
+          limit(async () => ({
+            path: p,
+            content: await withTimeout(window.api.fs.readFile(p), 5000, `readFile ${p}`)
+          }))
         )
       )
       loadFiles(filesWithContent)
+      perfMeasure('vault-load', 'vault-load-start')
     },
     [loadVault, loadFiles]
   )
@@ -1182,7 +1198,7 @@ export default function App() {
       .then((savedPath) => {
         if (typeof savedPath === 'string' && savedPath) orchestrateLoad(savedPath)
       })
-      .catch(() => {})
+      .catch((err) => logError('load-last-vault', err))
   }, [orchestrateLoad])
 
   useEffect(() => {
@@ -1196,6 +1212,14 @@ export default function App() {
 
   useEffect(() => {
     return subscribeVaultPersist()
+  }, [])
+
+  useEffect(() => {
+    return subscribeCanvasAutosave()
+  }, [])
+
+  useEffect(() => {
+    return registerQuitHandler()
   }, [])
 
   useEffect(() => {

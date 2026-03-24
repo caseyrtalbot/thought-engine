@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { logError } from '../utils/error-logger'
+import { withTimeout } from '../utils/ipc-timeout'
 
 export interface UseDocumentResult {
   /** Current file content (null while loading) */
@@ -56,8 +58,7 @@ export function useDocument(path: string | null): UseDocumentResult {
     let cancelled = false
     setLoading(true) // eslint-disable-line react-hooks/set-state-in-effect -- loading gate before async IPC
 
-    window.api.document
-      .open(path)
+    withTimeout(window.api.document.open(path), 5000, `doc:open ${path}`)
       .then((result: { content: string; version: number }) => {
         if (cancelled) return
         openedPathRef.current = path
@@ -67,7 +68,8 @@ export function useDocument(path: string | null): UseDocumentResult {
         setDiskContent(null)
         setLoading(false)
       })
-      .catch(() => {
+      .catch((err) => {
+        logError('doc-open', err)
         if (cancelled) return
         setContent(null)
         setLoading(false)
