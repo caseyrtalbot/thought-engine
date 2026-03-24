@@ -61,7 +61,7 @@ const LazyWorkbenchPanel = lazy(() =>
   }))
 )
 const LazyGraphPanel = lazy(() =>
-  import('./panels/graph/GraphPanel').then((module) => ({ default: module.GraphPanel }))
+  import('./panels/graph/GraphViewShell').then((module) => ({ default: module.GraphViewShell }))
 )
 const LazyWelcomeScreen = lazy(() =>
   import('./panels/onboarding/WelcomeScreen').then((module) => ({

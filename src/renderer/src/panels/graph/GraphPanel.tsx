@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useVaultStore } from '@renderer/store/vault-store'
-import { useEditorStore } from '@renderer/store/editor-store'
 import { useGraphViewStore } from '@renderer/store/graph-view-store'
 import { GraphRenderer } from './graph-renderer'
 import { LabelLayer } from './graph-label-layer'
@@ -141,16 +140,11 @@ export function GraphPanel() {
         const node = simNodesRef.current[idx]
         if (!node) return
 
-        setSelectedNode(node.id)
-        renderer.setSelectedNode(idx)
-
-        // Find the file path for this artifact and navigate
-        const currentFileToId = useVaultStore.getState().fileToId
-        const path = Object.entries(currentFileToId).find(([, id]) => id === node.id)?.[0]
-        if (path) {
-          useEditorStore.getState().setActiveNote(node.id, path)
-          // Don't switch view - let user stay on graph or use split view
-        }
+        // Toggle selection: clicking the same node again deselects
+        const currentSelected = useGraphViewStore.getState().selectedNodeId
+        const nextId = currentSelected === node.id ? null : node.id
+        setSelectedNode(nextId)
+        renderer.setSelectedNode(nextId !== null ? idx : null)
       },
       onNodeDrag: (idx, x, y) => {
         if (!workerRef.current) return
@@ -386,7 +380,7 @@ export function GraphPanel() {
           <div
             className="text-center px-4 py-2 rounded-full"
             style={{
-              backgroundColor: 'rgba(20, 20, 20, 0.85)',
+              backgroundColor: 'rgba(14, 14, 18, 0.92)',
               backdropFilter: 'blur(8px)',
               border: '1px solid var(--color-border-default)'
             }}
