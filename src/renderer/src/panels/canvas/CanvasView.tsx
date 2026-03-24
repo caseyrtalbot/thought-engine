@@ -30,6 +30,45 @@ import { getLodLevel } from './use-canvas-lod'
 import { findOpenPosition } from './canvas-layout'
 import { CanvasSplitEditor } from './CanvasSplitEditor'
 
+/** Draggable divider + editor panel. Separate component to isolate drag
+ *  state from CanvasView and prevent canvas DOM remounts. */
+function SplitDividerAndPanel({ filePath }: { readonly filePath: string }) {
+  const [width, setWidth] = useState(480)
+  const dragging = useRef(false)
+
+  const handleMouseDown = useCallback(() => {
+    dragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (e: MouseEvent) => {
+      if (!dragging.current) return
+      const fromRight = window.innerWidth - e.clientX
+      setWidth(Math.max(250, Math.min(fromRight, window.innerWidth - 500)))
+    }
+
+    const onUp = () => {
+      dragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
+
+  return (
+    <>
+      <div className="panel-divider" onMouseDown={handleMouseDown} />
+      <div style={{ width, flexShrink: 0 }} className="h-full overflow-hidden">
+        <CanvasSplitEditor filePath={filePath} />
+      </div>
+    </>
+  )
+}
+
 export function CanvasView(): React.ReactElement {
   const nodes = useCanvasStore((s) => s.nodes)
   const viewport = useCanvasStore((s) => s.viewport)
@@ -568,14 +607,7 @@ export function CanvasView(): React.ReactElement {
             )
           })()}
       </div>
-      {splitFilePath && (
-        <>
-          <div className="panel-divider" />
-          <div style={{ width: 480, flexShrink: 0 }} className="h-full overflow-hidden">
-            <CanvasSplitEditor filePath={splitFilePath} />
-          </div>
-        </>
-      )}
+      {splitFilePath && <SplitDividerAndPanel filePath={splitFilePath} />}
     </div>
   )
 }
