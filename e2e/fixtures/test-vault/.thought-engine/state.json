@@ -1,12 +1,16 @@
 {
   "version": 1,
-  "idCounters": {},
-  "lastOpenNote": null,
-  "panelLayout": { "sidebarWidth": 260, "terminalWidth": 320 },
-  "contentView": "graph",
-  "graphViewport": { "x": 0, "y": 0, "k": 1 },
+  "lastOpenNote": "/Users/caseytalbot/Projects/thought-engine/e2e/fixtures/test-vault/category-creation.md",
+  "panelLayout": {
+    "sidebarWidth": 260,
+    "terminalWidth": 320
+  },
+  "contentView": "editor",
   "terminalSessions": [],
   "fileTreeCollapseState": {},
   "selectedNodeId": null,
-  "recentFiles": []
+  "recentFiles": [],
+  "ui": {
+    "backlinkCollapsed": {}
+  }
 }
