@@ -260,12 +260,12 @@ function CommandPaletteInner({
       data-testid="command-palette"
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] te-cmdk-backdrop"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden te-popover-enter"
         style={{
           backgroundColor: colors.bg.elevated,
           borderColor: colors.border.default

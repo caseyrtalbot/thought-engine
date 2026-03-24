@@ -215,7 +215,7 @@ export function CardShell({
   return (
     <div
       data-canvas-node
-      className={`absolute flex flex-col canvas-card${isFocused ? ' canvas-card--focused' : ''}${isLocked ? ' canvas-card--locked' : ''}`}
+      className={`absolute flex flex-col canvas-card te-card-enter${isFocused ? ' canvas-card--focused' : ''}${isLocked ? ' canvas-card--locked' : ''}`}
       style={{
         left: node.position.x,
         top: node.position.y,
