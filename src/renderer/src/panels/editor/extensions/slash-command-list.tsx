@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { Editor, Range } from '@tiptap/core'
 import { typography, colors } from '../../../design/tokens'
 
 export interface SlashCommandItem {
   readonly title: string
   readonly description: string
   readonly icon: string
-  readonly command: (props: { editor: unknown; range: unknown }) => void
+  readonly command: (props: { editor: Editor; range: Range }) => void
 }
 
 interface SlashCommandListProps {
@@ -16,11 +17,13 @@ interface SlashCommandListProps {
 export function SlashCommandList({ items, command }: SlashCommandListProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const [prevItems, setPrevItems] = useState(items)
 
-  // Reset selection when items change
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [items])
+  // Reset selection when items change (React docs: "adjusting state during rendering")
+  if (prevItems !== items) {
+    setPrevItems(items)
+    if (selectedIndex !== 0) setSelectedIndex(0)
+  }
 
   // Scroll selected item into view
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { Extension } from '@tiptap/core'
+import { Extension, type Editor, type Range } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import { Suggestion } from '@tiptap/suggestion'
 import { createRoot } from 'react-dom/client'
@@ -10,7 +10,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Heading 1',
     description: 'Large section heading',
     icon: 'H1',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()
     }
   },
@@ -18,7 +18,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Heading 2',
     description: 'Medium section heading',
     icon: 'H2',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()
     }
   },
@@ -26,7 +26,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Heading 3',
     description: 'Small section heading',
     icon: 'H3',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
     }
   },
@@ -34,7 +34,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Bullet List',
     description: 'Unordered list',
     icon: '\u2022',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).toggleBulletList().run()
     }
   },
@@ -42,7 +42,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Numbered List',
     description: 'Ordered list',
     icon: '1.',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).toggleOrderedList().run()
     }
   },
@@ -50,7 +50,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Task List',
     description: 'Checkboxes',
     icon: '\u2610',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).toggleTaskList().run()
     }
   },
@@ -58,7 +58,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Code Block',
     description: 'Syntax-highlighted code',
     icon: '<>',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
     }
   },
@@ -66,7 +66,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Blockquote',
     description: 'Quoted text',
     icon: '\u275D',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).toggleBlockquote().run()
     }
   },
@@ -74,7 +74,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Callout',
     description: 'Highlighted block (note, tip, warning)',
     icon: '\u25A1',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setCallout('note').run()
     }
   },
@@ -82,7 +82,7 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     title: 'Divider',
     description: 'Horizontal line',
     icon: '\u2500',
-    command: ({ editor, range }: { editor: any; range: any }) => {
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     }
   }

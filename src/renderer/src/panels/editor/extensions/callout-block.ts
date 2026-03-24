@@ -1,7 +1,16 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import type { MarkdownTokenizer } from '@tiptap/core'
+import type { MarkdownTokenizer, MarkdownToken } from '@tiptap/core'
 
 export type CalloutType = 'note' | 'warning' | 'tip' | 'important'
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    callout: {
+      setCallout: (calloutType?: CalloutType) => ReturnType
+      toggleCallout: (calloutType?: CalloutType) => ReturnType
+    }
+  }
+}
 
 const CALLOUT_TYPES: readonly CalloutType[] = ['note', 'warning', 'tip', 'important']
 
@@ -75,17 +84,17 @@ export const CalloutBlock = Node.create({
     return {
       setCallout:
         (calloutType: CalloutType = 'note') =>
-        ({ commands }: { commands: any }) =>
+        ({ commands }) =>
           commands.wrapIn(this.name, { calloutType }),
       toggleCallout:
         (calloutType: CalloutType = 'note') =>
-        ({ commands }: { commands: any }) => {
+        ({ commands }) => {
           if (this.editor.isActive(this.name)) {
             return commands.lift(this.name)
           }
           return commands.wrapIn(this.name, { calloutType })
         }
-    } as any
+    }
   },
 
   // Custom tokenizer: intercept > [!TYPE] before the standard blockquote tokenizer
@@ -96,7 +105,11 @@ export const CalloutBlock = Node.create({
       const match = src.match(/^> \[!(\w+)\]/m)
       return match?.index ?? -1
     },
-    tokenize(src: string, _tokens: unknown, lexer: { blockTokens: (src: string) => any[] }) {
+    tokenize(
+      src: string,
+      _tokens: MarkdownToken[],
+      lexer: { blockTokens: (src: string) => MarkdownToken[] }
+    ) {
       // Match > [!TYPE] followed by continuation lines starting with >
       const match = src.match(/^> \[!(\w+)\]\n?((?:> ?[^\n]*(?:\n|$))*)/)
       if (!match) return undefined
@@ -124,17 +137,17 @@ export const CalloutBlock = Node.create({
     }
   } satisfies MarkdownTokenizer,
 
-  parseMarkdown(token: any, helpers: any) {
+  parseMarkdown(token: MarkdownToken, helpers) {
     const parseBlockChildren = helpers.parseBlockChildren ?? helpers.parseChildren
     return helpers.createNode(
       'callout',
-      { calloutType: token.calloutType || 'note' },
+      { calloutType: (token as MarkdownToken & { calloutType?: string }).calloutType || 'note' },
       parseBlockChildren(token.tokens || [])
     )
   },
 
-  renderMarkdown(node: any, h: any) {
-    const type = node.attrs?.calloutType || 'note'
+  renderMarkdown(node, h) {
+    const type = (node.attrs as Record<string, string> | undefined)?.calloutType || 'note'
 
     if (!node.content) {
       return `> [!${type}]\n>`
@@ -143,7 +156,7 @@ export const CalloutBlock = Node.create({
     const prefix = '>'
     const result: string[] = []
 
-    node.content.forEach((child: any, index: number) => {
+    node.content.forEach((child: { type?: string }, index: number) => {
       const childContent = h.renderChild?.(child, index) ?? h.renderChildren([child])
       const lines = childContent.split('\n')
       const linesWithPrefix = lines.map((line: string) =>

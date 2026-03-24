@@ -118,7 +118,7 @@ export function PdfCard({ node }: PdfCardProps): React.ReactElement {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      page.render({ canvasContext: ctx, viewport }).promise.catch(() => {
+      page.render({ canvas: canvasRef.current, canvasContext: ctx, viewport }).promise.catch(() => {
         // Render cancelled or failed - ignore
       })
     })

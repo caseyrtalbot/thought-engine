@@ -4,8 +4,7 @@ import {
   computeOptimalEdgeSides,
   computeForceLayout,
   findOpenPosition,
-  type ContentMetrics,
-  type ForceLayoutInput
+  type ContentMetrics
 } from '../../src/renderer/src/panels/canvas/canvas-layout'
 import { createCanvasNode } from '../../src/shared/canvas-types'
 

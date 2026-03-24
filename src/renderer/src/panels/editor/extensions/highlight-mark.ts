@@ -1,6 +1,16 @@
 import { Mark, mergeAttributes } from '@tiptap/core'
 import type { MarkdownTokenizer } from '@tiptap/core'
 
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    highlight: {
+      setHighlight: () => ReturnType
+      unsetHighlight: () => ReturnType
+      toggleHighlight: () => ReturnType
+    }
+  }
+}
+
 export const HighlightMark = Mark.create({
   name: 'highlight',
 
@@ -29,17 +39,17 @@ export const HighlightMark = Mark.create({
     return {
       setHighlight:
         () =>
-        ({ commands }: { commands: any }) =>
+        ({ commands }) =>
           commands.setMark(this.name),
       unsetHighlight:
         () =>
-        ({ commands }: { commands: any }) =>
+        ({ commands }) =>
           commands.unsetMark(this.name),
       toggleHighlight:
         () =>
-        ({ commands }: { commands: any }) =>
+        ({ commands }) =>
           commands.toggleMark(this.name)
-    } as any
+    }
   },
 
   markdownTokenizer: {
@@ -62,11 +72,11 @@ export const HighlightMark = Mark.create({
     }
   } satisfies MarkdownTokenizer,
 
-  parseMarkdown(token: any, helpers: any) {
+  parseMarkdown(token, helpers) {
     return helpers.applyMark('highlight', [helpers.createTextNode(token.content || '')])
   },
 
-  renderMarkdown(node: any, h: any) {
+  renderMarkdown(node, h) {
     return `==${h.renderChildren(node)}==`
   }
 })

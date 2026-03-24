@@ -16,9 +16,7 @@ describe('rewriteWikilinks', () => {
 
   it('replaces multiple occurrences', () => {
     const input = '[[Foo]] links to [[Foo]] and [[Foo|alias]]'
-    expect(rewriteWikilinks(input, 'Foo', 'Bar')).toBe(
-      '[[Bar]] links to [[Bar]] and [[Bar|alias]]'
-    )
+    expect(rewriteWikilinks(input, 'Foo', 'Bar')).toBe('[[Bar]] links to [[Bar]] and [[Bar|alias]]')
   })
 
   it('does not touch other wikilinks', () => {

@@ -21,7 +21,7 @@ function oklchToOklab(L, C, H) {
 function oklabToLinearSrgb(L, a, b) {
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b
-  const s_ = L - 0.0894841775 * a - 1.2914855480 * b
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b
 
   const l = l_ * l_ * l_
   const m = m_ * m_ * m_
@@ -30,7 +30,7 @@ function oklabToLinearSrgb(L, a, b) {
   return {
     r: +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
     g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    b: -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
   }
 }
 
@@ -80,7 +80,7 @@ const edgeKinds = [
   { name: 'related', L: 0.68, C: 0.14, H: 290 },
   { name: 'co_occurrence', L: 0.45, C: 0.02, H: 255 },
   { name: 'appears_in', L: 0.55, C: 0.03, H: 255 },
-  { name: 'causal', L: 0.70, C: 0.15, H: 340 }
+  { name: 'causal', L: 0.7, C: 0.15, H: 340 }
 ]
 
 // Custom type palette: 9 evenly spaced hues avoiding built-in collisions
