@@ -7,11 +7,16 @@ const BUFFER = 200
  * Returns only nodes whose bounding boxes intersect the visible viewport
  * plus a buffer zone. Nodes fully outside the viewport are excluded from
  * rendering, which keeps the DOM small when the canvas has many cards.
+ *
+ * Nodes in the `protectedIds` set are never culled (e.g. selected cards,
+ * the card open in the split editor). This prevents cards from vanishing
+ * when the container resizes (split panel open/close).
  */
 export function useViewportCulling(
   nodes: readonly CanvasNode[],
   viewport: CanvasViewport,
-  containerSize: { width: number; height: number }
+  containerSize: { width: number; height: number },
+  protectedIds?: ReadonlySet<string>
 ): readonly CanvasNode[] {
   return useMemo(() => {
     // Visible region in canvas coordinates
@@ -24,6 +29,9 @@ export function useViewportCulling(
       // Terminal cards hold live PTY sessions — never cull them
       if (node.type === 'terminal') return true
 
+      // Protected nodes (selected, split-open) are never culled
+      if (protectedIds?.has(node.id)) return true
+
       const nx = node.position.x
       const ny = node.position.y
       const nw = node.size.width
@@ -32,5 +40,13 @@ export function useViewportCulling(
       // AABB intersection: node overlaps visible region
       return nx + nw > viewMinX && nx < viewMaxX && ny + nh > viewMinY && ny < viewMaxY
     })
-  }, [nodes, viewport.x, viewport.y, viewport.zoom, containerSize.width, containerSize.height])
+  }, [
+    nodes,
+    viewport.x,
+    viewport.y,
+    viewport.zoom,
+    containerSize.width,
+    containerSize.height,
+    protectedIds
+  ])
 }

@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { colors, typography } from '../../design/tokens'
 import { CanvasSurface } from './CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
@@ -83,6 +83,7 @@ export function CanvasView(): React.ReactElement {
   const cardContextMenu = useCanvasStore((s) => s.cardContextMenu)
   const setCardContextMenu = useCanvasStore((s) => s.setCardContextMenu)
   const splitFilePath = useCanvasStore((s) => s.splitFilePath)
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
   const commandStack = useRef(new CommandStack())
   const rawFileCount = useVaultStore((s) => {
     const total = s.artifacts.length
@@ -182,8 +183,19 @@ export function CanvasView(): React.ReactElement {
     })
   }, [filePath, containerSize, setViewport])
 
+  // Build protected set: selected nodes + the card open in split editor
+  const protectedIds = useMemo(() => {
+    const ids = new Set(selectedNodeIds)
+    if (splitFilePath) {
+      for (const n of nodes) {
+        if (n.content === splitFilePath) ids.add(n.id)
+      }
+    }
+    return ids
+  }, [selectedNodeIds, splitFilePath, nodes])
+
   // Performance: only render nodes visible in the viewport
-  const visibleNodes = useViewportCulling(nodes, viewport, containerSize)
+  const visibleNodes = useViewportCulling(nodes, viewport, containerSize, protectedIds)
   const lod = getLodLevel(viewport.zoom)
 
   const addNodeWithUndo = useCallback(
@@ -327,6 +339,8 @@ export function CanvasView(): React.ReactElement {
         if (focusedTerminalId) return
         if (document.activeElement?.tagName === 'TEXTAREA') return
         if (document.activeElement?.tagName === 'INPUT') return
+        if ((document.activeElement as HTMLElement)?.isContentEditable) return
+        if (document.activeElement?.closest('.cm-editor')) return
 
         if (selectedEdgeId) {
           removeEdge(selectedEdgeId)
@@ -516,7 +530,7 @@ export function CanvasView(): React.ReactElement {
             <div
               className="text-center px-4 py-2 rounded-full"
               style={{
-                backgroundColor: 'rgba(20, 20, 20, 0.85)',
+                backgroundColor: 'rgba(14, 14, 18, 0.92)',
                 backdropFilter: 'blur(8px)',
                 border: '1px solid var(--color-border-default)'
               }}
