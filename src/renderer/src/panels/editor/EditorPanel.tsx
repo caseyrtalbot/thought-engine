@@ -438,8 +438,8 @@ export function EditorPanel({ onNavigate }: EditorPanelProps) {
       </div>
 
       <BacklinksPanel
-        key={activeNoteId ?? ''}
         currentNoteId={activeNoteId ?? ''}
+        currentNotePath={activeNotePath ?? ''}
         currentNoteTitle={artifact?.title}
         backlinks={backlinks}
         onNavigate={onNavigate}

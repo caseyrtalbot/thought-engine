@@ -28,7 +28,10 @@ import { useWorkbenchActionStore } from './store/workbench-actions-store'
 import { colors } from './design/tokens'
 import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
+import pLimit from 'p-limit'
 import { vaultEvents } from './engine/vault-event-hub'
+import { rehydrateUiState, flushVaultState, subscribeVaultPersist } from './store/vault-persist'
+import { rehydrateUiStore } from './store/ui-store'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
@@ -1094,6 +1097,8 @@ export default function App() {
         if (state.lastOpenNote)
           useEditorStore.getState().setActiveNote(state.lastOpenNote, state.lastOpenNote)
       }
+      rehydrateUiState()
+      rehydrateUiStore()
       window.api.config.write('app', 'lastVaultPath', path)
 
       // Persist vault history (most-recent-first, deduped, capped at 10)
@@ -1107,8 +1112,11 @@ export default function App() {
       const mdPaths = [...files, ...systemFiles]
         .filter((file) => file.path.endsWith('.md'))
         .map((file) => file.path)
+      const limit = pLimit(12)
       const filesWithContent = await Promise.all(
-        mdPaths.map(async (p) => ({ path: p, content: await window.api.fs.readFile(p) }))
+        mdPaths.map((p) =>
+          limit(async () => ({ path: p, content: await window.api.fs.readFile(p) }))
+        )
       )
       loadFiles(filesWithContent)
     },
@@ -1125,8 +1133,16 @@ export default function App() {
   }, [orchestrateLoad])
 
   useEffect(() => {
-    window.addEventListener('beforeunload', flushPendingSave)
-    return () => window.removeEventListener('beforeunload', flushPendingSave)
+    const handleBeforeUnload = (): void => {
+      flushPendingSave()
+      flushVaultState()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  useEffect(() => {
+    return subscribeVaultPersist()
   }, [])
 
   useEffect(() => {

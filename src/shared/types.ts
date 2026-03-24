@@ -131,6 +131,10 @@ export interface VaultConfig {
   createdAt: string
 }
 
+export interface UiPersistedState {
+  backlinkCollapsed: Record<string, boolean>
+}
+
 export interface VaultState {
   version: number
   lastOpenNote: string | null
@@ -140,4 +144,5 @@ export interface VaultState {
   fileTreeCollapseState: Record<string, boolean>
   selectedNodeId: string | null
   recentFiles: string[]
+  ui?: UiPersistedState
 }

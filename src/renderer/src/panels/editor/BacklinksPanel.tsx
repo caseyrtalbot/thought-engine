@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
 import type { Artifact } from '@shared/types'
 import { getArtifactColor, colors, transitions } from '../../design/tokens'
+import { useUiStore } from '../../store/ui-store'
 
 /**
  * Strip markdown formatting from a snippet so it reads as clean prose.
@@ -102,6 +102,7 @@ function BacklinkItem({
 
 interface BacklinksPanelProps {
   currentNoteId: string
+  currentNotePath: string
   currentNoteTitle?: string
   backlinks: Artifact[]
   onNavigate: (id: string) => void
@@ -109,16 +110,13 @@ interface BacklinksPanelProps {
 
 export function BacklinksPanel({
   currentNoteId,
+  currentNotePath,
   currentNoteTitle,
   backlinks,
   onNavigate
 }: BacklinksPanelProps) {
-  const [collapsed, setCollapsed] = useState(true)
-
-  // Reset to collapsed when navigating to a different note
-  useEffect(() => {
-    setCollapsed(true)
-  }, [currentNoteId])
+  const collapsed = useUiStore((s) => s.getBacklinkCollapsed(currentNotePath))
+  const toggle = useUiStore((s) => s.toggleBacklinkCollapsed)
 
   if (backlinks.length === 0) return null
 
@@ -127,7 +125,7 @@ export function BacklinksPanel({
       {/* Header row */}
       <button
         type="button"
-        onClick={() => setCollapsed((prev) => !prev)}
+        onClick={() => toggle(currentNotePath)}
         className="w-full flex items-center justify-between px-4 py-2 focus-ring interactive-hover"
         style={{ transition: transitions.hover }}
       >

@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { EventBatcher } from '../../src/main/services/event-batcher'
+import { EventBatcher, coalesceEvent } from '../../src/main/services/event-batcher'
 
 describe('EventBatcher', () => {
   beforeEach(() => {
@@ -105,18 +105,115 @@ describe('EventBatcher', () => {
     expect(onFlush).not.toHaveBeenCalled()
   })
 
-  test('deduplicates events for the same path (last event wins)', () => {
+  test('deduplicates same-type events for the same path', () => {
     const onFlush = vi.fn()
     const batcher = new EventBatcher(onFlush, 50)
 
-    batcher.enqueue('/a.ts', 'add')
+    batcher.enqueue('/a.ts', 'change')
     batcher.enqueue('/a.ts', 'change')
     batcher.enqueue('/a.ts', 'change')
 
     vi.advanceTimersByTime(50)
 
     expect(onFlush).toHaveBeenCalledOnce()
-    // Last event for /a.ts wins
     expect(onFlush.mock.calls[0][0]).toEqual([{ path: '/a.ts', event: 'change' }])
+  })
+
+  test('coalesces add+change to add (file is still new)', () => {
+    const onFlush = vi.fn()
+    const batcher = new EventBatcher(onFlush, 50)
+
+    batcher.enqueue('/a.ts', 'add')
+    batcher.enqueue('/a.ts', 'change')
+
+    vi.advanceTimersByTime(50)
+
+    expect(onFlush).toHaveBeenCalledOnce()
+    expect(onFlush.mock.calls[0][0]).toEqual([{ path: '/a.ts', event: 'add' }])
+  })
+
+  test('coalesces add+unlink to drop (net no-op)', () => {
+    const onFlush = vi.fn()
+    const batcher = new EventBatcher(onFlush, 50)
+
+    batcher.enqueue('/a.ts', 'add')
+    batcher.enqueue('/a.ts', 'unlink')
+
+    vi.advanceTimersByTime(50)
+
+    // Event cancelled out, nothing to flush
+    expect(onFlush).not.toHaveBeenCalled()
+  })
+
+  test('coalesces unlink+add to change (file recreated)', () => {
+    const onFlush = vi.fn()
+    const batcher = new EventBatcher(onFlush, 50)
+
+    batcher.enqueue('/a.ts', 'unlink')
+    batcher.enqueue('/a.ts', 'add')
+
+    vi.advanceTimersByTime(50)
+
+    expect(onFlush).toHaveBeenCalledOnce()
+    expect(onFlush.mock.calls[0][0]).toEqual([{ path: '/a.ts', event: 'change' }])
+  })
+
+  test('coalesces change+unlink to unlink', () => {
+    const onFlush = vi.fn()
+    const batcher = new EventBatcher(onFlush, 50)
+
+    batcher.enqueue('/a.ts', 'change')
+    batcher.enqueue('/a.ts', 'unlink')
+
+    vi.advanceTimersByTime(50)
+
+    expect(onFlush).toHaveBeenCalledOnce()
+    expect(onFlush.mock.calls[0][0]).toEqual([{ path: '/a.ts', event: 'unlink' }])
+  })
+
+  test('coalescing does not affect other paths in the batch', () => {
+    const onFlush = vi.fn()
+    const batcher = new EventBatcher(onFlush, 50)
+
+    batcher.enqueue('/a.ts', 'add')
+    batcher.enqueue('/b.ts', 'change')
+    batcher.enqueue('/a.ts', 'unlink') // cancels /a.ts
+
+    vi.advanceTimersByTime(50)
+
+    expect(onFlush).toHaveBeenCalledOnce()
+    expect(onFlush.mock.calls[0][0]).toEqual([{ path: '/b.ts', event: 'change' }])
+  })
+})
+
+describe('coalesceEvent', () => {
+  test('same event returns itself', () => {
+    expect(coalesceEvent('add', 'add')).toBe('add')
+    expect(coalesceEvent('change', 'change')).toBe('change')
+    expect(coalesceEvent('unlink', 'unlink')).toBe('unlink')
+  })
+
+  test('add+unlink = null (cancel)', () => {
+    expect(coalesceEvent('add', 'unlink')).toBeNull()
+  })
+
+  test('add+change = add', () => {
+    expect(coalesceEvent('add', 'change')).toBe('add')
+  })
+
+  test('unlink+add = change', () => {
+    expect(coalesceEvent('unlink', 'add')).toBe('change')
+  })
+
+  test('change+unlink = unlink (fallthrough)', () => {
+    expect(coalesceEvent('change', 'unlink')).toBe('unlink')
+  })
+
+  test('change+add = add (fallthrough)', () => {
+    expect(coalesceEvent('change', 'add')).toBe('add')
+  })
+
+  test('unlink+change = change (fallthrough)', () => {
+    expect(coalesceEvent('unlink', 'change')).toBe('change')
   })
 })
