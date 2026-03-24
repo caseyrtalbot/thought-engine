@@ -34,6 +34,9 @@ interface CanvasStore {
     readonly nodeId: string
   } | null
 
+  // Split editor: docked code panel on the right side of the canvas
+  readonly splitFilePath: string | null
+
   // Bridge: registered by CanvasView for accurate viewport centering
   readonly centerOnNode: ((nodeId: string) => void) | null
 
@@ -89,6 +92,10 @@ interface CanvasStore {
   lockCard: (id: string) => void
   unlockCard: () => void
 
+  // Split editor
+  openSplit: (filePath: string) => void
+  closeSplit: () => void
+
   // Tiling
   applyTileLayout: (pattern: TilePattern, viewportCenter: { x: number; y: number }) => void
 
@@ -115,6 +122,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   hoveredNodeId: null,
   focusedTerminalId: null,
   cardContextMenu: null,
+  splitFilePath: null,
   centerOnNode: null,
 
   loadCanvas: (filePath, data) =>
@@ -281,6 +289,9 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   unlockCard: () => set({ lockedCardId: null }),
+
+  openSplit: (filePath) => set({ splitFilePath: filePath }),
+  closeSplit: () => set({ splitFilePath: null }),
 
   applyTileLayout: (pattern, viewportCenter) => {
     const { nodes, selectedNodeIds } = get()

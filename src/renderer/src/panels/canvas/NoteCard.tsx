@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
-import { useEditorStore } from '../../store/editor-store'
-import { useViewStore } from '../../store/view-store'
 import { CardShell } from './CardShell'
 import { getCanvasEditorExtensions } from './shared/tiptap-config'
 import { CardBadge } from './shared/CardBadge'
@@ -106,9 +104,8 @@ export function NoteCard({ node }: NoteCardProps) {
   }, [editor, body, loading])
 
   const openInEditor = useCallback(() => {
-    useEditorStore.getState().openTab(filePath, title)
-    useViewStore.getState().setContentView('editor')
-  }, [filePath, title])
+    useCanvasStore.getState().openSplit(filePath)
+  }, [filePath])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {

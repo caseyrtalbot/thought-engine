@@ -12,8 +12,6 @@ import { CanvasContextMenu } from './CanvasContextMenu'
 import { CardContextMenu } from './CardContextMenu'
 import { computeShowConnections } from './show-connections'
 import { useVaultStore } from '../../store/vault-store'
-import { useEditorStore } from '../../store/editor-store'
-import { useViewStore } from '../../store/view-store'
 import { LazyCards } from './card-registry'
 import { CardShellSkeleton } from './CardShellSkeleton'
 import { CardLodPreview } from './CardLodPreview'
@@ -30,6 +28,8 @@ import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
 import { findOpenPosition } from './canvas-layout'
+import { SplitPane } from '../../design/components/SplitPane'
+import { CanvasSplitEditor } from './CanvasSplitEditor'
 
 export function CanvasView(): React.ReactElement {
   const nodes = useCanvasStore((s) => s.nodes)
@@ -44,6 +44,7 @@ export function CanvasView(): React.ReactElement {
   const addNodesAndEdges = useCanvasStore((s) => s.addNodesAndEdges)
   const cardContextMenu = useCanvasStore((s) => s.cardContextMenu)
   const setCardContextMenu = useCanvasStore((s) => s.setCardContextMenu)
+  const splitFilePath = useCanvasStore((s) => s.splitFilePath)
   const commandStack = useRef(new CommandStack())
   const rawFileCount = useVaultStore((s) => {
     const total = s.artifacts.length
@@ -346,6 +347,22 @@ export function CanvasView(): React.ReactElement {
           return
         e.preventDefault()
         setImportOpen(true)
+      } else if (e.key === 'e' && e.shiftKey) {
+        // CMD+Shift+E: toggle split editor
+        e.preventDefault()
+        const { splitFilePath: sp } = useCanvasStore.getState()
+        if (sp) {
+          useCanvasStore.getState().closeSplit()
+        } else {
+          // Open split with the focused card's file if available
+          const focusedId = useCanvasStore.getState().focusedCardId
+          const focusedNode = focusedId
+            ? useCanvasStore.getState().nodes.find((n) => n.id === focusedId)
+            : null
+          if (focusedNode?.content) {
+            useCanvasStore.getState().openSplit(focusedNode.content)
+          }
+        }
       } else if (e.key === 'l') {
         // CMD+L: apply default tile layout (grid-2x2) to viewport center
         e.preventDefault()
@@ -390,7 +407,7 @@ export function CanvasView(): React.ReactElement {
     return () => clearTimeout(timer)
   }, [filePath, isDirty, toCanvasFile, markSaved])
 
-  return (
+  const canvasContent = (
     <div ref={containerRef} className="h-full relative">
       {/* eslint-disable react-hooks/refs -- commandStack is a stable ref that doesn't change between renders */}
       <CanvasToolbar
@@ -506,11 +523,6 @@ export function CanvasView(): React.ReactElement {
           if (!menuNode || menuNode.type !== 'note') return null
           const menuFilePath = menuNode.content
           const { graph, fileToId, artifacts } = useVaultStore.getState()
-          const menuArtifactId = fileToId[menuFilePath]
-          const menuArtifact = artifacts.find((a) => a.id === menuArtifactId)
-          const menuTitle =
-            menuArtifact?.title ?? menuFilePath.split('/').pop()?.replace('.md', '') ?? 'Note'
-
           return (
             <CardContextMenu
               x={cardContextMenu.x}
@@ -541,8 +553,7 @@ export function CanvasView(): React.ReactElement {
                 setCardContextMenu(null)
               }}
               onOpenInEditor={() => {
-                useEditorStore.getState().openTab(menuFilePath, menuTitle)
-                useViewStore.getState().setContentView('editor')
+                useCanvasStore.getState().openSplit(menuFilePath)
                 setCardContextMenu(null)
               }}
               onCopyPath={() => {
@@ -555,4 +566,18 @@ export function CanvasView(): React.ReactElement {
         })()}
     </div>
   )
+
+  if (splitFilePath) {
+    return (
+      <SplitPane
+        left={canvasContent}
+        right={<CanvasSplitEditor filePath={splitFilePath} />}
+        initialLeftWidth={Math.round((containerSize.width || 1200) * 0.6)}
+        minLeftWidth={400}
+        minRightWidth={300}
+      />
+    )
+  }
+
+  return canvasContent
 }

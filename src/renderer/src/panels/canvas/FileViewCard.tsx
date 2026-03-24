@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { EditorState, type Extension } from '@codemirror/state'
-import { EditorView, lineNumbers } from '@codemirror/view'
-import { oneDark } from '@codemirror/theme-one-dark'
+import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useEditorStore } from '../../store/editor-store'
 import { useViewStore } from '../../store/view-store'
 import { CardShell } from './CardShell'
 import { colors } from '../../design/tokens'
-import { inferLanguage } from './file-drop-utils'
 import { computeLineDelta, countLines } from './shared/file-view-utils'
-import { loadLanguageExtension, type SupportedLanguage } from './shared/codemirror-languages'
+import { createEditorExtensions, detectLanguage } from './shared/codemirror-setup'
 import type { CanvasNode } from '@shared/canvas-types'
 
 interface FileViewCardProps {
@@ -36,7 +34,7 @@ export function FileViewCard({ node }: FileViewCardProps) {
     return parts[parts.length - 1] ?? 'file'
   }, [filePath])
 
-  const language = useMemo(() => inferLanguage(filePath) as SupportedLanguage, [filePath])
+  const language = useMemo(() => detectLanguage(filePath), [filePath])
 
   // Step 1: Read file content (separate from CodeMirror mounting)
   useEffect(() => {
@@ -76,24 +74,8 @@ export function FileViewCard({ node }: FileViewCardProps) {
     let cancelled = false
 
     async function mount() {
-      const langExt = await loadLanguageExtension(language)
+      const extensions = await createEditorExtensions(language, { readOnly: true })
       if (cancelled || !containerRef.current) return
-
-      const extensions: Extension[] = [
-        EditorState.readOnly.of(true),
-        lineNumbers(),
-        oneDark,
-        EditorView.theme({
-          '&': { height: '100%', fontSize: '13px' },
-          '.cm-scroller': {
-            fontFamily: '"JetBrains Mono", monospace',
-            overflow: 'auto'
-          },
-          '.cm-content': { padding: '8px 0' }
-        })
-      ]
-
-      if (langExt) extensions.push(langExt)
 
       const state = EditorState.create({ doc: fileContent ?? '', extensions })
       const view = new EditorView({ state, parent: containerRef.current })
@@ -192,9 +174,8 @@ export function FileViewCard({ node }: FileViewCardProps) {
   }, [filePath, filename])
 
   const openInEditor = useCallback(() => {
-    useEditorStore.getState().openTab(filePath, filename)
-    useViewStore.getState().setContentView('editor')
-  }, [filePath, filename])
+    useCanvasStore.getState().openSplit(filePath)
+  }, [filePath])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
