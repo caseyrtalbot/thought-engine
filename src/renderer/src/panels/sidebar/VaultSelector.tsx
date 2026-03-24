@@ -9,6 +9,7 @@ interface ContextMenuState {
 
 interface VaultSelectorProps {
   readonly currentName: string
+  readonly currentPath: string | null
   readonly history: readonly string[]
   readonly onSelectVault: (path: string) => void
   readonly onOpenPicker: () => void
@@ -21,6 +22,7 @@ function vaultDisplayName(path: string): string {
 
 export function VaultSelector({
   currentName,
+  currentPath,
   history,
   onSelectVault,
   onOpenPicker,
@@ -74,11 +76,8 @@ export function VaultSelector({
     }
   }, [ctxMenu])
 
-  // Recent vaults, excluding current vault name if it matches
-  const recentVaults = history.filter((p) => {
-    const name = vaultDisplayName(p)
-    return name !== currentName
-  })
+  // Recent vaults, excluding the currently loaded vault by path (not name)
+  const recentVaults = history.filter((p) => p !== currentPath)
 
   return (
     <div className="relative" ref={menuRef}>
@@ -148,7 +147,7 @@ export function VaultSelector({
               />
               {recentVaults.map((path) => {
                 const name = vaultDisplayName(path)
-                const isCurrent = name === currentName
+                const isCurrent = path === currentPath
                 return (
                   <button
                     key={path}
@@ -228,11 +227,35 @@ export function VaultSelector({
         >
           <button
             onClick={() => {
-              onRemoveFromHistory?.(ctxMenu.path)
+              window.api.shell.showInFolder(ctxMenu.path)
               setCtxMenu(null)
             }}
             className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
             style={{ color: colors.text.secondary }}
+          >
+            Reveal in Finder
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(ctxMenu.path)
+              setCtxMenu(null)
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
+            style={{ color: colors.text.secondary }}
+          >
+            Copy Path
+          </button>
+          <div
+            className="mx-2 my-1"
+            style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
+          />
+          <button
+            onClick={() => {
+              onRemoveFromHistory?.(ctxMenu.path)
+              setCtxMenu(null)
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
+            style={{ color: '#EF4444' }}
           >
             Remove from History
           </button>

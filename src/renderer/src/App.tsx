@@ -367,9 +367,18 @@ function ConnectedSidebar({
 
   const handleSelectVault = useCallback(
     async (path: string) => {
+      // Validate path exists before attempting to load
+      const exists = await window.api.fs.fileExists(path)
+      if (!exists) {
+        // Auto-remove from history and update state
+        const history = (await window.api.config.read('app', 'vaultHistory')) as string[] | null
+        const updated = (history ?? []).filter((p) => p !== path)
+        await window.api.config.write('app', 'vaultHistory', updated)
+        setVaultHistory(updated)
+        return
+      }
       flushPendingSave()
       useCanvasStore.getState().closeCanvas()
-      // Reset to editor view so user doesn't see empty canvas during vault load
       useViewStore.getState().setContentView('editor')
       await window.api.vault.watchStop()
       await onLoadVault(path)

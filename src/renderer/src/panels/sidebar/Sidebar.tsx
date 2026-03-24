@@ -101,6 +101,7 @@ function ActionBar({
           <div className="flex-1 min-w-0">
             <VaultSelector
               currentName={vaultName}
+              currentPath={useVaultStore.getState().vaultPath}
               history={vaultHistory}
               onSelectVault={onSelectVault}
               onOpenPicker={onOpenVaultPicker}
