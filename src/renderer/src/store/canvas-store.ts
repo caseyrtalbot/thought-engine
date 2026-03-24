@@ -277,9 +277,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   lockCard: (id) => {
-    const { centerOnNode } = get()
     set({ lockedCardId: id, focusedCardId: id, selectedNodeIds: new Set([id]) })
-    centerOnNode?.(id)
   },
 
   unlockCard: () => set({ lockedCardId: null }),
