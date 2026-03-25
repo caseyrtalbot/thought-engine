@@ -234,16 +234,6 @@ function EnvironmentTab() {
           onChange={(v) => setEnv('cardHeaderDarkness', v)}
         />
       </SettingRow>
-      <SettingRow label="Card Blur">
-        <SliderInput
-          value={env.cardBlur}
-          min={0}
-          max={24}
-          step={1}
-          unit="px"
-          onChange={(v) => setEnv('cardBlur', v)}
-        />
-      </SettingRow>
       <SettingRow label="Grid Dot Visibility">
         <SliderInput
           value={env.gridDotVisibility}
