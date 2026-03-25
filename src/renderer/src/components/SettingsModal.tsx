@@ -3,6 +3,7 @@ import { useSettingsStore } from '../store/settings-store'
 import { useVaultStore } from '../store/vault-store'
 import { colors } from '../design/tokens'
 import { ACCENT_COLORS, ACCENT_ORDER, type ThemeId } from '../design/themes'
+import { FontPicker } from './FontPicker'
 
 type TabId = 'appearance' | 'environment' | 'editor' | 'terminal' | 'vault'
 
@@ -137,8 +138,14 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function AppearanceTab() {
   const theme = useSettingsStore((s) => s.theme)
   const accentColor = useSettingsStore((s) => s.accentColor)
+  const displayFont = useSettingsStore((s) => s.displayFont)
+  const bodyFont = useSettingsStore((s) => s.bodyFont)
+  const monoFont = useSettingsStore((s) => s.monoFont)
   const setTheme = useSettingsStore((s) => s.setTheme)
   const setAccentColor = useSettingsStore((s) => s.setAccentColor)
+  const setDisplayFont = useSettingsStore((s) => s.setDisplayFont)
+  const setBodyFont = useSettingsStore((s) => s.setBodyFont)
+  const setMonoFont = useSettingsStore((s) => s.setMonoFont)
 
   const THEME_OPTIONS: { id: ThemeId; label: string }[] = [
     { id: 'dark', label: 'Dark' },
@@ -192,6 +199,17 @@ function AppearanceTab() {
           )
         })}
       </div>
+
+      <SectionHeading>Typography</SectionHeading>
+      <SettingRow label="Display Font">
+        <FontPicker value={displayFont} onChange={setDisplayFont} />
+      </SettingRow>
+      <SettingRow label="Body Font">
+        <FontPicker value={bodyFont} onChange={setBodyFont} />
+      </SettingRow>
+      <SettingRow label="Mono Font">
+        <FontPicker value={monoFont} onChange={setMonoFont} />
+      </SettingRow>
     </div>
   )
 }

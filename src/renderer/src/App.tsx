@@ -66,11 +66,6 @@ const LazyGraphPanel = lazy(() =>
 const LazyGhostPanel = lazy(() =>
   import('./panels/ghosts/GhostPanel').then((module) => ({ default: module.GhostPanel }))
 )
-const LazyWelcomeScreen = lazy(() =>
-  import('./panels/onboarding/WelcomeScreen').then((module) => ({
-    default: module.WelcomeScreen
-  }))
-)
 
 async function openArtifactInEditorOnDemand(
   path: string,
@@ -716,6 +711,16 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     }
   }, [onLoadVault])
 
+  // Listen for vault-open requests from the canvas welcome card
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const path = (e as CustomEvent<string>).detail
+      if (path) void onLoadVault(path)
+    }
+    window.addEventListener('te:open-vault', handler)
+    return () => window.removeEventListener('te:open-vault', handler)
+  }, [onLoadVault])
+
   const handleCloseTab = useCallback(() => {
     const { activeNotePath: path, closeTab: storeCloseTab } = useEditorStore.getState()
     if (path) storeCloseTab(path)
@@ -1117,7 +1122,6 @@ function LoadingSkeleton() {
 }
 
 export default function App() {
-  const vaultPath = useVaultStore((s) => s.vaultPath)
   const isLoading = useVaultStore((s) => s.isLoading)
   const loadVault = useVaultStore((s) => s.loadVault)
   const setFiles = useVaultStore((s) => s.setFiles)
@@ -1283,12 +1287,7 @@ export default function App() {
 
   function renderContent() {
     if (isLoading) return <LoadingSkeleton />
-    if (vaultPath) return <WorkspaceShell onLoadVault={orchestrateLoad} />
-    return (
-      <Suspense fallback={<LoadingSkeleton />}>
-        <LazyWelcomeScreen onVaultSelected={orchestrateLoad} />
-      </Suspense>
-    )
+    return <WorkspaceShell onLoadVault={orchestrateLoad} />
   }
 
   return (

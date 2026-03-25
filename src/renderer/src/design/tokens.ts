@@ -87,9 +87,9 @@ export const spacing = {
 
 export const typography = {
   fontFamily: {
-    display: 'inherit',
-    body: 'inherit',
-    mono: '"JetBrains Mono", "Fira Code", monospace'
+    display: 'var(--font-display, system-ui, sans-serif)',
+    body: 'var(--font-body, system-ui, sans-serif)',
+    mono: 'var(--font-mono, "JetBrains Mono", monospace)'
   },
   metadata: {
     size: '11px',

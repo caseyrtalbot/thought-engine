@@ -20,6 +20,9 @@ interface SettingsState {
   readonly theme: ThemeId
   readonly accentColor: AccentColorId
   readonly env: EnvironmentSettings
+  readonly displayFont: string
+  readonly bodyFont: string
+  readonly monoFont: string
   readonly defaultEditorMode: 'rich' | 'source'
   readonly autosaveInterval: number
   readonly spellCheck: boolean
@@ -33,6 +36,9 @@ interface SettingsActions {
   setAccentColor: (value: AccentColorId) => void
   setEnv: <K extends keyof EnvironmentSettings>(key: K, value: EnvironmentSettings[K]) => void
   resetEnv: () => void
+  setDisplayFont: (value: string) => void
+  setBodyFont: (value: string) => void
+  setMonoFont: (value: string) => void
   setDefaultEditorMode: (value: 'rich' | 'source') => void
   setAutosaveInterval: (value: number) => void
   setSpellCheck: (value: boolean) => void
@@ -49,6 +55,9 @@ export const useSettingsStore = create<SettingsStore>()(
       theme: 'dark',
       accentColor: 'matrix',
       env: { ...ENV_DEFAULTS.dark },
+      displayFont: 'Inter',
+      bodyFont: 'Inter',
+      monoFont: 'JetBrains Mono',
       defaultEditorMode: 'rich',
       autosaveInterval: 1500,
       spellCheck: false,
@@ -69,6 +78,9 @@ export const useSettingsStore = create<SettingsStore>()(
         const resolved = resolveTheme(get().theme)
         set({ env: { ...ENV_DEFAULTS[resolved] } })
       },
+      setDisplayFont: (value) => set({ displayFont: value }),
+      setBodyFont: (value) => set({ bodyFont: value }),
+      setMonoFont: (value) => set({ monoFont: value }),
       setDefaultEditorMode: (value) => set({ defaultEditorMode: value }),
       setAutosaveInterval: (value) => set({ autosaveInterval: value }),
       setSpellCheck: (value) => set({ spellCheck: value }),
