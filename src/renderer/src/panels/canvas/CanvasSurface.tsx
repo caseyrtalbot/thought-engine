@@ -4,6 +4,7 @@ import { useCanvasViewport } from './use-canvas-viewport'
 import { useCanvasSelection } from './use-canvas-selection'
 import { colors, canvasTokens } from '../../design/tokens'
 import { TE_FILE_MIME, inferCardType } from './file-drop-utils'
+import { useEnv } from '../../design/Theme'
 
 const DOT_SPACING = 24
 const CELLS_PER_SQUARE = 5
@@ -27,11 +28,11 @@ const MAX_SVG_RADIUS = 3.5
 
 /** Compute grid dot params with constant brightness and counter-scaled radius.
  *  Dots maintain ~0.85px screen-space size across all zoom levels. */
-function computeGridParams(zoom: number): GridParams {
+function computeGridParams(zoom: number, minorOp: number = MINOR_OPACITY): GridParams {
   // Counter-scale: radius in SVG-space = target screen px / zoom
   const baseR = Math.min(TARGET_SCREEN_RADIUS / zoom, MAX_SVG_RADIUS)
   return {
-    minorOpacity: MINOR_OPACITY,
+    minorOpacity: minorOp,
     majorOpacity: MAJOR_OPACITY,
     minorRadius: baseR,
     majorRadius: baseR * 1.15
@@ -82,6 +83,7 @@ export function CanvasSurface({
   onFileDrop
 }: CanvasSurfaceProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
+  const { gridDotVisibility } = useEnv()
   const viewport = useCanvasStore((s) => s.viewport)
   const { onWheel, onPointerDown } = useCanvasViewport(containerRef)
   const { rect, onSelectionStart, wasSelectionDrag } = useCanvasSelection()
@@ -178,16 +180,17 @@ export function CanvasSurface({
   )
 
   // Grid dots scale smoothly with zoom: faint when zoomed out, prominent when zoomed in
+  const dynamicMinorOpacity = gridDotVisibility / 100
   const svgDataUri = useMemo(() => {
-    const params = computeGridParams(viewport.zoom)
+    const params = computeGridParams(viewport.zoom, dynamicMinorOpacity)
     const svg = buildGridSvg(params)
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-  }, [viewport.zoom])
+  }, [viewport.zoom, dynamicMinorOpacity])
 
   // Spotlight: brighter dot layer revealed by a radial mask that follows the mouse
   const spotlightRef = useRef<HTMLDivElement>(null)
   const spotlightSvg = useMemo(() => {
-    const params = computeGridParams(viewport.zoom)
+    const params = computeGridParams(viewport.zoom, dynamicMinorOpacity)
     const bright: GridParams = {
       minorOpacity: Math.min(params.minorOpacity * 2 + 0.04, 0.35),
       majorOpacity: Math.min(params.majorOpacity * 1.8 + 0.06, 0.5),
@@ -196,7 +199,7 @@ export function CanvasSurface({
     }
     const svg = buildGridSvg(bright)
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-  }, [viewport.zoom])
+  }, [viewport.zoom, dynamicMinorOpacity])
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {

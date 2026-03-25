@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useNodeDrag, useNodeResize } from './use-canvas-drag'
 import { colors, canvasTokens, typography } from '../../design/tokens'
+import { useEnv } from '../../design/Theme'
 import {
   startConnectionDrag,
   endConnectionDrag,
@@ -172,6 +173,7 @@ export function CardShell({
   const setFocusedCard = useCanvasStore((s) => s.setFocusedCard)
   const lockCard = useCanvasStore((s) => s.lockCard)
   const unlockCard = useCanvasStore((s) => s.unlockCard)
+  const { cardBlur, cardTitleFontSize } = useEnv()
   const { onDragStart } = useNodeDrag(node.id)
   const { onResizeStart } = useNodeResize(node.id, node.type)
   const [hovered, setHovered] = useState(false)
@@ -236,8 +238,8 @@ export function CardShell({
               : `0 2px 8px rgba(0, 0, 0, 0.5)`,
         overflow: 'hidden',
         contain: 'layout style',
-        backdropFilter: 'blur(12px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
+        backdropFilter: `blur(${cardBlur}px) saturate(1.2)`,
+        WebkitBackdropFilter: `blur(${cardBlur}px) saturate(1.2)`,
         ...(isActive
           ? ({
               '--activity-color': 'rgba(167, 139, 250, 0.3)',
@@ -276,7 +278,7 @@ export function CardShell({
             className="truncate"
             style={{
               fontFamily: typography.fontFamily.mono,
-              fontSize: 12,
+              fontSize: cardTitleFontSize,
               lineHeight: 1,
               fontWeight: 500,
               color: colors.text.primary,
