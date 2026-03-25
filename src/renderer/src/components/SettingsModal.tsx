@@ -4,7 +4,7 @@ import { useVaultStore } from '../store/vault-store'
 import { colors } from '../design/tokens'
 import { ACCENT_COLORS, ACCENT_ORDER, type ThemeId } from '../design/themes'
 
-type TabId = 'appearance' | 'editor' | 'terminal' | 'vault'
+type TabId = 'appearance' | 'environment' | 'editor' | 'terminal' | 'vault'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -34,9 +34,10 @@ interface SliderInputProps {
   max: number
   step: number
   onChange: (value: number) => void
+  unit?: string
 }
 
-function SliderInput({ value, min, max, step, onChange }: SliderInputProps) {
+function SliderInput({ value, min, max, step, onChange, unit }: SliderInputProps) {
   return (
     <div className="flex items-center gap-2">
       <input
@@ -50,10 +51,11 @@ function SliderInput({ value, min, max, step, onChange }: SliderInputProps) {
         style={{ accentColor: colors.accent.default }}
       />
       <span
-        className="text-xs w-10 text-right tabular-nums"
+        className="text-xs w-12 text-right tabular-nums"
         style={{ color: colors.text.secondary }}
       >
         {value}
+        {unit ? unit : ''}
       </span>
     </div>
   )
@@ -132,8 +134,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Stub AppearanceTab: theme + accent pickers only.
- *  Full Environment sliders will be built in Task 6. */
 function AppearanceTab() {
   const theme = useSettingsStore((s) => s.theme)
   const accentColor = useSettingsStore((s) => s.accentColor)
@@ -149,7 +149,7 @@ function AppearanceTab() {
   return (
     <div>
       <SectionHeading>Theme</SectionHeading>
-      <div className="grid grid-cols-3 gap-2 mb-5">
+      <div className="flex gap-2 mb-5">
         {THEME_OPTIONS.map(({ id, label }) => {
           const isSelected = theme === id
           return (
@@ -157,7 +157,7 @@ function AppearanceTab() {
               key={id}
               type="button"
               onClick={() => setTheme(id)}
-              className="rounded-lg p-2 text-left transition-all text-xs"
+              className="rounded-lg px-4 py-2 text-center transition-all text-xs flex-1"
               style={{
                 border: `1.5px solid ${isSelected ? colors.accent.default : colors.border.default}`,
                 backgroundColor: colors.bg.elevated
@@ -192,12 +192,127 @@ function AppearanceTab() {
           )
         })}
       </div>
+    </div>
+  )
+}
 
-      {/* Environment sliders placeholder (Task 6) */}
-      <SectionHeading>Environment</SectionHeading>
-      <p className="text-xs" style={{ color: colors.text.muted }}>
-        Environment settings coming soon.
-      </p>
+function EnvironmentTab() {
+  const env = useSettingsStore((s) => s.env)
+  const setEnv = useSettingsStore((s) => s.setEnv)
+  const resetEnv = useSettingsStore((s) => s.resetEnv)
+
+  return (
+    <div>
+      <SectionHeading>Canvas</SectionHeading>
+      <SettingRow label="Canvas Translucency">
+        <SliderInput
+          value={env.canvasTranslucency}
+          min={0}
+          max={100}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('canvasTranslucency', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Card Opacity">
+        <SliderInput
+          value={env.cardOpacity}
+          min={50}
+          max={100}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('cardOpacity', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Card Header Darkness">
+        <SliderInput
+          value={env.cardHeaderDarkness}
+          min={0}
+          max={60}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('cardHeaderDarkness', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Card Blur">
+        <SliderInput
+          value={env.cardBlur}
+          min={0}
+          max={24}
+          step={1}
+          unit="px"
+          onChange={(v) => setEnv('cardBlur', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Grid Dot Visibility">
+        <SliderInput
+          value={env.gridDotVisibility}
+          min={0}
+          max={50}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('gridDotVisibility', v)}
+        />
+      </SettingRow>
+
+      <SectionHeading>Panels</SectionHeading>
+      <SettingRow label="Panel Lightness">
+        <SliderInput
+          value={env.panelLightness}
+          min={0}
+          max={100}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('panelLightness', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Activity Bar Opacity">
+        <SliderInput
+          value={env.activityBarOpacity}
+          min={20}
+          max={80}
+          step={1}
+          unit="%"
+          onChange={(v) => setEnv('activityBarOpacity', v)}
+        />
+      </SettingRow>
+
+      <SectionHeading>Typography</SectionHeading>
+      <SettingRow label="Card Title Font Size">
+        <SliderInput
+          value={env.cardTitleFontSize}
+          min={10}
+          max={15}
+          step={1}
+          unit="px"
+          onChange={(v) => setEnv('cardTitleFontSize', v)}
+        />
+      </SettingRow>
+      <SettingRow label="Sidebar Font Size">
+        <SliderInput
+          value={env.sidebarFontSize}
+          min={11}
+          max={16}
+          step={1}
+          unit="px"
+          onChange={(v) => setEnv('sidebarFontSize', v)}
+        />
+      </SettingRow>
+
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={resetEnv}
+          className="text-xs px-3 py-1.5 rounded transition-colors"
+          style={{
+            backgroundColor: colors.bg.elevated,
+            color: colors.text.primary,
+            border: `1px solid ${colors.border.default}`
+          }}
+        >
+          Reset to Defaults
+        </button>
+      </div>
     </div>
   )
 }
@@ -337,6 +452,7 @@ function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'appearance', label: 'Appearance' },
+  { id: 'environment', label: 'Environment' },
   { id: 'editor', label: 'Editor' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'vault', label: 'Vault' }
@@ -346,6 +462,8 @@ function renderTabContent(tab: TabId, onChangeVault?: () => void) {
   switch (tab) {
     case 'appearance':
       return <AppearanceTab />
+    case 'environment':
+      return <EnvironmentTab />
     case 'editor':
       return <EditorTab />
     case 'terminal':
