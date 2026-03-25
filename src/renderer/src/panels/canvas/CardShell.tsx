@@ -299,7 +299,13 @@ export function CardShell({
             PROJECT
           </span>
         )}
-        <div className="flex items-center gap-0.5 ml-2 shrink-0 relative">
+        <div
+          className="flex items-center gap-0.5 ml-2 shrink-0 relative"
+          style={{
+            opacity: hovered || isFocused || isLocked ? 1 : 0,
+            transition: 'opacity 150ms ease'
+          }}
+        >
           <TitleBarButton
             onClick={(e) => {
               e.stopPropagation()
@@ -371,12 +377,25 @@ export function CardShell({
               onClose={() => setConvertMenuOpen(false)}
             />
           )}
-          <TitleBarButton
+          <button
             onClick={(e) => {
               e.stopPropagation()
               onClose()
             }}
-            label="Close card"
+            className="tile-close-btn flex items-center justify-center rounded"
+            style={{
+              width: 24,
+              height: 24,
+              color: colors.text.primary,
+              opacity: 0.4,
+              cursor: 'pointer',
+              padding: '0 2px',
+              borderRadius: 4,
+              border: 'none',
+              background: 'none'
+            }}
+            aria-label="Close card"
+            title="Close card"
           >
             <svg
               width={12}
@@ -388,7 +407,7 @@ export function CardShell({
             >
               <path d="M3 3l6 6M9 3l-6 6" />
             </svg>
-          </TitleBarButton>
+          </button>
         </div>
       </div>
 
