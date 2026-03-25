@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   buildGhostIndex,
   extractContext,
-  inferFolder
+  inferFolder,
+  isPathGhost,
+  stripWikilinksFromContext
 } from '../../src/renderer/src/engine/ghost-index'
 import type { KnowledgeGraph, GraphNode, GraphEdge, Artifact } from '../../src/shared/types'
 
@@ -41,12 +43,59 @@ function makeArtifact(overrides: Partial<Artifact> & { id: string; title: string
   }
 }
 
+describe('isPathGhost', () => {
+  it('returns true for path-based IDs', () => {
+    expect(isPathGhost("Naval's Library/Themes/Radical Truth")).toBe(true)
+    expect(isPathGhost('Books/Jed Talks 1')).toBe(true)
+  })
+
+  it('returns false for simple idea references', () => {
+    expect(isPathGhost('Richard Hamming')).toBe(false)
+    expect(isPathGhost('leverage')).toBe(false)
+    expect(isPathGhost('specific knowledge')).toBe(false)
+  })
+})
+
+describe('stripWikilinksFromContext', () => {
+  it('strips simple wikilinks keeping the target text', () => {
+    expect(stripWikilinksFromContext('Author: [[Richard Hamming]]')).toBe('Author: Richard Hamming')
+  })
+
+  it('uses display alias when present', () => {
+    expect(stripWikilinksFromContext('see [[Richard Hamming|Hamming]] for details')).toBe(
+      'see Hamming for details'
+    )
+  })
+
+  it('uses last path segment for path-style targets without alias', () => {
+    expect(stripWikilinksFromContext("in [[Naval's Library/Themes/Radical Truth]] we find")).toBe(
+      'in Radical Truth we find'
+    )
+  })
+
+  it('uses alias over path for path-style targets with alias', () => {
+    expect(stripWikilinksFromContext("[[Naval's Library/Themes/Truth|Truth]] is important")).toBe(
+      'Truth is important'
+    )
+  })
+
+  it('handles multiple wikilinks in one string', () => {
+    expect(stripWikilinksFromContext('[[A]] and [[B|bee]]')).toBe('A and bee')
+  })
+
+  it('returns text unchanged when no wikilinks', () => {
+    expect(stripWikilinksFromContext('plain text')).toBe('plain text')
+  })
+})
+
 describe('extractContext', () => {
-  it('extracts surrounding text around a wikilink', () => {
+  it('extracts surrounding text with wikilinks stripped', () => {
     const body = 'This is a long paragraph about how [[Richard Hamming]] gave a legendary talk.'
     const result = extractContext(body, 'Richard Hamming')
-    expect(result).toContain('[[Richard Hamming]]')
+    expect(result).toContain('Richard Hamming')
     expect(result).toContain('legendary talk')
+    // Wikilink brackets should be stripped
+    expect(result).not.toContain('[[')
   })
 
   it('returns null when wikilink is not found', () => {
@@ -61,23 +110,24 @@ describe('extractContext', () => {
     expect(result).toMatch(/\.\.\.$/)
   })
 
-  it('handles wikilinks with display aliases', () => {
+  it('strips alias wikilinks in context', () => {
     const body = 'See [[Richard Hamming|Hamming]] for details.'
     const result = extractContext(body, 'Richard Hamming')
-    expect(result).toContain('[[Richard Hamming|Hamming]]')
+    expect(result).toContain('Hamming')
+    expect(result).not.toContain('[[')
   })
 
   it('handles special regex characters in target', () => {
     const body = 'This links to [[C++ (language)]] which is interesting.'
     const result = extractContext(body, 'C++ (language)')
-    expect(result).toContain('[[C++ (language)]]')
+    expect(result).toContain('C++ (language)')
   })
 
   it('replaces newlines with spaces in context', () => {
     const body = 'Line one\n[[Target]]\nLine three'
     const result = extractContext(body, 'Target')
     expect(result).not.toContain('\n')
-    expect(result).toContain('Line one [[Target]] Line three')
+    expect(result).toContain('Target')
   })
 })
 
@@ -105,7 +155,33 @@ describe('buildGhostIndex', () => {
     expect(result[0].id).toBe('Richard Hamming')
     expect(result[0].referenceCount).toBe(1)
     expect(result[0].references[0].fileTitle).toBe('You and Your Research')
-    expect(result[0].references[0].context).toContain('[[Richard Hamming]]')
+    expect(result[0].references[0].context).toContain('Richard Hamming')
+    // Context should have wikilinks stripped
+    expect(result[0].references[0].context).not.toContain('[[')
+  })
+
+  it('filters out path-based ghost nodes', () => {
+    const graph: KnowledgeGraph = {
+      nodes: [
+        makeNode('src', '/vault/src.md'),
+        makeNode('Richard Hamming'), // idea ghost - should appear
+        makeNode("Naval's Library/Themes/Truth") // path ghost - should be filtered
+      ],
+      edges: [makeEdge('src', 'Richard Hamming'), makeEdge('src', "Naval's Library/Themes/Truth")]
+    }
+
+    const artifacts = [
+      makeArtifact({
+        id: 'src',
+        title: 'Source',
+        body: "[[Richard Hamming]] and [[Naval's Library/Themes/Truth]]"
+      })
+    ]
+
+    const result = buildGhostIndex(graph, artifacts)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('Richard Hamming')
   })
 
   it('returns empty array when no ghost nodes exist', () => {

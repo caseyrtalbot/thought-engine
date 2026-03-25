@@ -20,8 +20,31 @@ export interface GhostEntry {
 }
 
 /**
+ * Returns true if a ghost ID looks like a folder path rather than an idea reference.
+ * Path-based wikilinks (e.g. "Naval's Library/Themes/Radical Truth") are structural
+ * navigation, not intellectual gaps worth triaging.
+ */
+export function isPathGhost(id: string): boolean {
+  return id.includes('/')
+}
+
+/**
+ * Strip [[wikilink]] syntax from a context snippet, keeping the display text readable.
+ * "see [[Naval's Library/Themes/Truth|Truth]] for" → "see Truth for"
+ * "Author: [[Richard Hamming]]" → "Author: Richard Hamming"
+ */
+export function stripWikilinksFromContext(text: string): string {
+  return text.replace(/\[\[([^\]|]*?)(?:\|([^\]]*?))?\]\]/g, (_match, target, alias) => {
+    if (alias) return alias
+    // For path-style targets, use the last segment
+    const lastSlash = target.lastIndexOf('/')
+    return lastSlash >= 0 ? target.slice(lastSlash + 1) : target
+  })
+}
+
+/**
  * Extract ~100 characters of context around a [[wikilink]] match in body text.
- * Returns the surrounding sentence fragment with the wikilink intact.
+ * Returns a clean, readable sentence fragment with wikilink syntax stripped.
  */
 export function extractContext(body: string, targetId: string): string | null {
   const re = new RegExp(`\\[\\[${escapeRegex(targetId)}(?:\\|[^\\]]+)?\\]\\]`)
@@ -35,7 +58,7 @@ export function extractContext(body: string, targetId: string): string | null {
   if (start > 0) snippet = '...' + snippet
   if (end < body.length) snippet = snippet + '...'
 
-  return snippet
+  return stripWikilinksFromContext(snippet)
 }
 
 function escapeRegex(str: string): string {
@@ -47,6 +70,10 @@ function escapeRegex(str: string): string {
  *
  * Ghost nodes are graph nodes with no `path` (no backing .md file).
  * For each ghost, collects all referencing artifacts with sentence context.
+ *
+ * Filters out path-based ghosts (containing '/') which are structural
+ * navigation wikilinks, not intellectual gaps worth triaging.
+ *
  * Returns sorted by reference count (most-referenced first).
  */
 export function buildGhostIndex(
@@ -55,7 +82,7 @@ export function buildGhostIndex(
 ): readonly GhostEntry[] {
   const ghostIds = new Set<string>()
   for (const node of graph.nodes) {
-    if (!node.path) ghostIds.add(node.id)
+    if (!node.path && !isPathGhost(node.id)) ghostIds.add(node.id)
   }
 
   if (ghostIds.size === 0) return []
@@ -113,7 +140,7 @@ export function buildGhostIndex(
       if (!displayContext) continue
 
       references.push({
-        filePath: ghostId, // source artifact's path would need vault lookup
+        filePath: ghostId,
         fileTitle: artifact.title,
         context: displayContext
       })

@@ -13,6 +13,7 @@ export default defineConfig(
       '**/out',
       'collab-review/**',
       '.collab-review/**',
+      '.claude/worktrees/**',
       'scripts/**'
     ]
   },
