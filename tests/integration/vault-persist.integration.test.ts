@@ -370,7 +370,8 @@ describe('vault-persist integration', () => {
       rehydrateUiState()
 
       expect(getUiState()).toEqual({
-        backlinkCollapsed: { 'note-A': true, 'note-B': false }
+        backlinkCollapsed: { 'note-A': true, 'note-B': false },
+        dismissedGhosts: []
       })
     })
 
@@ -395,7 +396,7 @@ describe('vault-persist integration', () => {
 
       rehydrateUiState()
 
-      expect(getUiState()).toEqual({ backlinkCollapsed: {} })
+      expect(getUiState()).toEqual({ backlinkCollapsed: {}, dismissedGhosts: [] })
     })
 
     it('resets to defaults when vault state is null', () => {
@@ -407,7 +408,7 @@ describe('vault-persist integration', () => {
 
       rehydrateUiState()
 
-      expect(getUiState()).toEqual({ backlinkCollapsed: {} })
+      expect(getUiState()).toEqual({ backlinkCollapsed: {}, dismissedGhosts: [] })
     })
 
     it('merges with defaults (fills missing keys)', () => {

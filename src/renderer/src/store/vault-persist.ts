@@ -6,7 +6,8 @@ import { useEditorStore } from './editor-store'
 import { useViewStore } from './view-store'
 
 const DEFAULT_UI_STATE: UiPersistedState = {
-  backlinkCollapsed: {}
+  backlinkCollapsed: {},
+  dismissedGhosts: []
 }
 
 let uiState: UiPersistedState = { ...DEFAULT_UI_STATE }

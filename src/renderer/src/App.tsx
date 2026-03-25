@@ -69,6 +69,9 @@ const LazyWorkbenchPanel = lazy(() =>
 const LazyGraphPanel = lazy(() =>
   import('./panels/graph/GraphViewShell').then((module) => ({ default: module.GraphViewShell }))
 )
+const LazyGhostPanel = lazy(() =>
+  import('./panels/ghosts/GhostPanel').then((module) => ({ default: module.GhostPanel }))
+)
 const LazyWelcomeScreen = lazy(() =>
   import('./panels/onboarding/WelcomeScreen').then((module) => ({
     default: module.WelcomeScreen
@@ -159,6 +162,13 @@ function ContentArea() {
         <KeepAliveSlot active={activeType === 'graph'}>
           <Suspense fallback={<PanelLoadingFallback label="Loading graph..." />}>
             <LazyGraphPanel />
+          </Suspense>
+        </KeepAliveSlot>
+      )}
+      {openTypes.has('ghosts') && mountedTypes.has('ghosts') && (
+        <KeepAliveSlot active={activeType === 'ghosts'}>
+          <Suspense fallback={<PanelLoadingFallback label="Loading ghosts..." />}>
+            <LazyGhostPanel />
           </Suspense>
         </KeepAliveSlot>
       )}

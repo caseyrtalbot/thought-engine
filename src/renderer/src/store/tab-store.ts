@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
-export type TabType = 'editor' | 'canvas' | 'workbench' | 'graph'
+export type TabType = 'editor' | 'canvas' | 'workbench' | 'graph' | 'ghosts'
 
 export interface ViewTab {
   readonly id: string
@@ -24,14 +24,15 @@ interface TabActions {
 
 type TabStore = TabState & TabActions
 
-const TAB_TYPES = ['editor', 'canvas', 'workbench', 'graph'] as const
+const TAB_TYPES = ['editor', 'canvas', 'workbench', 'graph', 'ghosts'] as const
 const LEGACY_WORKBENCH_TAB_ID = 'project-canvas'
 
 export const TAB_DEFINITIONS: Record<TabType, { label: string; iconId: string }> = {
   editor: { label: 'Editor', iconId: 'editor' },
   canvas: { label: 'Vault Canvas', iconId: 'canvas' },
   workbench: { label: 'Workbench', iconId: 'workbench' },
-  graph: { label: 'Graph', iconId: 'graph' }
+  graph: { label: 'Graph', iconId: 'graph' },
+  ghosts: { label: 'Ghosts', iconId: 'ghosts' }
 }
 
 const DEFAULT_TABS: readonly ViewTab[] = [

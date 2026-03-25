@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useVaultStore } from '@renderer/store/vault-store'
 import { useGraphViewStore } from '@renderer/store/graph-view-store'
 import { useEditorStore } from '@renderer/store/editor-store'
+import { useUiStore } from '@renderer/store/ui-store'
 import { useViewStore } from '@renderer/store/view-store'
 import { colors, floatingPanel, getArtifactColor, transitions } from '../../design/tokens'
+import { buildGhostIndex, inferFolder } from '../../engine/ghost-index'
+import { serializeArtifact } from '../../engine/parser'
 import type { Artifact } from '@shared/types'
 
 const DRAWER_WIDTH = 340
@@ -209,11 +212,153 @@ export function GraphDetailDrawer() {
           {/* Backlinks */}
           <BacklinksList backlinks={backlinks} onNavigate={handleNavigateBacklink} />
         </>
-      ) : (
-        <div className="text-xs" style={{ color: colors.text.muted }}>
-          No file associated
+      ) : displayId ? (
+        <GhostDrawerContent ghostId={displayId} onClose={() => setSelectedNode(null)} />
+      ) : null}
+    </div>
+  )
+}
+
+function GhostDrawerContent({
+  ghostId,
+  onClose
+}: {
+  readonly ghostId: string
+  readonly onClose: () => void
+}) {
+  const graph = useVaultStore((s) => s.graph)
+  const artifacts = useVaultStore((s) => s.artifacts)
+  const vaultPath = useVaultStore((s) => s.vaultPath)
+  const dismissGhost = useUiStore((s) => s.dismissGhost)
+  const [creating, setCreating] = useState(false)
+
+  const ghostEntry = useMemo(() => {
+    const index = buildGhostIndex(graph, artifacts)
+    return index.find((g) => g.id === ghostId) ?? null
+  }, [graph, artifacts, ghostId])
+
+  const handleCreate = useCallback(async () => {
+    if (!vaultPath || creating) return
+    setCreating(true)
+    try {
+      const refPaths = artifacts
+        .filter((a) => ghostEntry?.references.some((r) => r.fileTitle === a.title))
+        .map((a) => useVaultStore.getState().artifactPathById[a.id] ?? '')
+        .filter(Boolean)
+
+      const folder = inferFolder(ghostId, refPaths, vaultPath)
+      const filePath = `${folder}/${ghostId}.md`
+
+      const sourceIds = (ghostEntry?.references ?? [])
+        .map((r) => artifacts.find((a) => a.title === r.fileTitle)?.id ?? '')
+        .filter(Boolean)
+
+      const artifact: Artifact = {
+        id: ghostId,
+        title: ghostId,
+        type: 'note',
+        created: new Date().toISOString().split('T')[0],
+        modified: new Date().toISOString().split('T')[0],
+        signal: 'untested',
+        tags: [],
+        connections: sourceIds,
+        clusters_with: [],
+        tensions_with: [],
+        appears_in: [],
+        related: [],
+        concepts: [],
+        bodyLinks: [],
+        body: '',
+        frontmatter: {}
+      }
+
+      const content = serializeArtifact(artifact)
+      const exists = await window.api.fs.fileExists(filePath)
+      if (exists) return
+
+      await window.api.fs.writeFile(filePath, content)
+      useEditorStore.getState().setActiveNote(ghostId, filePath)
+      useViewStore.getState().setContentView('editor')
+    } finally {
+      setCreating(false)
+    }
+  }, [ghostId, vaultPath, artifacts, ghostEntry, creating])
+
+  return (
+    <>
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className="text-[15px] font-semibold leading-tight"
+            style={{ color: colors.text.primary }}
+          >
+            {ghostId}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 text-xs rounded p-1 interactive-hover"
+            style={{ color: colors.text.muted }}
+            title="Close drawer"
+          >
+            ×
+          </button>
+        </div>
+        <div className="text-[11px] mt-1" style={{ color: colors.text.muted }}>
+          Ghost node · {ghostEntry?.referenceCount ?? 0} reference
+          {(ghostEntry?.referenceCount ?? 0) !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {ghostEntry && ghostEntry.references.length > 0 && (
+        <div>
+          <div
+            className="text-[10px] uppercase font-medium mb-1.5"
+            style={{ color: colors.text.muted, letterSpacing: '0.15em' }}
+          >
+            Referenced by
+          </div>
+          <div className="flex flex-col gap-1">
+            {ghostEntry.references.map((ref, i) => (
+              <div
+                key={i}
+                className="text-xs rounded px-2 py-1.5"
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', color: colors.text.secondary }}
+              >
+                <div className="font-medium mb-0.5" style={{ color: colors.text.primary }}>
+                  {ref.fileTitle}
+                </div>
+                <div style={{ opacity: 0.7, lineHeight: 1.4 }}>{ref.context}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-    </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={creating}
+          className="text-xs px-2.5 py-1 rounded interactive-hover"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            color: colors.text.primary,
+            opacity: creating ? 0.5 : 1,
+            transition: transitions.hover
+          }}
+        >
+          {creating ? 'Creating...' : 'Create File'}
+        </button>
+        <button
+          type="button"
+          onClick={() => dismissGhost(ghostId)}
+          className="text-xs px-2.5 py-1 rounded interactive-hover"
+          style={{ color: colors.text.muted, transition: transitions.hover }}
+        >
+          Dismiss
+        </button>
+      </div>
+    </>
   )
 }

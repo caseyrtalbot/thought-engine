@@ -3,14 +3,22 @@ import { getUiState, updateUiState } from './vault-persist'
 
 interface UiStore {
   readonly backlinkCollapsed: Readonly<Record<string, boolean>>
+  readonly dismissedGhosts: readonly string[]
 
   getBacklinkCollapsed: (notePath: string) => boolean
   toggleBacklinkCollapsed: (notePath: string) => void
-  rehydrate: (backlinkCollapsed: Record<string, boolean>) => void
+  dismissGhost: (id: string) => void
+  undismissGhost: (id: string) => void
+  isGhostDismissed: (id: string) => boolean
+  rehydrate: (
+    backlinkCollapsed: Record<string, boolean>,
+    dismissedGhosts: readonly string[]
+  ) => void
 }
 
 export const useUiStore = create<UiStore>((set, get) => ({
   backlinkCollapsed: {},
+  dismissedGhosts: [],
 
   getBacklinkCollapsed: (notePath) => get().backlinkCollapsed[notePath] ?? true,
 
@@ -21,8 +29,24 @@ export const useUiStore = create<UiStore>((set, get) => ({
     updateUiState({ backlinkCollapsed: next })
   },
 
-  rehydrate: (backlinkCollapsed) => {
-    set({ backlinkCollapsed })
+  dismissGhost: (id) => {
+    const current = get().dismissedGhosts
+    if (current.includes(id)) return
+    const next = [...current, id]
+    set({ dismissedGhosts: next })
+    updateUiState({ dismissedGhosts: next })
+  },
+
+  undismissGhost: (id) => {
+    const next = get().dismissedGhosts.filter((g) => g !== id)
+    set({ dismissedGhosts: next })
+    updateUiState({ dismissedGhosts: next })
+  },
+
+  isGhostDismissed: (id) => get().dismissedGhosts.includes(id),
+
+  rehydrate: (backlinkCollapsed, dismissedGhosts) => {
+    set({ backlinkCollapsed, dismissedGhosts: [...dismissedGhosts] })
   }
 }))
 
@@ -32,5 +56,7 @@ export const useUiStore = create<UiStore>((set, get) => ({
  */
 export function rehydrateUiStore(): void {
   const persisted = getUiState()
-  useUiStore.getState().rehydrate(persisted.backlinkCollapsed ?? {})
+  useUiStore
+    .getState()
+    .rehydrate(persisted.backlinkCollapsed ?? {}, persisted.dismissedGhosts ?? [])
 }

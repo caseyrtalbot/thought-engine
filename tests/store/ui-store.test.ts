@@ -29,17 +29,14 @@ describe('useUiStore', () => {
   })
 
   test('rehydrate restores persisted state', () => {
-    useUiStore.getState().rehydrate({
-      '/notes/a.md': false,
-      '/notes/b.md': true
-    })
+    useUiStore.getState().rehydrate({ '/notes/a.md': false, '/notes/b.md': true }, [])
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/a.md')).toBe(false)
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/b.md')).toBe(true)
   })
 
   test('rehydrate with empty object resets to defaults', () => {
     useUiStore.getState().toggleBacklinkCollapsed('/notes/a.md')
-    useUiStore.getState().rehydrate({})
+    useUiStore.getState().rehydrate({}, [])
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/a.md')).toBe(true)
   })
 })

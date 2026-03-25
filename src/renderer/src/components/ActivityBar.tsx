@@ -1,5 +1,7 @@
 import { useTabStore, TAB_DEFINITIONS } from '../store/tab-store'
 import type { TabType } from '../store/tab-store'
+import { useVaultStore } from '../store/vault-store'
+import { useUiStore } from '../store/ui-store'
 import { colors } from '../design/tokens'
 
 const ICON_SIZE = 20
@@ -62,6 +64,29 @@ const GraphIcon = (
   </svg>
 )
 
+const GhostsIcon = (
+  <svg
+    width={ICON_SIZE}
+    height={ICON_SIZE}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="3" strokeDasharray="4 3" />
+    <circle cx="5" cy="7" r="1.5" strokeDasharray="3 2" />
+    <circle cx="19" cy="8" r="1.5" strokeDasharray="3 2" />
+    <circle cx="7" cy="18" r="1.5" strokeDasharray="3 2" />
+    <circle cx="17" cy="17" r="1.5" strokeDasharray="3 2" />
+    <line x1="8" y1="9" x2="10" y2="10.5" opacity="0.5" />
+    <line x1="14" y1="10.5" x2="17.5" y2="9" opacity="0.5" />
+    <line x1="10" y1="14" x2="8" y2="16.5" opacity="0.5" />
+    <line x1="14.5" y1="13.5" x2="16" y2="15.5" opacity="0.5" />
+  </svg>
+)
+
 interface ActivityItem {
   view: TabType
   label: string
@@ -71,12 +96,21 @@ interface ActivityItem {
 const ITEMS: ActivityItem[] = [
   { view: 'editor', label: 'Editor', icon: EditorIcon },
   { view: 'canvas', label: 'Canvas', icon: CanvasIcon },
-  { view: 'graph', label: 'Graph', icon: GraphIcon }
+  { view: 'graph', label: 'Graph', icon: GraphIcon },
+  { view: 'ghosts', label: 'Ghosts', icon: GhostsIcon }
 ]
+
+function useGhostCount(): number {
+  const nodes = useVaultStore((s) => s.graph.nodes)
+  const dismissed = useUiStore((s) => s.dismissedGhosts)
+  const ghostCount = nodes.filter((n) => !n.path && !dismissed.includes(n.id)).length
+  return ghostCount
+}
 
 export function ActivityBar() {
   const activeTabId = useTabStore((s) => s.activeTabId)
   const openTab = useTabStore((s) => s.openTab)
+  const ghostCount = useGhostCount()
 
   return (
     <div
@@ -119,6 +153,26 @@ export function ActivityBar() {
             aria-label={`Switch to ${label} view`}
           >
             {icon}
+            {view === 'ghosts' && ghostCount > 0 && (
+              <span
+                className="absolute text-[9px] font-medium leading-none"
+                style={{
+                  top: 3,
+                  right: 3,
+                  minWidth: 14,
+                  height: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  color: colors.text.secondary,
+                  padding: '0 3px'
+                }}
+              >
+                {ghostCount}
+              </span>
+            )}
           </button>
         )
       })}
