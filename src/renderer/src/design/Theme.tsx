@@ -1,77 +1,156 @@
-import { createContext, useContext, useLayoutEffect, useMemo, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useEffect,
+  useState,
+  type ReactNode
+} from 'react'
 import { spacing, typography, transitions } from './tokens'
-import { resolveColors, type ResolvedColors } from './themes'
-import { useSettingsStore } from '../store/settings-store'
+import {
+  STRUCTURAL_COLORS,
+  BASE_COLORS,
+  computeAccentVariants,
+  ACCENT_COLORS,
+  type ResolvedThemeId,
+  type EnvironmentSettings
+} from './themes'
+import { useSettingsStore, resolveTheme } from '../store/settings-store'
+
+interface EnvContext {
+  readonly cardBlur: number
+  readonly gridDotVisibility: number
+  readonly activityBarOpacity: number
+  readonly cardTitleFontSize: number
+  readonly sidebarFontSize: number
+  readonly resolvedTheme: ResolvedThemeId
+}
 
 interface ThemeContextType {
-  colors: ResolvedColors
   spacing: typeof spacing
   typography: typeof typography
   transitions: typeof transitions
+  env: EnvContext
 }
 
-const defaultColors = resolveColors('midnight', 'matrix')
-
 const ThemeContext = createContext<ThemeContextType>({
-  colors: defaultColors,
   spacing,
   typography,
-  transitions
+  transitions,
+  env: {
+    cardBlur: 12,
+    gridDotVisibility: 20,
+    activityBarOpacity: 55,
+    cardTitleFontSize: 12,
+    sidebarFontSize: 13,
+    resolvedTheme: 'dark'
+  }
 })
 
-function applyThemeCssVars(colors: ResolvedColors): void {
+function useResolvedTheme(): ResolvedThemeId {
+  const theme = useSettingsStore((s) => s.theme)
+  const [resolved, setResolved] = useState<ResolvedThemeId>(() => resolveTheme(theme))
+
+  useEffect(() => {
+    if (theme !== 'system') {
+      setResolved(theme)
+      return
+    }
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => setResolved(e.matches ? 'dark' : 'light')
+    setResolved(mq.matches ? 'dark' : 'light')
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [theme])
+
+  return resolved
+}
+
+function applyEnvCssVars(resolved: ResolvedThemeId, env: EnvironmentSettings): void {
   const root = document.documentElement
+  const base = BASE_COLORS[resolved]
+  const structural = STRUCTURAL_COLORS[resolved]
 
-  root.style.setProperty('--color-bg-base', colors.bg.base)
-  root.style.setProperty('--color-bg-surface', colors.bg.surface)
-  root.style.setProperty('--color-bg-elevated', colors.bg.elevated)
-  root.style.setProperty('--color-border-default', colors.border.default)
-  root.style.setProperty('--border-subtle', colors.border.subtle)
-  root.style.setProperty('--color-text-primary', colors.text.primary)
-  root.style.setProperty('--color-text-secondary', colors.text.secondary)
-  root.style.setProperty('--color-text-muted', colors.text.muted)
-  root.style.setProperty('--color-accent-default', colors.accent.default)
-  root.style.setProperty('--color-accent-hover', colors.accent.hover)
-  root.style.setProperty('--color-accent-muted', colors.accent.muted)
+  const surfaceOpacity = (100 - env.canvasTranslucency) / 100
+  root.style.setProperty(
+    '--canvas-surface-bg',
+    `rgba(${base.canvasSurface.r}, ${base.canvasSurface.g}, ${base.canvasSurface.b}, ${surfaceOpacity})`
+  )
 
-  // Canvas-specific tokens
-  root.style.setProperty('--canvas-surface-bg', colors.canvas.surface)
-  root.style.setProperty('--canvas-card-bg', colors.canvas.card)
-  root.style.setProperty('--canvas-card-title-bg', colors.canvas.cardTitleBar)
-  root.style.setProperty('--canvas-card-border', colors.canvas.cardBorder)
-  root.style.setProperty('--canvas-text-heading', colors.canvas.textHeading)
-  root.style.setProperty('--canvas-blockquote-bar', colors.canvas.blockquoteBar)
+  const cardOp = env.cardOpacity / 100
+  root.style.setProperty(
+    '--canvas-card-bg',
+    `rgba(${base.cardBody.r}, ${base.cardBody.g}, ${base.cardBody.b}, ${cardOp})`
+  )
 
-  const hex = colors.accent.default
-  if (hex.startsWith('#') && hex.length === 7) {
-    const r = parseInt(hex.slice(1, 3), 16)
-    const g = parseInt(hex.slice(3, 5), 16)
-    const b = parseInt(hex.slice(5, 7), 16)
+  root.style.setProperty('--canvas-card-title-bg', `rgba(0, 0, 0, ${env.cardHeaderDarkness / 100})`)
+
+  const l = env.panelLightness
+  root.style.setProperty('--color-bg-base', `hsl(0, 0%, ${l}%)`)
+  root.style.setProperty('--color-bg-surface', `hsl(0, 0%, ${Math.min(l + 7, 100)}%)`)
+  root.style.setProperty('--color-bg-elevated', `hsl(0, 0%, ${Math.min(l + 13, 100)}%)`)
+
+  root.style.setProperty('--color-border-default', structural.border.default)
+  root.style.setProperty('--border-subtle', structural.border.subtle)
+  root.style.setProperty('--color-text-primary', structural.text.primary)
+  root.style.setProperty('--color-text-secondary', structural.text.secondary)
+  root.style.setProperty('--color-text-muted', structural.text.muted)
+  root.style.setProperty('--canvas-card-border', structural.canvas.cardBorder)
+  root.style.setProperty('--canvas-text-heading', structural.canvas.textHeading)
+  root.style.setProperty('--canvas-blockquote-bar', structural.canvas.blockquoteBar)
+}
+
+function applyAccentCssVars(accentHex: string): void {
+  const root = document.documentElement
+  const accent = computeAccentVariants(accentHex)
+  root.style.setProperty('--color-accent-default', accent.default)
+  root.style.setProperty('--color-accent-hover', accent.hover)
+  root.style.setProperty('--color-accent-muted', accent.muted)
+
+  if (accentHex.startsWith('#') && accentHex.length === 7) {
+    const r = parseInt(accentHex.slice(1, 3), 16)
+    const g = parseInt(accentHex.slice(3, 5), 16)
+    const b = parseInt(accentHex.slice(5, 7), 16)
     root.style.setProperty('--neon-glow', `0 0 8px rgba(${r}, ${g}, ${b}, 0.15)`)
     root.style.setProperty('--color-accent-focus', `rgba(${r}, ${g}, ${b}, 0.3)`)
     root.style.setProperty('--color-accent-subtle', `rgba(${r}, ${g}, ${b}, 0.15)`)
   }
 }
 
-interface ThemeProviderProps {
-  children: ReactNode
-}
-
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const theme = useSettingsStore((s) => s.theme)
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const resolved = useResolvedTheme()
   const accentColor = useSettingsStore((s) => s.accentColor)
+  const env = useSettingsStore((s) => s.env)
 
-  const colors = useMemo(() => resolveColors(theme, accentColor), [theme, accentColor])
+  const accentHex = ACCENT_COLORS[accentColor].value
 
   useLayoutEffect(() => {
-    applyThemeCssVars(colors)
-  }, [colors])
+    applyEnvCssVars(resolved, env)
+  }, [resolved, env])
 
-  return (
-    <ThemeContext.Provider value={{ colors, spacing, typography, transitions }}>
-      {children}
-    </ThemeContext.Provider>
+  useLayoutEffect(() => {
+    applyAccentCssVars(accentHex)
+  }, [accentHex])
+
+  const ctx = useMemo<ThemeContextType>(
+    () => ({
+      spacing,
+      typography,
+      transitions,
+      env: {
+        cardBlur: env.cardBlur,
+        gridDotVisibility: env.gridDotVisibility,
+        activityBarOpacity: env.activityBarOpacity,
+        cardTitleFontSize: env.cardTitleFontSize,
+        sidebarFontSize: env.sidebarFontSize,
+        resolvedTheme: resolved
+      }
+    }),
+    [env, resolved]
   )
+
+  return <ThemeContext.Provider value={ctx}>{children}</ThemeContext.Provider>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -80,6 +159,6 @@ export function useTheme(): ThemeContextType {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useColors(): ResolvedColors {
-  return useContext(ThemeContext).colors
+export function useEnv(): EnvContext {
+  return useContext(ThemeContext).env
 }
