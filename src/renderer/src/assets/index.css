@@ -100,7 +100,7 @@ body {
   --color-bg-base: hsl(0, 0%, 5%);
   --color-bg-surface: hsl(0, 0%, 12%);
   --color-bg-elevated: hsl(0, 0%, 18%);
-  --color-border-default: color-mix(in srgb, white 8%, transparent);
+  --color-border-default: rgba(255, 255, 255, 0.08);
   --color-text-primary: #d9d9d9;
   --color-text-secondary: #808080;
   --color-text-muted: #525252;

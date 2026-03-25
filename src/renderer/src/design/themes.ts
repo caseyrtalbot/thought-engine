@@ -85,8 +85,8 @@ export interface StructuralColors {
 export const STRUCTURAL_COLORS: Record<ResolvedThemeId, StructuralColors> = {
   dark: {
     border: {
-      default: 'color-mix(in srgb, white 8%, transparent)',
-      subtle: 'color-mix(in srgb, white 4%, transparent)'
+      default: 'rgba(255, 255, 255, 0.10)',
+      subtle: 'rgba(255, 255, 255, 0.05)'
     },
     text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' },
     canvas: {
