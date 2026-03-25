@@ -236,8 +236,8 @@ export function CardShell({
               : `0 2px 8px rgba(0, 0, 0, 0.5)`,
         overflow: 'hidden',
         contain: 'layout style',
-        backdropFilter: 'blur(24px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+        backdropFilter: 'blur(12px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
         ...(isActive
           ? ({
               '--activity-color': 'rgba(167, 139, 250, 0.3)',

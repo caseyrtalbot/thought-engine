@@ -135,7 +135,7 @@ export function ActivityBar() {
             style={{
               width: 34,
               height: 34,
-              opacity: isActive ? 0.9 : isGhostTab && ghostTint ? 0.7 : 0.3,
+              opacity: isActive ? 0.9 : isGhostTab && ghostTint ? 0.7 : 0.4,
               color: ghostTint ?? colors.text.primary,
               borderRadius: 8,
               backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
@@ -147,8 +147,7 @@ export function ActivityBar() {
               if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
             }}
             onMouseLeave={(e) => {
-              if (!isActive)
-                e.currentTarget.style.opacity = isGhostTab && ghostTint ? '0.7' : '0.35'
+              if (!isActive) e.currentTarget.style.opacity = isGhostTab && ghostTint ? '0.7' : '0.4'
               if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
             }}
             title={isGhostTab ? `${label} (${ghostCount})` : label}
