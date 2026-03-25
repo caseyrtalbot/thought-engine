@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback } from 'react'
 import { useVaultStore } from '../../store/vault-store'
 import { useUiStore } from '../../store/ui-store'
 import { useEditorStore } from '../../store/editor-store'
+import { useTabStore, TAB_DEFINITIONS } from '../../store/tab-store'
+import { useGraphViewStore } from '../../store/graph-view-store'
 import { buildGhostIndex, inferFolder, type GhostEntry } from '../../engine/ghost-index'
 import { serializeArtifact } from '../../engine/parser'
 import { colors, typography } from '../../design/tokens'
@@ -225,6 +227,25 @@ function GhostCard({
               disabled={creating}
             >
               {creating ? 'Creating...' : 'Create File'}
+            </button>
+            <button
+              className="text-xs px-2.5 py-1 rounded cursor-pointer"
+              style={{
+                backgroundColor: 'transparent',
+                color: colors.text.muted
+              }}
+              onClick={() => {
+                const def = TAB_DEFINITIONS.graph
+                useTabStore.getState().openTab({
+                  id: 'graph',
+                  type: 'graph',
+                  label: def.label,
+                  closeable: true
+                })
+                useGraphViewStore.getState().setSelectedNode(ghost.id)
+              }}
+            >
+              Show on graph
             </button>
             <button
               className="text-xs px-2.5 py-1 rounded cursor-pointer"

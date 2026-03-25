@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildGhostIndex,
   extractContext,
-  inferFolder,
-  type GhostEntry
+  inferFolder
 } from '../../src/renderer/src/engine/ghost-index'
 import type { KnowledgeGraph, GraphNode, GraphEdge, Artifact } from '../../src/shared/types'
 

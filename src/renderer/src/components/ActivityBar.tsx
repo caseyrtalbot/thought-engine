@@ -75,15 +75,9 @@ const GhostsIcon = (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <circle cx="12" cy="12" r="3" strokeDasharray="4 3" />
-    <circle cx="5" cy="7" r="1.5" strokeDasharray="3 2" />
-    <circle cx="19" cy="8" r="1.5" strokeDasharray="3 2" />
-    <circle cx="7" cy="18" r="1.5" strokeDasharray="3 2" />
-    <circle cx="17" cy="17" r="1.5" strokeDasharray="3 2" />
-    <line x1="8" y1="9" x2="10" y2="10.5" opacity="0.5" />
-    <line x1="14" y1="10.5" x2="17.5" y2="9" opacity="0.5" />
-    <line x1="10" y1="14" x2="8" y2="16.5" opacity="0.5" />
-    <line x1="14.5" y1="13.5" x2="16" y2="15.5" opacity="0.5" />
+    <circle cx="12" cy="13" r="7" />
+    <line x1="12" y1="10" x2="12" y2="14" />
+    <circle cx="12" cy="16.5" r="0.5" fill="currentColor" stroke="none" />
   </svg>
 )
 
@@ -125,6 +119,12 @@ export function ActivityBar() {
       {ITEMS.map(({ view, label, icon }) => {
         const isActive = activeTabId === view
         const def = TAB_DEFINITIONS[view]
+        const isGhostTab = view === 'ghosts'
+        const ghostTint = isGhostTab
+          ? ghostCount > 0
+            ? '#f59e0b' // amber: unresolved ghosts
+            : '#4ade80' // green: all resolved
+          : undefined
         return (
           <button
             key={view}
@@ -135,44 +135,26 @@ export function ActivityBar() {
             style={{
               width: 34,
               height: 34,
-              opacity: isActive ? 0.9 : 0.3,
-              color: colors.text.primary,
+              opacity: isActive ? 0.9 : isGhostTab && ghostTint ? 0.7 : 0.3,
+              color: ghostTint ?? colors.text.primary,
               borderRadius: 8,
               backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-              transition: 'opacity 150ms ease-out, background-color 150ms ease-out'
+              transition:
+                'opacity 150ms ease-out, background-color 150ms ease-out, color 300ms ease-out'
             }}
             onMouseEnter={(e) => {
               if (!isActive) e.currentTarget.style.opacity = '0.8'
               if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
             }}
             onMouseLeave={(e) => {
-              if (!isActive) e.currentTarget.style.opacity = '0.35'
+              if (!isActive)
+                e.currentTarget.style.opacity = isGhostTab && ghostTint ? '0.7' : '0.35'
               if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
             }}
-            title={label}
+            title={isGhostTab ? `${label} (${ghostCount})` : label}
             aria-label={`Switch to ${label} view`}
           >
             {icon}
-            {view === 'ghosts' && ghostCount > 0 && (
-              <span
-                className="absolute text-[9px] font-medium leading-none"
-                style={{
-                  top: 3,
-                  right: 3,
-                  minWidth: 14,
-                  height: 14,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  color: colors.text.secondary,
-                  padding: '0 3px'
-                }}
-              >
-                {ghostCount}
-              </span>
-            )}
           </button>
         )
       })}

@@ -45,6 +45,44 @@ const HIT_RADIUS = 20
 const SELECTION_RING_COLOR = 0x60a5fa
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Draw a dashed circle using line segments (PixiJS Graphics has no native dash support). */
+function drawDashedCircle(
+  g: Graphics,
+  radius: number,
+  color: number,
+  alpha: number,
+  dashLen = 4,
+  gapLen = 3
+): void {
+  const circumference = 2 * Math.PI * radius
+  const segmentLen = dashLen + gapLen
+  const segments = Math.floor(circumference / segmentLen)
+  const dashAngle = (dashLen / circumference) * 2 * Math.PI
+  const gapAngle = (gapLen / circumference) * 2 * Math.PI
+
+  for (let i = 0; i < segments; i++) {
+    const startAngle = i * (dashAngle + gapAngle)
+    const endAngle = startAngle + dashAngle
+    const steps = Math.max(2, Math.ceil((dashAngle * radius) / 2))
+
+    for (let s = 0; s <= steps; s++) {
+      const angle = startAngle + (endAngle - startAngle) * (s / steps)
+      const x = Math.cos(angle) * radius
+      const y = Math.sin(angle) * radius
+      if (s === 0) {
+        g.moveTo(x, y)
+      } else {
+        g.lineTo(x, y)
+      }
+    }
+    g.stroke({ width: 1.5, color, alpha })
+  }
+}
+
+// ---------------------------------------------------------------------------
 // GraphRenderer
 // ---------------------------------------------------------------------------
 
@@ -302,9 +340,8 @@ export class GraphRenderer {
       const color = nodeColorForType(node.type)
 
       if (node.isGhost) {
-        // Ghost nodes: hollow circle (no fill, prominent stroke)
-        g.circle(0, 0, radius)
-        g.stroke({ width: 1.5, color, alpha: 0.8 })
+        // Ghost nodes: dashed hollow circle
+        drawDashedCircle(g, radius, color, 0.8)
       } else {
         g.circle(0, 0, radius)
         g.fill({ color })
