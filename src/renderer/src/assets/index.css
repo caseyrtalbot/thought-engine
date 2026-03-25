@@ -160,6 +160,16 @@ body {
   opacity: 1;
 }
 
+/* ─── File Tree Hover ─── */
+
+.file-row-hover {
+  transition: filter 120ms ease-out;
+}
+
+.file-row-hover:hover {
+  filter: brightness(1.35);
+}
+
 /* ─── Drag Handle ─── */
 
 .te-drag-handle {

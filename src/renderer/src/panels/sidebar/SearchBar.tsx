@@ -44,11 +44,11 @@ export function SearchBar({ onSearch }: SearchBarProps) {
         style={{
           backgroundColor: focused ? floatingPanel.glass.inputBgFocus : floatingPanel.glass.inputBg,
           color: colors.text.primary,
-          border: 'none',
-          borderRadius: 8,
+          border: `1px solid rgba(255, 255, 255, ${focused ? '0.15' : '0.08'})`,
+          borderRadius: 2,
           padding: '8px 12px 8px 32px',
           fontSize: 12,
-          transition: 'background-color 200ms ease-out'
+          transition: 'background-color 200ms ease-out, border-color 200ms ease-out'
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

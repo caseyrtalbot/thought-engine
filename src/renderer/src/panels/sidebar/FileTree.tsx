@@ -300,13 +300,14 @@ function DirectoryRow({
         fontWeight: 600,
         fontSize: treeFontSize - 1,
         letterSpacing: '0.02em',
+        transition: 'color 120ms ease-out',
         ...indentBorderStyle(node.depth)
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
+        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.82)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = ''
+        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.60)'
       }}
     >
       <span className="mr-1 flex items-center" style={{ color: 'rgba(255, 255, 255, 0.30)' }}>
@@ -392,22 +393,19 @@ function FileRow({
       onClick={() => onFileSelect(node.path)}
       onDoubleClick={() => (onFileDoubleClick ?? onFileSelect)(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, false)}
-      className="flex items-center py-[5px] cursor-pointer transition-colors"
+      className="flex items-center py-[5px] cursor-pointer file-row-hover"
       style={{
         paddingLeft: node.depth === 0 ? 24 : undefined,
         paddingRight: 8,
-        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : undefined,
         fontFamily: treeFontFamily,
         fontWeight: 400,
         fontSize: treeFontSize,
         ...indentBorderStyle(node.depth, isActive)
       }}
       onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
         if (node.depth > 0) e.currentTarget.style.borderLeftColor = 'rgba(255, 255, 255, 0.15)'
       }}
       onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.backgroundColor = ''
         if (node.depth > 0)
           e.currentTarget.style.borderLeftColor = `rgba(255, 255, 255, ${isActive ? '0.12' : '0.06'})`
       }}
