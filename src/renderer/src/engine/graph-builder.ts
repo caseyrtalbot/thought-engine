@@ -80,6 +80,12 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     return false
   }
 
+  // Build a lowercase-to-id lookup for case-insensitive bodyLink resolution
+  const lowerToId = new Map<string, string>()
+  for (const a of artifacts) {
+    lowerToId.set(a.id.toLowerCase(), a.id)
+  }
+
   // Phase 1: Explicit frontmatter edges
   for (const a of artifacts) {
     for (const id of a.connections) addEdge(a.id, id, 'connection')
@@ -87,7 +93,10 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     for (const id of a.tensions_with) addEdge(a.id, id, 'tension')
     for (const id of a.appears_in) addEdge(a.id, id, 'appears_in')
     for (const id of a.related) addEdge(a.id, id, 'related')
-    for (const id of a.bodyLinks) addEdge(a.id, id, 'related')
+    for (const link of a.bodyLinks) {
+      const resolvedTarget = lowerToId.get(link.toLowerCase()) ?? link
+      addEdge(a.id, resolvedTarget, 'related')
+    }
   }
 
   // Phase 2: Co-occurrence edges from shared terms

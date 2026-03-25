@@ -279,7 +279,7 @@ Body.`
 })
 
 describe('bodyLinks extraction from body wikilinks', () => {
-  it('extracts [[wikilinks]] from body text', () => {
+  it('extracts [[wikilinks]] from body text (lowercase-normalized)', () => {
     const md = `---
 id: test
 title: Test
@@ -291,7 +291,7 @@ Naval recommends [[The Book of Secrets]] and [[Atmamun]] for deep study.`
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.bodyLinks).toEqual(
-      expect.arrayContaining(['The Book of Secrets', 'Atmamun'])
+      expect.arrayContaining(['the book of secrets', 'atmamun'])
     )
     expect(result.value.bodyLinks).toHaveLength(2)
   })
@@ -307,7 +307,7 @@ See [[Genius - The Life and Science of Richard Feynman|Feynman biography]] for m
     const result = parseArtifact(md, 'test.md')
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.bodyLinks).toEqual(['Genius - The Life and Science of Richard Feynman'])
+    expect(result.value.bodyLinks).toEqual(['genius - the life and science of richard feynman'])
   })
 
   it('deduplicates repeated wikilinks', () => {
@@ -321,7 +321,7 @@ title: Test
     const result = parseArtifact(md, 'test.md')
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.value.bodyLinks).toEqual(['Antifragile'])
+    expect(result.value.bodyLinks).toEqual(['antifragile'])
   })
 
   it('returns empty array when body has no wikilinks', () => {
@@ -352,7 +352,35 @@ Naval also recommends [[Atmamun]] alongside [[Direct Truth]].`
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.related).toEqual(['Direct Truth'])
-    expect(result.value.bodyLinks).toEqual(expect.arrayContaining(['Atmamun', 'Direct Truth']))
+    expect(result.value.bodyLinks).toEqual(expect.arrayContaining(['atmamun', 'direct truth']))
+  })
+
+  it('normalizes [[Foo]] and [[foo]] to same target', () => {
+    const md = `---
+id: test
+title: Test
+---
+
+See [[Foo]] and [[foo]] and [[FOO]] for details.`
+
+    const result = parseArtifact(md, 'test.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.bodyLinks).toEqual(['foo'])
+  })
+
+  it('normalizes path-prefixed wikilinks to lowercase', () => {
+    const md = `---
+id: test
+title: Test
+---
+
+Check [[archive/MyNote]] for context.`
+
+    const result = parseArtifact(md, 'test.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.bodyLinks).toEqual(['archive/mynote'])
   })
 })
 

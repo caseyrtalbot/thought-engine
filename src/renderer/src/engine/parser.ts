@@ -23,12 +23,12 @@ function stripWikilinks(values: string[]): string[] {
   return values.map((v) => v.replace(/^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/, '$1').trim())
 }
 
-/** Extract [[wikilink]] targets from markdown body text. Deduplicated. */
+/** Extract [[wikilink]] targets from markdown body text. Deduplicated, case-normalized. */
 function extractBodyWikilinks(body: string): readonly string[] {
   const matches = body.matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)
   const targets = new Set<string>()
   for (const m of matches) {
-    targets.add(m[1].trim())
+    targets.add(m[1].trim().toLowerCase())
   }
   return [...targets]
 }

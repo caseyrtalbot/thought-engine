@@ -103,12 +103,19 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
 
   getBacklinks: (targetId: string): Artifact[] => {
     const { graph, artifacts } = get()
+    const lowerTarget = targetId.toLowerCase()
     const sourceIds = new Set<string>()
     for (const edge of graph.edges) {
-      if (edge.target === targetId && edge.source !== targetId) {
+      const edgeTargetLower = edge.target.toLowerCase()
+      const edgeSourceLower = edge.source.toLowerCase()
+      if (edgeTargetLower === lowerTarget && edgeSourceLower !== lowerTarget) {
         sourceIds.add(edge.source)
       }
-      if (edge.source === targetId && edge.target !== targetId && edge.kind !== 'appears_in') {
+      if (
+        edgeSourceLower === lowerTarget &&
+        edgeTargetLower !== lowerTarget &&
+        edge.kind !== 'appears_in'
+      ) {
         sourceIds.add(edge.target)
       }
     }

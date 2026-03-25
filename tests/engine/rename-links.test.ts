@@ -40,4 +40,39 @@ describe('rewriteWikilinks', () => {
   it('handles wikilink with empty alias pipe', () => {
     expect(rewriteWikilinks('[[Foo|]]', 'Foo', 'Bar')).toBe('[[Bar|]]')
   })
+
+  it('replaces case-insensitively: [[foo]], [[FOO]], [[Foo]]', () => {
+    const input = '[[OldName]] and [[oldname]] and [[OLDNAME]]'
+    expect(rewriteWikilinks(input, 'OldName', 'newname')).toBe(
+      '[[newname]] and [[newname]] and [[newname]]'
+    )
+  })
+
+  it('replaces case-insensitive with alias', () => {
+    expect(rewriteWikilinks('[[oldname|My Note]]', 'OldName', 'newname')).toBe(
+      '[[newname|My Note]]'
+    )
+  })
+
+  it('replaces path-prefixed wikilinks', () => {
+    expect(rewriteWikilinks('see [[archive/OldName]]', 'OldName', 'newname')).toBe(
+      'see [[archive/newname]]'
+    )
+  })
+
+  it('replaces path-prefixed wikilinks with alias', () => {
+    expect(rewriteWikilinks('see [[docs/OldName|display]]', 'OldName', 'newname')).toBe(
+      'see [[docs/newname|display]]'
+    )
+  })
+
+  it('preserves path prefix on case-insensitive path match', () => {
+    expect(rewriteWikilinks('[[Archive/oldname]]', 'OldName', 'newname')).toBe(
+      '[[Archive/newname]]'
+    )
+  })
+
+  it('handles deeply nested path prefixes', () => {
+    expect(rewriteWikilinks('[[a/b/c/OldName]]', 'OldName', 'newname')).toBe('[[a/b/c/newname]]')
+  })
 })
