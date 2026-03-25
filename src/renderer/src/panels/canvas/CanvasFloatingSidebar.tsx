@@ -33,7 +33,7 @@ export function CanvasFloatingSidebar({
           height: 36,
           padding: '0 12px',
           borderRadius: floatingPanel.borderRadius,
-          boxShadow: `inset 0 0.5px 0 rgba(255,255,255,0.1), ${floatingPanel.shadowCompact}`,
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2)',
           backdropFilter: floatingPanel.glass.blur,
           backgroundColor: floatingPanel.glass.bg,
           color: colors.text.secondary,
@@ -89,7 +89,7 @@ export function CanvasFloatingSidebar({
         maxHeight: 'calc(100vh - 52px)',
         zIndex: 40,
         borderRadius: floatingPanel.borderRadius,
-        boxShadow: `inset 0 0.5px 0 rgba(255,255,255,0.1), ${floatingPanel.shadow}`,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3)',
         backdropFilter: floatingPanel.glass.blur,
         backgroundColor: floatingPanel.glass.bg,
         color: colors.text.primary

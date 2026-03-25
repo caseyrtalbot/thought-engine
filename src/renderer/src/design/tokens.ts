@@ -165,12 +165,10 @@ export const canvasTokens = {
 
 export const floatingPanel = {
   borderRadius: 12,
-  shadow: '0 20px 50px rgba(0,0,0,0.5), inset 0 0.5px 0 rgba(255,255,255,0.08)',
-  shadowCompact:
-    '0 4px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.2), inset 0 0.5px 0 rgba(255,255,255,0.1), inset 0 0 0 1px rgba(255,255,255,0.05)',
-  shadowCard:
-    '0 6px 24px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3), inset 0 0.5px 0 rgba(255,255,255,0.1), inset 0 0 0 1px rgba(255,255,255,0.07)',
-  shadowCardSelected: '0 0 0 1.5px var(--color-accent-default), 0 6px 28px rgba(0,0,0,0.5)',
+  shadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
+  shadowCompact: '0 4px 16px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)',
+  shadowCard: '0 2px 8px rgba(0,0,0,0.5)',
+  shadowCardSelected: '0 0 0 1.5px #4a9eff, 0 2px 8px rgba(0,0,0,0.5)',
   glass: {
     bg: 'rgba(14, 14, 18, 0.75)',
     blur: 'blur(24px) saturate(1.3)',
@@ -186,8 +184,8 @@ export const floatingPanel = {
     }
   },
   glassCard: {
-    blur: 'blur(24px) saturate(1.3)',
-    highlightEdge: 'inset 0 0.5px 0 rgba(255,255,255,0.12)'
+    blur: 'blur(12px) saturate(1.2)',
+    highlightEdge: 'none'
   }
 } as const
 
