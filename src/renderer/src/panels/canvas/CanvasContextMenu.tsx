@@ -60,13 +60,17 @@ export function CanvasContextMenu({
     <div
       ref={ref}
       data-testid="canvas-context-menu"
-      className="fixed rounded-lg border shadow-lg py-1 z-50"
+      className="fixed border py-1 z-50"
       style={{
         left: x,
         top: y,
         backgroundColor: colors.bg.elevated,
         borderColor: colors.border.default,
-        minWidth: 180
+        borderRadius: 8,
+        minWidth: 180,
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)'
       }}
     >
       {MENU_SECTIONS.map((section) => {

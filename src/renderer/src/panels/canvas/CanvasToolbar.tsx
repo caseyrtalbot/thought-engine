@@ -60,7 +60,7 @@ export function CanvasToolbar({
       style={{
         backgroundColor: floatingPanel.glass.bg,
         borderRadius: floatingPanel.borderRadius,
-        boxShadow: `inset 0 0.5px 0 rgba(255,255,255,0.1), ${floatingPanel.shadowCompact}`,
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2)',
         backdropFilter: floatingPanel.glass.blur,
         padding: 8
       }}
