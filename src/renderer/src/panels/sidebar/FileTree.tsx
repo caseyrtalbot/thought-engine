@@ -2,7 +2,6 @@ import { memo, useMemo } from 'react'
 import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
 import { colors } from '../../design/tokens'
 import { useSettingsStore } from '../../store/settings-store'
-import { buildFontFamilyValue } from '../../design/google-fonts'
 import { RenameInput } from './FileContextMenu'
 import type { ArtifactType } from '@shared/types'
 import type { FlatTreeNode } from './buildFileTree'
@@ -222,9 +221,8 @@ export const FileTree = memo(function FileTree({
     [nodes, collapsedPaths, dirIndex]
   )
 
-  const settingsFontSize = useSettingsStore((s) => s.fontSize)
-  const settingsFontFamily = useSettingsStore((s) => s.fontFamily)
-  const resolvedFont = buildFontFamilyValue(settingsFontFamily)
+  const settingsFontSize = useSettingsStore((s) => s.env.sidebarFontSize)
+  const resolvedFont = 'inherit'
 
   return (
     <div data-testid="file-tree" className="text-sm select-none px-1 py-1">
