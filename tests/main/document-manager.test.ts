@@ -167,6 +167,15 @@ describe('DocumentManager', () => {
       // Autosave should not fire again
       expect(mockFs.writeFile).not.toHaveBeenCalled()
     })
+
+    it('saveContent writes renderer content even after the document closes', async () => {
+      await dm.open('/vault/note.md')
+      await dm.close('/vault/note.md')
+
+      await dm.saveContent('/vault/note.md', '# Detached save')
+
+      expect(mockFs.writeFile).toHaveBeenCalledWith('/vault/note.md', '# Detached save')
+    })
   })
 
   // ─── Self-write suppression ───

@@ -120,11 +120,13 @@ export function ActivityBar() {
         return (
           <button
             key={view}
+            type="button"
             onClick={() =>
               openTab({ id: view, type: view, label: def.label, closeable: view !== 'editor' })
             }
             className="activity-btn relative flex items-center justify-center cursor-pointer"
             data-active={isActive || undefined}
+            aria-pressed={isActive}
             style={
               {
                 width: 34,

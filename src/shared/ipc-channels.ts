@@ -109,6 +109,7 @@ export interface IpcChannels {
     response: { version: number }
   }
   'doc:save': { request: { path: string }; response: void }
+  'doc:save-content': { request: { path: string; content: string }; response: void }
   'doc:get-content': {
     request: { path: string }
     response: { content: string; version: number; dirty: boolean } | null

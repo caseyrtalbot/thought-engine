@@ -47,14 +47,7 @@ import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
 import { useCanvasStore } from './store/canvas-store'
-import { saveCanvas, defaultCanvasFilename } from './panels/canvas/canvas-io'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
-import { openArtifactInEditor } from './system-artifacts/system-artifact-runtime'
-import { generateClaudeMd } from './engine/claude-md-template'
-import {
-  placeArtifactOnWorkbench,
-  enrichPlacedArtifact
-} from './panels/workbench/workbench-artifact-placement'
 // CanvasFloatingSidebar removed — sidebar is now docked
 import { getCanvasNodeTitle } from './panels/canvas/card-title'
 
@@ -78,6 +71,29 @@ const LazyWelcomeScreen = lazy(() =>
     default: module.WelcomeScreen
   }))
 )
+
+async function openArtifactInEditorOnDemand(
+  path: string,
+  title?: string,
+  artifactId?: string | null
+): Promise<void> {
+  const { openArtifactInEditor } = await import('./system-artifacts/system-artifact-runtime')
+  openArtifactInEditor(path, title, artifactId ?? null)
+}
+
+async function placeSystemArtifactOnWorkbench(
+  item: SystemArtifactListItem,
+  vaultPath: string | null
+): Promise<void> {
+  const { placeArtifactOnWorkbench, enrichPlacedArtifact } =
+    await import('./panels/workbench/workbench-artifact-placement')
+  const nodeId = placeArtifactOnWorkbench(item)
+  if (nodeId && vaultPath) {
+    void enrichPlacedArtifact(nodeId, item, vaultPath).catch((err) =>
+      logError('enrich-artifact', err)
+    )
+  }
+}
 
 /** Wrapper that keeps its children mounted but hidden when inactive. */
 function KeepAliveSlot({
@@ -303,8 +319,8 @@ function ConnectedSidebar({
   }, [artifactPathById, artifacts, searchQuery])
 
   const openEditorPath = useCallback(
-    (path: string, title?: string) => {
-      openArtifactInEditor(path, title, fileToId[path] ?? null)
+    async (path: string, title?: string) => {
+      await openArtifactInEditorOnDemand(path, title, fileToId[path] ?? null)
     },
     [fileToId]
   )
@@ -317,7 +333,7 @@ function ConnectedSidebar({
       if (view === 'canvas' || view === 'workbench') return
 
       const file = files.find((f) => f.path === path)
-      openEditorPath(path, file?.title)
+      void openEditorPath(path, file?.title)
     },
     [files, openEditorPath]
   )
@@ -325,7 +341,7 @@ function ConnectedSidebar({
   const handleFileDoubleClick = useCallback(
     (path: string) => {
       const file = files.find((f) => f.path === path)
-      openEditorPath(path, file?.title)
+      void openEditorPath(path, file?.title)
     },
     [files, openEditorPath]
   )
@@ -361,13 +377,13 @@ function ConnectedSidebar({
 
     await window.api.fs.writeFile(filePath, content)
     // Select the new file in the editor
-    openArtifactInEditor(filePath, title)
+    await openArtifactInEditorOnDemand(filePath, title)
   }, [vaultPath, files])
 
   const handleOpenVaultPicker = useCallback(async () => {
     const path = await window.api.fs.selectVault()
     if (!path) return
-    flushPendingSave()
+    void flushPendingSave()
     useCanvasStore.getState().closeCanvas()
     useViewStore.getState().setContentView('editor')
     await window.api.vault.watchStop()
@@ -386,7 +402,7 @@ function ConnectedSidebar({
         setVaultHistory(updated)
         return
       }
-      flushPendingSave()
+      void flushPendingSave()
       useCanvasStore.getState().closeCanvas()
       useViewStore.getState().setContentView('editor')
       await window.api.vault.watchStop()
@@ -420,7 +436,7 @@ function ConnectedSidebar({
           const title = filename.replace('.md', '')
           const content = `---\nid: ${title}\ntitle: ${title}\ncreated: ${now}\ntags: []\n---\n\n`
           await window.api.fs.writeFile(filePath, content)
-          openArtifactInEditor(filePath, title)
+          await openArtifactInEditorOnDemand(filePath, title)
           break
         }
         case 'copy-path': {
@@ -476,13 +492,8 @@ function ConnectedSidebar({
       onFileSelect={handleFileSelect}
       onFileDoubleClick={handleFileDoubleClick}
       onSystemArtifactSelect={(item) => {
-        const nodeId = placeArtifactOnWorkbench(item)
-        if (nodeId && vaultPath) {
-          enrichPlacedArtifact(nodeId, item, vaultPath).catch((err) =>
-            logError('enrich-artifact', err)
-          )
-        }
-        openArtifactInEditor(item.path, item.title, item.id)
+        void placeSystemArtifactOnWorkbench(item, vaultPath)
+        void openArtifactInEditorOnDemand(item.path, item.title, item.id)
       }}
       onToggleDirectory={handleToggleDirectory}
       onNewFile={handleNewFile}
@@ -727,7 +738,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     const content = `---\nid: ${title}\ntitle: ${title}\ncreated: ${now}\ntags: []\n---\n\n`
 
     await window.api.fs.writeFile(path, content)
-    openArtifactInEditor(path, title)
+    await openArtifactInEditorOnDemand(path, title)
   }, [files, vaultPath])
 
   const toggleSidebar = useCallback(() => {
@@ -934,7 +945,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
         const file = paletteFiles.find((entry) => entry.path === path)
-        openArtifactInEditor(path, file?.title, fileToId[path] ?? null)
+        await openArtifactInEditorOnDemand(path, file?.title, fileToId[path] ?? null)
         return
       }
 
@@ -964,6 +975,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           const exists = await window.api.fs.fileExists(claudeMdPath)
           if (!exists) {
             const vaultName = vaultPath.split('/').pop() ?? 'Vault'
+            const { generateClaudeMd } = await import('./engine/claude-md-template')
             await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
           }
           // Switch to canvas and spawn Claude terminal card
@@ -979,6 +991,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         }
         case 'cmd:new-canvas':
           if (vaultPath) {
+            const { defaultCanvasFilename, saveCanvas } = await import('./panels/canvas/canvas-io')
             const filename = defaultCanvasFilename([])
             const canvasPath = `${vaultPath}/${filename}`
             const data = createCanvasFile()
@@ -1203,7 +1216,7 @@ export default function App() {
 
   useEffect(() => {
     const handleBeforeUnload = (): void => {
-      flushPendingSave()
+      void flushPendingSave()
       flushVaultState()
     }
     window.addEventListener('beforeunload', handleBeforeUnload)

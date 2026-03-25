@@ -102,6 +102,20 @@ export class DocumentManager {
     await this.saveToDisk(doc)
   }
 
+  async saveContent(path: string, content: string): Promise<void> {
+    const doc = this.documents.get(path)
+    if (!doc) {
+      await this.fs.writeFile(path, content)
+      this._eventCallback?.({ type: 'saved', path })
+      return
+    }
+
+    doc.content = content
+    doc.version++
+    this.clearAutosave(doc)
+    await this.saveToDisk(doc)
+  }
+
   getContent(path: string): DocumentContentResult | null {
     const doc = this.documents.get(path)
     if (!doc) return null

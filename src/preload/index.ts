@@ -97,6 +97,8 @@ const api = {
     close: (path: string) => typedInvoke('doc:close', { path }),
     update: (path: string, content: string) => typedInvoke('doc:update', { path, content }),
     save: (path: string) => typedInvoke('doc:save', { path }),
+    saveContent: (path: string, content: string) =>
+      typedInvoke('doc:save-content', { path, content }),
     getContent: (path: string) => typedInvoke('doc:get-content', { path })
   },
   getFilePath: (file: File) => webUtils.getPathForFile(file),

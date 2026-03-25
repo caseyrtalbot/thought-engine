@@ -33,6 +33,10 @@ export function registerDocumentIpc(mainWindow: BrowserWindow): void {
     await documentManager.save(args.path)
   })
 
+  typedHandle('doc:save-content', async (args) => {
+    await documentManager.saveContent(args.path, args.content)
+  })
+
   typedHandle('doc:get-content', (args) => {
     return documentManager.getContent(args.path)
   })

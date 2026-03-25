@@ -78,6 +78,55 @@ function prepareSimData(graph: KnowledgeGraph) {
   return { simNodes, simEdges, nodeIndexMap }
 }
 
+function GraphEmptyState({
+  artifactCount,
+  rawFileCount
+}: {
+  readonly artifactCount: number
+  readonly rawFileCount: number
+}) {
+  const title =
+    artifactCount === 0
+      ? 'No notes are available to graph yet.'
+      : rawFileCount > 0
+        ? 'Graph is waiting on relationship data.'
+        : 'No relationships were found for this vault yet.'
+
+  const description =
+    artifactCount === 0
+      ? 'Open a vault with markdown notes to populate the graph view.'
+      : rawFileCount > 0
+        ? `Run /connect-vault in Claude to analyze the ${rawFileCount} file${rawFileCount === 1 ? '' : 's'} that still have no metadata or discovered connections.`
+        : 'Add links, tags, tensions, or generated metadata so the graph has nodes to render.'
+
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center p-6 pointer-events-none">
+      <div
+        className="max-w-md rounded-2xl px-5 py-4 text-center"
+        style={{
+          backgroundColor: 'rgba(14, 14, 18, 0.94)',
+          backdropFilter: 'blur(18px)',
+          border: '1px solid var(--color-border-default)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)'
+        }}
+      >
+        <div
+          className="text-[11px] uppercase tracking-[0.18em] mb-2"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          Graph View
+        </div>
+        <h2 className="text-base font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+          {title}
+        </h2>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function GraphPanel() {
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<GraphRenderer | null>(null)
@@ -91,6 +140,7 @@ export function GraphPanel() {
   const hasAutoFitRef = useRef(false)
 
   const graph = useVaultStore((s) => s.graph)
+  const artifactCount = useVaultStore((s) => s.artifacts.length)
   const rawFileCount = useVaultStore((s) => {
     const total = s.artifacts.length
     if (total === 0) return 0
@@ -367,6 +417,7 @@ export function GraphPanel() {
   // Subscribe to viewport for zoom indicator
   const viewportScale = useGraphViewStore((s) => s.viewport.scale)
   const zoomPercent = Math.round(viewportScale * 100)
+  const isGraphEmpty = graph.nodes.length === 0
 
   return (
     <div
@@ -374,8 +425,12 @@ export function GraphPanel() {
       className="relative w-full h-full overflow-hidden"
       style={{ background: 'var(--color-bg-base)' }}
     >
+      {isGraphEmpty && (
+        <GraphEmptyState artifactCount={artifactCount} rawFileCount={rawFileCount} />
+      )}
+
       {/* Hint: files need enrichment */}
-      {rawFileCount > 0 && (
+      {rawFileCount > 0 && !isGraphEmpty && (
         <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-14">
           <div
             className="text-center px-4 py-2 rounded-full"
@@ -436,41 +491,43 @@ export function GraphPanel() {
       )}
 
       {/* Bottom-left controls: Fit All + zoom indicator */}
-      <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
-        <button
-          onClick={handleFitAll}
-          className="text-xs px-3 py-1.5 rounded-full transition-all cursor-pointer"
-          style={{
-            backgroundColor: 'rgba(20, 20, 20, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid var(--color-border-default)',
-            color: 'var(--color-text-secondary)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-accent-default)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-border-default)'
-          }}
-          title="Fit all nodes in view"
-        >
-          Fit All
-        </button>
-        <span
-          className="text-xs tabular-nums font-mono px-2 py-1.5 rounded-full"
-          style={{
-            backgroundColor: 'rgba(20, 20, 20, 0.85)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid var(--color-border-default)',
-            color: 'var(--color-text-muted)',
-            fontSize: 10,
-            minWidth: 44,
-            textAlign: 'center'
-          }}
-        >
-          {zoomPercent}%
-        </span>
-      </div>
+      {!isGraphEmpty && (
+        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+          <button
+            onClick={handleFitAll}
+            className="text-xs px-3 py-1.5 rounded-full transition-all cursor-pointer"
+            style={{
+              backgroundColor: 'rgba(20, 20, 20, 0.85)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid var(--color-border-default)',
+              color: 'var(--color-text-secondary)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-accent-default)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--color-border-default)'
+            }}
+            title="Fit all nodes in view"
+          >
+            Fit All
+          </button>
+          <span
+            className="text-xs tabular-nums font-mono px-2 py-1.5 rounded-full"
+            style={{
+              backgroundColor: 'rgba(20, 20, 20, 0.85)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid var(--color-border-default)',
+              color: 'var(--color-text-muted)',
+              fontSize: 10,
+              minWidth: 44,
+              textAlign: 'center'
+            }}
+          >
+            {zoomPercent}%
+          </span>
+        </div>
+      )}
     </div>
   )
 }

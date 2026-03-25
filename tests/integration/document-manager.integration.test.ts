@@ -128,6 +128,21 @@ describe('DocumentManager', () => {
     })
   })
 
+  describe('saveContent', () => {
+    it('persists content and emits saved when the document is already closed', async () => {
+      const events: DocEvent[] = []
+      dm.onEvent((e) => events.push(e))
+
+      await dm.open('/notes/a.md')
+      await dm.close('/notes/a.md')
+
+      await dm.saveContent('/notes/a.md', 'renderer flush')
+
+      expect(mockFs.writeFile).toHaveBeenCalledWith('/notes/a.md', 'renderer flush')
+      expect(events).toContainEqual({ type: 'saved', path: '/notes/a.md' })
+    })
+  })
+
   describe('conflict detection', () => {
     it('fires conflict event when file changed externally while dirty', async () => {
       const events: DocEvent[] = []

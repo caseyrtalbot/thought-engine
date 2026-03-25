@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { isSystemArtifactPath } from '@shared/system-artifacts'
+import { logError } from '../utils/error-logger'
 
 type EditorMode = 'rich' | 'source'
 
@@ -64,31 +65,43 @@ function pushHistory(
   return { stack: next, index: next.length - 1 }
 }
 
+interface DirtyEditorState {
+  isDirty: boolean
+  activeNotePath: string | null
+  content: string
+}
+
+async function persistDirtyDocument(
+  state: DirtyEditorState,
+  options: { readonly markSavedOnSuccess: boolean }
+): Promise<void> {
+  if (!state.isDirty || !state.activeNotePath) return
+  const path = state.activeNotePath
+
+  try {
+    await window.api.document.saveContent(path, state.content)
+    if (isSystemArtifactPath(path)) {
+      const { syncSystemArtifactFromDisk } =
+        await import('../system-artifacts/system-artifact-runtime')
+      await syncSystemArtifactFromDisk(path)
+    }
+    if (options.markSavedOnSuccess && useEditorStore.getState().activeNotePath === path) {
+      useEditorStore.getState().markSaved()
+    }
+  } catch (err) {
+    logError('editor-save', err)
+    if (useEditorStore.getState().activeNotePath === path) {
+      useEditorStore.setState({ isDirty: true })
+    }
+  }
+}
+
 /**
  * Save current content if dirty via DocumentManager. Fire-and-forget.
  * Used internally by store actions before switching away from the active file.
  */
-function flushIfDirty(state: {
-  isDirty: boolean
-  activeNotePath: string | null
-  content: string
-}): void {
-  if (!state.isDirty || !state.activeNotePath || !state.content) return
-  const path = state.activeNotePath
-  // Push latest content to DocumentManager and trigger save
-  window.api.document
-    .update(path, state.content)
-    .then(() => window.api.document.save(path))
-    .then(async () => {
-      if (isSystemArtifactPath(path)) {
-        const { syncSystemArtifactFromDisk } =
-          await import('../system-artifacts/system-artifact-runtime')
-        await syncSystemArtifactFromDisk(path)
-      }
-    })
-    .catch(() => {
-      useEditorStore.setState({ isDirty: true })
-    })
+function flushIfDirty(state: DirtyEditorState): void {
+  void persistDirtyDocument(state, { markSavedOnSuccess: false })
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -221,23 +234,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   }
 }))
 
-/** Immediately save current content if dirty via DocumentManager. Fire-and-forget. */
-export function flushPendingSave(): void {
+/** Immediately save current content if dirty via DocumentManager. */
+export function flushPendingSave(): Promise<void> {
   const state = useEditorStore.getState()
-  if (!state.isDirty || !state.activeNotePath || !state.content) return
-  const path = state.activeNotePath
-  window.api.document
-    .update(path, state.content)
-    .then(() => window.api.document.save(path))
-    .then(async () => {
-      if (isSystemArtifactPath(path)) {
-        const { syncSystemArtifactFromDisk } =
-          await import('../system-artifacts/system-artifact-runtime')
-        await syncSystemArtifactFromDisk(path)
-      }
-      useEditorStore.getState().markSaved()
-    })
-    .catch(() => {
-      useEditorStore.setState({ isDirty: true })
-    })
+  return persistDirtyDocument(state, { markSavedOnSuccess: true })
 }

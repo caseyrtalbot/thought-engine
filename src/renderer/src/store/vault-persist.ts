@@ -2,7 +2,7 @@ import type { VaultState, UiPersistedState } from '@shared/types'
 import { notifyError } from '../utils/error-logger'
 import { flushCanvasSave } from './canvas-autosave'
 import { useVaultStore } from './vault-store'
-import { useEditorStore } from './editor-store'
+import { flushPendingSave, useEditorStore } from './editor-store'
 import { useViewStore } from './view-store'
 
 const DEFAULT_UI_STATE: UiPersistedState = {
@@ -118,7 +118,7 @@ export function registerQuitHandler(): () => void {
       clearTimeout(persistTimer)
       persistTimer = null
     }
-    await Promise.all([writePersist(), flushCanvasSave()])
+    await Promise.all([writePersist(), flushCanvasSave(), flushPendingSave()])
     window.api.lifecycle.quitReady()
   })
 }

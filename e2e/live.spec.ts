@@ -55,6 +55,10 @@ test.describe('Live App Health', () => {
 })
 
 test.describe('Live UI State', () => {
+  test('activity bar exposes a selected view', async () => {
+    await expect(page.locator('.activity-btn[aria-pressed="true"]')).toHaveCount(1)
+  })
+
   test('sidebar is visible', async () => {
     const fileTree = page.locator('[data-testid="file-tree"]')
     const isVisible = await fileTree.isVisible()
@@ -64,19 +68,29 @@ test.describe('Live UI State', () => {
 
   test('app has rendered a view', async () => {
     // The app can be in several states: canvas, editor (with or without file),
-    // graph, welcome screen, or skills panel. Verify at least one rendered.
-    const hasContent = await page.evaluate(() => {
-      const body = document.body
-      // A rendered app has meaningful DOM content beyond just empty divs
-      return body.querySelectorAll('button, p, h1, h2, canvas, .tiptap, .cm-editor').length > 0
-    })
-    expect(hasContent).toBe(true)
+    // graph, welcome screen, or skills panel. Verify at least one meaningful
+    // surface is present instead of just counting generic DOM nodes.
+    const hasRenderableSurface = await page.evaluate(() =>
+      Boolean(
+        document.querySelector(
+          '[data-canvas-surface], .tiptap, .cm-editor, button[title="Graph settings"], h1, [data-testid="file-tree"]'
+        )
+      )
+    )
+    expect(hasRenderableSurface).toBe(true)
   })
 
   test('no broken images or missing assets', async () => {
     const brokenImages = await page.evaluate(() => {
       const imgs = Array.from(document.querySelectorAll('img'))
-      return imgs.filter((img) => !img.complete || img.naturalWidth === 0).map((img) => img.src)
+      return imgs
+        .filter((img) => {
+          if (img.classList.contains('ProseMirror-separator')) return false
+          const src = img.getAttribute('src')?.trim()
+          if (!src) return false
+          return !img.complete || img.naturalWidth === 0
+        })
+        .map((img) => img.src)
     })
     expect(brokenImages).toEqual([])
   })
