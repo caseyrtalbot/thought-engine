@@ -27,7 +27,8 @@ function baseName(filePath: string | undefined): string {
 
 function buildMilestone(
   category: MilestoneCategory,
-  events: readonly SessionToolEvent[]
+  events: readonly SessionToolEvent[],
+  sessionId: string
 ): SessionMilestone {
   const first = events[0]
   const timestamp = first.timestamp
@@ -64,6 +65,7 @@ function buildMilestone(
 
   return {
     id: randomUUID(),
+    sessionId,
     type: category,
     timestamp,
     summary,
@@ -90,7 +92,10 @@ function shouldBreakGroup(
   return false
 }
 
-export function groupEventsIntoMilestones(events: readonly SessionToolEvent[]): SessionMilestone[] {
+export function groupEventsIntoMilestones(
+  events: readonly SessionToolEvent[],
+  sessionId: string
+): SessionMilestone[] {
   if (events.length === 0) return []
 
   const milestones: SessionMilestone[] = []
@@ -103,10 +108,10 @@ export function groupEventsIntoMilestones(events: readonly SessionToolEvent[]): 
     // Bash and Write always get their own milestone: flush current group, emit single-event milestone
     if (category === 'command' || category === 'create') {
       if (currentGroup.length > 0) {
-        milestones.push(buildMilestone(currentCategory, currentGroup))
+        milestones.push(buildMilestone(currentCategory, currentGroup, sessionId))
         currentGroup = []
       }
-      milestones.push(buildMilestone(category, [event]))
+      milestones.push(buildMilestone(category, [event], sessionId))
       currentCategory = category
       continue
     }
@@ -118,7 +123,7 @@ export function groupEventsIntoMilestones(events: readonly SessionToolEvent[]): 
 
     if (categoryChanged || breakWithinCategory) {
       if (currentGroup.length > 0) {
-        milestones.push(buildMilestone(currentCategory, currentGroup))
+        milestones.push(buildMilestone(currentCategory, currentGroup, sessionId))
       }
       currentGroup = []
       currentCategory = category
@@ -128,7 +133,7 @@ export function groupEventsIntoMilestones(events: readonly SessionToolEvent[]): 
   }
 
   if (currentGroup.length > 0) {
-    milestones.push(buildMilestone(currentCategory, currentGroup))
+    milestones.push(buildMilestone(currentCategory, currentGroup, sessionId))
   }
 
   return milestones

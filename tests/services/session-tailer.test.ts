@@ -79,20 +79,27 @@ describe('SessionTailer', () => {
 
       await tailer.start(projectPath)
 
-      expect(mockTypedSend).toHaveBeenCalledWith(mockWindow, 'session:detected', { active: true })
+      expect(mockTypedSend).toHaveBeenCalledWith(mockWindow, 'session:detected', {
+        active: true,
+        sessionId: 'session-1'
+      })
     })
 
-    it('seeks to end of file and does not emit existing content', async () => {
+    it('seeks to end of file and does not emit existing content as tool milestones', async () => {
       const line = makeAssistantJsonl('Read', { file_path: '/src/index.ts' })
       await writeFile(join(claudeProjectDir, 'session-1.jsonl'), line + '\n')
 
       await tailer.start(projectPath)
 
-      // Only session:detected should have been emitted, not a milestone
+      // A session-switched milestone is emitted, but no tool milestones for existing content
       const milestoneCalls = mockTypedSend.mock.calls.filter(
         (call: unknown[]) => call[1] === 'session:milestone'
       )
-      expect(milestoneCalls).toHaveLength(0)
+      const toolMilestones = milestoneCalls.filter(
+        (call: unknown[]) =>
+          (call as [unknown, unknown, { type: string }])[2].type !== 'session-switched'
+      )
+      expect(toolMilestones).toHaveLength(0)
     })
   })
 
@@ -207,8 +214,8 @@ describe('SessionTailer', () => {
     })
   })
 
-  describe('session switching', () => {
-    it('picks the most recently modified session file', async () => {
+  describe('multi-session tracking', () => {
+    it('tracks all session files, not just the most recent', async () => {
       const line1 = makeAssistantJsonl('Read', { file_path: '/src/old.ts' })
       const line2 = makeAssistantJsonl('Read', { file_path: '/src/new.ts' })
 
@@ -219,8 +226,17 @@ describe('SessionTailer', () => {
 
       await tailer.start(projectPath)
 
-      // Should have detected the session
-      expect(mockTypedSend).toHaveBeenCalledWith(mockWindow, 'session:detected', { active: true })
+      // Should have detected both sessions
+      const detectedCalls = mockTypedSend.mock.calls.filter(
+        (call: unknown[]) => call[1] === 'session:detected'
+      )
+      expect(detectedCalls).toHaveLength(2)
+
+      const sessionIds = detectedCalls.map(
+        (call: unknown[]) => (call as [unknown, unknown, { sessionId: string }])[2].sessionId
+      )
+      expect(sessionIds).toContain('session-old')
+      expect(sessionIds).toContain('session-new')
     })
   })
 

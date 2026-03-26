@@ -97,10 +97,18 @@ export interface GraphNode {
   y?: number
 }
 
+export interface EdgeProvenance {
+  source: 'frontmatter' | 'wikilink' | 'co-occurrence' | 'agent' | 'manual'
+  createdBy?: string
+  confidence?: number
+  createdAt?: string
+}
+
 export interface GraphEdge {
   source: string
   target: string
   kind: RelationshipKind
+  provenance?: EdgeProvenance
 }
 
 export interface KnowledgeGraph {

@@ -1,12 +1,25 @@
 import { dialog, shell } from 'electron'
 import { FileService } from '../services/file-service'
 import { createVaultIgnoreFilter } from '../services/vault-watcher'
+import { PathGuard } from '../services/path-guard'
 import { teConfigPath, teStatePath, assertWithinVault } from '../utils/paths'
 import { TE_DIR } from '@shared/constants'
 import { typedHandle } from '../typed-ipc'
 import type { VaultConfig, VaultState } from '../../shared/types'
 
 const fileService = new FileService()
+
+/**
+ * Active vault PathGuard instance. Set when vault:init is called
+ * (the first lifecycle event for any vault). Used by vault:read-file
+ * which doesn't receive vaultPath in its args.
+ */
+let activePathGuard: PathGuard | null = null
+
+/** Update the active PathGuard when the vault root changes. */
+function setActiveVault(vaultPath: string): void {
+  activePathGuard = new PathGuard(vaultPath)
+}
 
 export function registerFilesystemIpc(): void {
   typedHandle('fs:read-file', async (args) => {
@@ -88,6 +101,7 @@ export function registerFilesystemIpc(): void {
   // --- Vault data ---
 
   typedHandle('vault:init', async (args) => {
+    setActiveVault(args.vaultPath)
     await fileService.initVault(args.vaultPath)
   })
 
@@ -136,6 +150,9 @@ export function registerFilesystemIpc(): void {
   })
 
   typedHandle('vault:read-file', async (args) => {
+    if (activePathGuard) {
+      activePathGuard.assertWithinVault(args.filePath)
+    }
     const { readFile } = await import('node:fs/promises')
     return readFile(args.filePath, 'utf-8')
   })

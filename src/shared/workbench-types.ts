@@ -21,6 +21,8 @@ export interface SessionToolEvent {
 
 export interface SessionMilestone {
   readonly id: string
+  /** Identifies which Claude session produced this milestone. Always set by SessionTailer. */
+  readonly sessionId?: string
   readonly type: 'edit' | 'create' | 'command' | 'research' | 'error' | 'session-switched'
   readonly timestamp: number
   readonly summary: string
@@ -30,4 +32,5 @@ export interface SessionMilestone {
 
 export interface SessionDetectedEvent {
   readonly active: boolean
+  readonly sessionId: string
 }

@@ -37,7 +37,8 @@ export const VALID_CONVERSIONS: Record<CanvasNodeType, readonly CanvasNodeType[]
   pdf: ['text', 'terminal'],
   'project-file': ['text'],
   'system-artifact': ['markdown', 'text'],
-  'file-view': ['text']
+  'file-view': ['text'],
+  'agent-session': []
 } as const
 
 function ConvertMenu({

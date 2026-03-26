@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron'
 import { watch, type FSWatcher } from 'chokidar'
 import { readdir, stat, open } from 'fs/promises'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { homedir } from 'os'
 import { randomUUID } from 'crypto'
 import { toDirKey, extractToolEvents } from './session-utils'
@@ -11,15 +11,25 @@ import type { SessionMilestone } from '@shared/workbench-types'
 
 const SESSION_CHECK_INTERVAL_MS = 5000
 
+/** Derive a stable sessionId from a .jsonl filename (matches ProjectSessionParser). */
+export function sessionIdFromFile(filePath: string): string {
+  return basename(filePath, '.jsonl')
+}
+
+interface TailedSession {
+  readonly sessionId: string
+  readonly filePath: string
+  watcher: FSWatcher
+  fileOffset: number
+  lineBuffer: string
+}
+
 export class SessionTailer {
   private readonly mainWindow: BrowserWindow
-  private watcher: FSWatcher | null = null
-  private currentFile: string | null = null
-  private fileOffset = 0
-  private lineBuffer = ''
+  private dirWatcher: FSWatcher | null = null
+  private readonly sessions = new Map<string, TailedSession>()
   private checkInterval: ReturnType<typeof setInterval> | null = null
   private claudeDir = ''
-  private hasEmittedDetected = false
 
   constructor(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow
@@ -31,25 +41,18 @@ export class SessionTailer {
     const dirKey = toDirKey(projectPath)
     this.claudeDir = join(homedir(), '.claude', 'projects', dirKey)
 
-    const file = await this.findMostRecentSession()
-    if (!file) return
+    // Discover existing .jsonl files and start tailing all of them
+    const files = await this.listSessionFiles()
+    for (const filePath of files) {
+      await this.startTailingSession(filePath)
+    }
 
-    await this.tailFile(file)
+    // Watch the directory for new/removed .jsonl files
+    this.startDirectoryWatch()
 
+    // Periodic scan as a fallback (chokidar may miss events in some cases)
     this.checkInterval = setInterval(async () => {
-      const newest = await this.findMostRecentSession()
-      if (newest && newest !== this.currentFile) {
-        await this.tailFile(newest)
-        const milestone: SessionMilestone = {
-          id: randomUUID(),
-          type: 'session-switched',
-          timestamp: Date.now(),
-          summary: 'New session detected',
-          files: [],
-          events: []
-        }
-        typedSend(this.mainWindow, 'session:milestone', milestone)
-      }
+      await this.reconcileSessions()
     }, SESSION_CHECK_INTERVAL_MS)
   }
 
@@ -58,63 +61,98 @@ export class SessionTailer {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
-    if (this.watcher) {
-      await this.watcher.close()
-      this.watcher = null
+
+    if (this.dirWatcher) {
+      await this.dirWatcher.close()
+      this.dirWatcher = null
     }
-    this.currentFile = null
-    this.fileOffset = 0
-    this.lineBuffer = ''
-    this.hasEmittedDetected = false
+
+    // Close all per-session watchers
+    const closePromises = Array.from(this.sessions.values()).map(async (session) => {
+      await session.watcher.close()
+    })
+    await Promise.all(closePromises)
+    this.sessions.clear()
+    this.claudeDir = ''
   }
 
-  private async findMostRecentSession(): Promise<string | null> {
+  /** Exposed for testing: returns the set of currently tracked session IDs. */
+  getTrackedSessionIds(): ReadonlySet<string> {
+    return new Set(this.sessions.keys())
+  }
+
+  private async listSessionFiles(): Promise<string[]> {
     try {
       const entries = await readdir(this.claudeDir)
-      const jsonlFiles = entries.filter((f) => f.endsWith('.jsonl'))
-      if (jsonlFiles.length === 0) return null
-
-      let newest: { file: string; mtime: number } | null = null
-      for (const f of jsonlFiles) {
-        const fullPath = join(this.claudeDir, f)
-        try {
-          const s = await stat(fullPath)
-          if (!newest || s.mtimeMs > newest.mtime) {
-            newest = { file: fullPath, mtime: s.mtimeMs }
-          }
-        } catch {
-          /* stat error, skip */
-        }
-      }
-      return newest?.file ?? null
+      return entries.filter((f) => f.endsWith('.jsonl')).map((f) => join(this.claudeDir, f))
     } catch {
-      return null
+      return []
     }
   }
 
-  private async tailFile(filePath: string): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close()
-      this.watcher = null
+  private startDirectoryWatch(): void {
+    try {
+      this.dirWatcher = watch(this.claudeDir, {
+        persistent: true,
+        ignoreInitial: true,
+        depth: 0,
+        usePolling: true,
+        interval: 500
+      })
+
+      this.dirWatcher.on('add', (filePath: string) => {
+        if (typeof filePath === 'string' && filePath.endsWith('.jsonl')) {
+          void this.startTailingSession(filePath)
+        }
+      })
+
+      this.dirWatcher.on('unlink', (filePath: string) => {
+        if (typeof filePath === 'string' && filePath.endsWith('.jsonl')) {
+          void this.stopTailingSession(filePath)
+        }
+      })
+    } catch {
+      // Directory may not exist yet; reconcile loop will pick up new files
+    }
+  }
+
+  /** Reconcile tracked sessions with what is actually on disk. */
+  private async reconcileSessions(): Promise<void> {
+    const currentFiles = await this.listSessionFiles()
+    const currentPaths = new Set(currentFiles)
+
+    // Start tailing any new files
+    for (const filePath of currentFiles) {
+      const sid = sessionIdFromFile(filePath)
+      if (!this.sessions.has(sid)) {
+        await this.startTailingSession(filePath)
+      }
     }
 
-    this.currentFile = filePath
-    this.lineBuffer = ''
+    // Stop tailing removed files
+    for (const [_sid, session] of this.sessions) {
+      if (!currentPaths.has(session.filePath)) {
+        await this.stopTailingSession(session.filePath)
+      }
+    }
+  }
 
-    // Seek to end so existing content is not processed
+  private async startTailingSession(filePath: string): Promise<void> {
+    const sessionId = sessionIdFromFile(filePath)
+
+    // Already tracking this session
+    if (this.sessions.has(sessionId)) return
+
+    // Seek to end so existing content is not replayed
+    let fileOffset = 0
     try {
       const s = await stat(filePath)
-      this.fileOffset = s.size
+      fileOffset = s.size
     } catch {
-      this.fileOffset = 0
+      fileOffset = 0
     }
 
-    if (!this.hasEmittedDetected) {
-      this.hasEmittedDetected = true
-      typedSend(this.mainWindow, 'session:detected', { active: true })
-    }
-
-    this.watcher = watch(filePath, {
+    const sessionWatcher = watch(filePath, {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 25 },
@@ -122,35 +160,78 @@ export class SessionTailer {
       interval: 100
     })
 
-    this.watcher.on('change', () => {
-      void this.readNewContent()
+    const session: TailedSession = {
+      sessionId,
+      filePath,
+      watcher: sessionWatcher,
+      fileOffset,
+      lineBuffer: ''
+    }
+
+    this.sessions.set(sessionId, session)
+
+    sessionWatcher.on('change', () => {
+      void this.readNewContent(sessionId)
+    })
+
+    // Emit session detected event
+    typedSend(this.mainWindow, 'session:detected', {
+      active: true,
+      sessionId
+    })
+
+    // Emit a session-switched milestone so the renderer knows about the new session
+    const milestone: SessionMilestone = {
+      id: randomUUID(),
+      sessionId,
+      type: 'session-switched',
+      timestamp: Date.now(),
+      summary: `Session started: ${sessionId.slice(0, 8)}`,
+      files: [],
+      events: []
+    }
+    typedSend(this.mainWindow, 'session:milestone', milestone)
+  }
+
+  private async stopTailingSession(filePath: string): Promise<void> {
+    const sessionId = sessionIdFromFile(filePath)
+    const session = this.sessions.get(sessionId)
+    if (!session) return
+
+    await session.watcher.close()
+    this.sessions.delete(sessionId)
+
+    typedSend(this.mainWindow, 'session:detected', {
+      active: false,
+      sessionId
     })
   }
 
-  private async readNewContent(): Promise<void> {
-    if (!this.currentFile) return
+  private async readNewContent(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId)
+    if (!session) return
 
     try {
-      const fh = await open(this.currentFile, 'r')
+      const fh = await open(session.filePath, 'r')
       try {
         const s = await fh.stat()
-        if (s.size <= this.fileOffset) return
+        if (s.size <= session.fileOffset) return
 
-        const bytesToRead = s.size - this.fileOffset
+        const bytesToRead = s.size - session.fileOffset
         const buffer = Buffer.alloc(bytesToRead)
-        await fh.read(buffer, 0, bytesToRead, this.fileOffset)
-        this.fileOffset = s.size
+        await fh.read(buffer, 0, bytesToRead, session.fileOffset)
+        session.fileOffset = s.size
 
-        const text = this.lineBuffer + buffer.toString('utf-8')
+        const text = session.lineBuffer + buffer.toString('utf-8')
         const lines = text.split('\n')
 
         // Last element is either empty (ended with \n) or incomplete line
-        this.lineBuffer = lines.pop() ?? ''
+        session.lineBuffer = lines.pop() ?? ''
 
         const allEvents = lines.filter((l) => l.trim()).flatMap((l) => extractToolEvents(l))
 
         if (allEvents.length > 0) {
-          const milestones = groupEventsIntoMilestones(allEvents)
+          const milestones = groupEventsIntoMilestones(allEvents, sessionId)
           for (const milestone of milestones) {
             typedSend(this.mainWindow, 'session:milestone', milestone)
           }

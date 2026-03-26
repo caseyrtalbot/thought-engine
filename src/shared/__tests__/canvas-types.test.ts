@@ -16,7 +16,9 @@ const ALL_TYPES: CanvasNodeType[] = [
   'image',
   'pdf',
   'project-file',
-  'system-artifact'
+  'system-artifact',
+  'file-view',
+  'agent-session'
 ]
 
 describe('canvas-types registration completeness', () => {
@@ -55,6 +57,17 @@ describe('canvas-types registration completeness', () => {
       fileRefCount: 0,
       connections: [],
       tensionRefs: []
+    })
+  })
+
+  it('agent-session default metadata has expected shape', () => {
+    const meta = getDefaultMetadata('agent-session')
+    expect(meta).toMatchObject({
+      sessionId: '',
+      status: 'idle',
+      filesTouched: [],
+      startedAt: 0,
+      lastActivity: 0
     })
   })
 })

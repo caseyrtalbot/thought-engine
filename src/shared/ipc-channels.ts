@@ -126,6 +126,12 @@ export interface IpcChannels {
   // --- Config ---
   'config:read': { request: { scope: string; key: string }; response: unknown }
   'config:write': { request: { scope: string; key: string; value: unknown }; response: void }
+
+  // --- MCP ---
+  'mcp:status': {
+    request: void
+    response: { running: boolean; toolCount: number }
+  }
 }
 
 export interface IpcEvents {

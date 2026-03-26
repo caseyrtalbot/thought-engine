@@ -11,6 +11,7 @@ import {
 import { logError } from './utils/error-logger'
 import { withTimeout } from './utils/ipc-timeout'
 import { perfMark, perfMeasure } from './utils/perf-marks'
+import { chunkArray, readChunk, yieldToEventLoop } from './utils/chunk-loader'
 import { useVaultWorker } from './engine/useVaultWorker'
 import type { WorkerResult } from './engine/types'
 import { ThemeProvider } from './design/Theme'
@@ -1194,17 +1195,28 @@ export default function App() {
       const mdPaths = [...files, ...systemFiles]
         .filter((file) => file.path.endsWith('.md'))
         .map((file) => file.path)
+
+      // Progressive hydration: read files in chunks so the UI becomes
+      // interactive after the first batch instead of blocking on all files.
       const limit = pLimit(12)
-      const filesWithContent = await Promise.all(
-        mdPaths.map((p) =>
-          limit(async () => ({
-            path: p,
-            content: await withTimeout(window.api.fs.readFile(p), 5000, `readFile ${p}`)
-          }))
-        )
-      )
-      loadFiles(filesWithContent)
+      const reader = (p: string) => withTimeout(window.api.fs.readFile(p), 5000, `readFile ${p}`)
+      const chunks = chunkArray(mdPaths)
+
+      // First chunk: load synchronously so the UI has content to show.
+      const accumulated = await readChunk(chunks[0] ?? [], reader, limit)
+      loadFiles(accumulated)
       perfMeasure('vault-load', 'vault-load-start')
+
+      // Remaining chunks: load in background, yielding between each so the
+      // event loop can process user interactions and paint frames.
+      // Each call to loadFiles sends all accumulated files because the worker
+      // clears its state on every 'load' message.
+      for (let i = 1; i < chunks.length; i++) {
+        await yieldToEventLoop(16) // ~1 frame of breathing room
+        const batch = await readChunk(chunks[i], reader, limit)
+        accumulated.push(...batch)
+        loadFiles(accumulated)
+      }
     },
     [loadVault, loadFiles]
   )
