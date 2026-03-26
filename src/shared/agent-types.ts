@@ -33,6 +33,44 @@ export interface AgentSessionCardData {
   readonly lastActivity: number
 }
 
+// ---------------------------------------------------------------------------
+// Sidecar monitoring types
+// ---------------------------------------------------------------------------
+
+/** Optional data written by an agent process to .te/agents/<id>.json */
+export interface AgentSidecar {
+  readonly filesTouched: readonly string[]
+  readonly currentTask?: string
+  /** e.g. "claude-code", "codex", "gemini" */
+  readonly agentType?: string
+}
+
+/** Snapshot of one agent session as seen by TmuxMonitor. */
+export interface AgentSidecarState {
+  readonly sessionId: string
+  /** e.g. "te-abc123" */
+  readonly tmuxName: string
+  readonly status: 'alive' | 'idle' | 'exited'
+  /** tmux pane PID */
+  readonly pid?: number
+  /** from tmux pane_current_command */
+  readonly currentCommand?: string
+  /** ISO from session metadata */
+  readonly startedAt?: string
+  /** ISO, updated on status change */
+  readonly lastActivity?: string
+  /** from session metadata */
+  readonly label?: string
+  /** from session metadata */
+  readonly cwd?: string
+  /** Sidecar-provided (only if .te/agents/<id>.json exists) */
+  readonly sidecar?: AgentSidecar
+}
+
+// ---------------------------------------------------------------------------
+// Audit types
+// ---------------------------------------------------------------------------
+
 /** A single audit log entry for security-relevant operations. */
 export interface AuditEntry {
   /** ISO 8601 timestamp */

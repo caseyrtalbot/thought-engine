@@ -11,7 +11,10 @@ import { registerConfigIpc } from './ipc/config'
 import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/workbench'
 import { registerDocumentIpc, getDocumentManager } from './ipc/documents'
 import { registerMcpIpc } from './ipc/mcp'
+import { registerAgentIpc } from './ipc/agents'
 import { McpLifecycle } from './services/mcp-lifecycle'
+import { TmuxMonitor } from './services/tmux-monitor'
+import { initVaultIndex } from './services/vault-indexing'
 import { typedHandle, typedSend } from './typed-ipc'
 
 const PROD_CSP = [
@@ -51,6 +54,7 @@ if (!process.env.LANG) {
 }
 
 let mainWindow: BrowserWindow | null = null
+let agentMonitor: TmuxMonitor | null = null
 const mcpLifecycle = new McpLifecycle()
 
 function createWindow(): BrowserWindow {
@@ -136,9 +140,18 @@ app.whenReady().then(() => {
   registerWindowIpc()
   registerFilesystemIpc()
 
-  // Wire MCP server creation to vault initialization
-  onVaultReady((vaultPath) => {
-    mcpLifecycle.createForVault(vaultPath)
+  // Wire MCP server creation and agent monitoring to vault initialization.
+  // Reads all .md files, builds VaultIndex + SearchEngine, then creates MCP
+  // server with populated deps so search and graph queries return real data.
+  onVaultReady(async (vaultPath) => {
+    const deps = await initVaultIndex(vaultPath)
+    mcpLifecycle.createForVault(vaultPath, deps)
+
+    // Start agent observation (tmux session monitoring)
+    if (mainWindow) {
+      agentMonitor = TmuxMonitor.tryCreate(vaultPath)
+      registerAgentIpc(mainWindow, agentMonitor)
+    }
   })
 
   const window = createWindow()
@@ -186,6 +199,7 @@ app.on('before-quit', (event) => {
     await getDocumentManager().flushAll()
 
     // Step 3: Clean up services
+    agentMonitor?.stop()
     await mcpLifecycle.stop()
     getShellService().shutdown()
     getProjectWatcher().stop()

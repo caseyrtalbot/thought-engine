@@ -171,4 +171,72 @@ describe('AgentSessionCard', () => {
     // Should show some formatted time
     expect(lastActivity.textContent).toBeTruthy()
   })
+
+  it('shows cwd when available', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ cwd: '/home/user/my-project' })
+    render(<AgentSessionCard node={node} />)
+
+    const cwdEl = screen.getByTestId('agent-cwd')
+    expect(cwdEl.textContent).toContain('my-project')
+  })
+
+  it('shows currentCommand when available', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ currentCommand: 'claude' })
+    render(<AgentSessionCard node={node} />)
+
+    const cmdEl = screen.getByTestId('agent-command')
+    expect(cmdEl.textContent).toContain('claude')
+  })
+
+  it('does not render cwd section when cwd is absent', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ cwd: undefined })
+    render(<AgentSessionCard node={node} />)
+
+    expect(screen.queryByTestId('agent-cwd')).toBeNull()
+  })
+
+  it('does not render command section when currentCommand is absent', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ currentCommand: undefined })
+    render(<AgentSessionCard node={node} />)
+
+    expect(screen.queryByTestId('agent-command')).toBeNull()
+  })
+
+  it('shows sidecar currentTask when available', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ currentTask: 'Implementing TDD tests' })
+    render(<AgentSessionCard node={node} />)
+
+    const taskEl = screen.getByTestId('agent-task')
+    expect(taskEl.textContent).toContain('Implementing TDD tests')
+  })
+
+  it('shows sidecar agentType when available', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ agentType: 'claude-code' })
+    render(<AgentSessionCard node={node} />)
+
+    const typeEl = screen.getByTestId('agent-type')
+    expect(typeEl.textContent).toContain('claude-code')
+  })
+
+  it('does not render task section when currentTask is absent', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ currentTask: undefined })
+    render(<AgentSessionCard node={node} />)
+
+    expect(screen.queryByTestId('agent-task')).toBeNull()
+  })
+
+  it('uses label as card title when available', async () => {
+    const { AgentSessionCard } = await import('../AgentSessionCard')
+    const node = makeAgentSessionNode({ label: 'refactor-auth' })
+    render(<AgentSessionCard node={node} />)
+
+    expect(screen.getByTestId('card-title').textContent).toBe('refactor-auth')
+  })
 })

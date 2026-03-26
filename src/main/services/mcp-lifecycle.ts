@@ -11,7 +11,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createMcpServer } from './mcp-server'
 import { PathGuard } from './path-guard'
 import { AuditLogger } from './audit-logger'
-import { VaultQueryFacade } from './vault-query-facade'
+import { VaultQueryFacade, type VaultQueryDeps } from './vault-query-facade'
 import { ElectronHitlGate, WriteRateLimiter } from './hitl-gate'
 import type { McpStatusProvider } from '../ipc/mcp'
 
@@ -33,10 +33,10 @@ export class McpLifecycle implements McpStatusProvider {
    * Does not start stdio transport (that requires an external connection).
    * Audit logs are stored outside the vault at app.getPath('userData')/audit.
    */
-  createForVault(vaultRoot: string): McpServer {
+  createForVault(vaultRoot: string, deps?: VaultQueryDeps): McpServer {
     const guard = new PathGuard(vaultRoot)
     const logger = new AuditLogger(join(app.getPath('userData'), 'audit'))
-    const facade = new VaultQueryFacade(guard, logger, vaultRoot)
+    const facade = new VaultQueryFacade(guard, logger, vaultRoot, deps)
     const gate = new ElectronHitlGate()
     const rateLimiter = new WriteRateLimiter()
 

@@ -9,6 +9,8 @@ import type {
   SessionDetectedEvent
 } from '../shared/workbench-types'
 
+import type { AgentSidecarState } from '../shared/agent-types'
+
 const api = {
   window: {
     minimize: () => typedInvoke('window:minimize'),
@@ -92,6 +94,9 @@ const api = {
     discover: () => typedInvoke('terminal:discover'),
     tmuxAvailable: () => typedInvoke('terminal:tmux-available')
   },
+  agent: {
+    getStates: () => typedInvoke('agent:get-states')
+  },
   document: {
     open: (path: string) => typedInvoke('doc:open', { path }),
     close: (path: string) => typedInvoke('doc:close', { path }),
@@ -124,6 +129,8 @@ const api = {
     docConflict: (callback: (data: { path: string; diskContent: string }) => void) =>
       typedOn('doc:conflict', callback),
     docSaved: (callback: (data: { path: string }) => void) => typedOn('doc:saved', callback),
+    agentStatesChanged: (callback: (data: { states: readonly AgentSidecarState[] }) => void) =>
+      typedOn('agent:states-changed', callback),
     appWillQuit: (callback: (data: Record<string, never>) => void) =>
       typedOn('app:will-quit', callback)
   },

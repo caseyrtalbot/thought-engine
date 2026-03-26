@@ -1,0 +1,160 @@
+/**
+ * Tests for buildVaultDeps: creates a VaultIndex + SearchEngine
+ * from a list of file entries (path + content).
+ *
+ * This is the main-process indexing pipeline that feeds MCP queries.
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { buildVaultDeps, initVaultIndex } from '../vault-indexing'
+
+const HELLO_MD = [
+  '---',
+  'id: hello',
+  'title: Hello',
+  'type: note',
+  'created: 2026-01-01',
+  'modified: 2026-01-01',
+  'tags:',
+  '  - greeting',
+  'connections:',
+  '  - world',
+  '---',
+  '',
+  '# Hello World',
+  '',
+  'A note about greetings.'
+].join('\n')
+
+const WORLD_MD = [
+  '---',
+  'id: world',
+  'title: World',
+  'type: note',
+  'created: 2026-01-01',
+  'modified: 2026-01-01',
+  'tags:',
+  '  - place',
+  '---',
+  '',
+  '# World',
+  '',
+  'The world is vast.'
+].join('\n')
+
+describe('buildVaultDeps', () => {
+  it('returns a VaultIndex with all files indexed', () => {
+    const files = [
+      { path: 'notes/hello.md', content: HELLO_MD },
+      { path: 'notes/world.md', content: WORLD_MD }
+    ]
+    const deps = buildVaultDeps(files)
+
+    expect(deps.vaultIndex.getArtifacts()).toHaveLength(2)
+    expect(deps.vaultIndex.getArtifact('hello')).toBeDefined()
+    expect(deps.vaultIndex.getArtifact('world')).toBeDefined()
+  })
+
+  it('returns a SearchEngine populated from the artifacts', () => {
+    const files = [
+      { path: 'notes/hello.md', content: HELLO_MD },
+      { path: 'notes/world.md', content: WORLD_MD }
+    ]
+    const deps = buildVaultDeps(files)
+
+    const hits = deps.searchEngine.search('greeting')
+    expect(hits.length).toBeGreaterThanOrEqual(1)
+    expect(hits[0].title).toBe('Hello')
+  })
+
+  it('builds a graph with edges from frontmatter connections', () => {
+    const files = [
+      { path: 'notes/hello.md', content: HELLO_MD },
+      { path: 'notes/world.md', content: WORLD_MD }
+    ]
+    const deps = buildVaultDeps(files)
+
+    const graph = deps.vaultIndex.getGraph()
+    const connectionEdges = graph.edges.filter((e) => e.kind === 'connection')
+    expect(connectionEdges).toHaveLength(1)
+    expect(connectionEdges[0]).toEqual(
+      expect.objectContaining({ source: 'hello', target: 'world', kind: 'connection' })
+    )
+  })
+
+  it('handles empty file list gracefully', () => {
+    const deps = buildVaultDeps([])
+
+    expect(deps.vaultIndex.getArtifacts()).toHaveLength(0)
+    expect(deps.searchEngine.search('anything')).toHaveLength(0)
+  })
+
+  it('skips files that fail to parse without crashing', () => {
+    const files = [
+      { path: 'notes/hello.md', content: HELLO_MD },
+      { path: 'notes/bad.md', content: 'no frontmatter at all just text' }
+    ]
+    const deps = buildVaultDeps(files)
+
+    // Should have at least the valid file
+    expect(deps.vaultIndex.getArtifacts().length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('initVaultIndex', () => {
+  let vaultRoot: string
+
+  beforeEach(() => {
+    const base = join(tmpdir(), `vi-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    mkdirSync(join(base, 'notes'), { recursive: true })
+    mkdirSync(join(base, 'deep', 'nested'), { recursive: true })
+    writeFileSync(join(base, 'notes', 'hello.md'), HELLO_MD)
+    writeFileSync(join(base, 'notes', 'world.md'), WORLD_MD)
+    writeFileSync(
+      join(base, 'deep', 'nested', 'deep-note.md'),
+      [
+        '---',
+        'id: deep-note',
+        'title: Deep Note',
+        'type: note',
+        'created: 2026-01-01',
+        'modified: 2026-01-01',
+        'tags: []',
+        '---',
+        '',
+        'A deeply nested note.'
+      ].join('\n')
+    )
+    // Non-md file should be ignored
+    writeFileSync(join(base, 'notes', 'readme.txt'), 'not markdown')
+    vaultRoot = realpathSync(base)
+  })
+
+  afterEach(() => {
+    rmSync(vaultRoot, { recursive: true, force: true })
+  })
+
+  it('reads .md files from vault and returns populated deps', async () => {
+    const deps = await initVaultIndex(vaultRoot)
+
+    expect(deps.vaultIndex.getArtifacts().length).toBeGreaterThanOrEqual(2)
+    expect(deps.searchEngine.search('greeting').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('discovers nested .md files', async () => {
+    const deps = await initVaultIndex(vaultRoot)
+
+    const ids = deps.vaultIndex.getArtifacts().map((a) => a.id)
+    expect(ids).toContain('deep-note')
+  })
+
+  it('ignores non-md files', async () => {
+    const deps = await initVaultIndex(vaultRoot)
+
+    const allIds = deps.vaultIndex.getArtifacts().map((a) => a.id)
+    // 3 .md files: hello, world, deep-note
+    expect(allIds).toHaveLength(3)
+  })
+})

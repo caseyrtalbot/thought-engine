@@ -6,6 +6,7 @@ import type {
   SessionDetectedEvent
 } from './workbench-types'
 import type { SystemArtifactKind } from './system-artifacts'
+import type { AgentSidecarState } from './agent-types'
 
 export interface IpcChannels {
   // --- Filesystem ---
@@ -132,6 +133,9 @@ export interface IpcChannels {
     request: void
     response: { running: boolean; toolCount: number }
   }
+
+  // --- Agents ---
+  'agent:get-states': { request: void; response: AgentSidecarState[] }
 }
 
 export interface IpcEvents {
@@ -152,6 +156,9 @@ export interface IpcEvents {
   'doc:external-change': { path: string; content: string }
   'doc:conflict': { path: string; diskContent: string }
   'doc:saved': { path: string }
+
+  // Agent observation events (main -> renderer)
+  'agent:states-changed': { states: readonly AgentSidecarState[] }
 }
 
 export type IpcChannel = keyof IpcChannels
