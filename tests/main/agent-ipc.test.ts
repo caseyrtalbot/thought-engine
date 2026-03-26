@@ -168,4 +168,52 @@ describe('registerAgentIpc', () => {
     // typedSend checks isDestroyed and skips the send
     expect(window.webContents.send).not.toHaveBeenCalled()
   })
+
+  it('registers a handler for agent:spawn', async () => {
+    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+    const window = createMockWindow()
+
+    const mockSpawner = {
+      spawn: vi.fn().mockReturnValue('test-session-id')
+    } as unknown as import('../../src/main/services/agent-spawner').AgentSpawner
+
+    registerAgentIpc(window, null, mockSpawner)
+
+    expect(mockIpcHandle).toHaveBeenCalledWith('agent:spawn', expect.any(Function))
+  })
+
+  it('agent:spawn calls spawner and returns sessionId', async () => {
+    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+    const window = createMockWindow()
+
+    const mockSpawner = {
+      spawn: vi.fn().mockReturnValue('spawned-session-123')
+    } as unknown as import('../../src/main/services/agent-spawner').AgentSpawner
+
+    registerAgentIpc(window, null, mockSpawner)
+
+    const spawnCall = mockIpcHandle.mock.calls.find(([channel]) => channel === 'agent:spawn')
+    expect(spawnCall).toBeDefined()
+
+    const handler = spawnCall![1]
+    const result = await handler({} as never, { cwd: '/test/dir', prompt: 'do stuff' })
+
+    expect(mockSpawner.spawn).toHaveBeenCalledWith({ cwd: '/test/dir', prompt: 'do stuff' })
+    expect(result).toEqual({ sessionId: 'spawned-session-123' })
+  })
+
+  it('agent:spawn returns error when spawner is null', async () => {
+    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+    const window = createMockWindow()
+
+    registerAgentIpc(window, null, null)
+
+    const spawnCall = mockIpcHandle.mock.calls.find(([channel]) => channel === 'agent:spawn')
+    expect(spawnCall).toBeDefined()
+
+    const handler = spawnCall![1]
+    const result = await handler({} as never, { cwd: '/test/dir' })
+
+    expect(result).toEqual({ error: 'Agent spawner not available' })
+  })
 })

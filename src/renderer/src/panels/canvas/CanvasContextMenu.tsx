@@ -9,6 +9,7 @@ interface CanvasContextMenuProps {
     type: CanvasNodeType,
     overrides?: Partial<Pick<CanvasNode, 'content' | 'metadata'>>
   ) => void
+  readonly onSpawnAgent?: () => void
   readonly onClose: () => void
 }
 
@@ -23,6 +24,7 @@ export function CanvasContextMenu({
   x,
   y,
   onAddCard,
+  onSpawnAgent,
   onClose
 }: CanvasContextMenuProps): React.ReactElement {
   const ref = useRef<HTMLDivElement>(null)
@@ -134,6 +136,45 @@ export function CanvasContextMenu({
           </div>
         )
       })}
+      {onSpawnAgent && (
+        <>
+          <div
+            style={{
+              height: 1,
+              backgroundColor: colors.border.subtle,
+              margin: '4px 8px'
+            }}
+          />
+          <button
+            onClick={() => {
+              onSpawnAgent()
+              onClose()
+            }}
+            className="w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 transition-colors"
+            style={{ color: colors.text.primary }}
+            onMouseEnter={(e) => {
+              ;(e.currentTarget as HTMLElement).style.backgroundColor = colors.accent.muted
+            }}
+            onMouseLeave={(e) => {
+              ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+            }}
+          >
+            <span
+              className="inline-flex items-center justify-center text-xs font-mono"
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 4,
+                backgroundColor: colors.bg.surface,
+                color: colors.text.secondary
+              }}
+            >
+              {'⚡'}
+            </span>
+            Spawn Claude Session
+          </button>
+        </>
+      )}
     </div>
   )
 }

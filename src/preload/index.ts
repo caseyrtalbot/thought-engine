@@ -9,7 +9,7 @@ import type {
   SessionDetectedEvent
 } from '../shared/workbench-types'
 
-import type { AgentSidecarState } from '../shared/agent-types'
+import type { AgentSidecarState, AgentSpawnRequest } from '../shared/agent-types'
 
 const api = {
   window: {
@@ -95,7 +95,8 @@ const api = {
     tmuxAvailable: () => typedInvoke('terminal:tmux-available')
   },
   agent: {
-    getStates: () => typedInvoke('agent:get-states')
+    getStates: () => typedInvoke('agent:get-states'),
+    spawn: (request: AgentSpawnRequest) => typedInvoke('agent:spawn', request)
   },
   document: {
     open: (path: string) => typedInvoke('doc:open', { path }),

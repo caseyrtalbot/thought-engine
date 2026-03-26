@@ -63,8 +63,31 @@ export interface AgentSidecarState {
   readonly label?: string
   /** from session metadata */
   readonly cwd?: string
+  /** Canvas node that spawned this agent (used for placement) */
+  readonly sourceNodeId?: string
   /** Sidecar-provided (only if .te/agents/<id>.json exists) */
   readonly sidecar?: AgentSidecar
+}
+
+// ---------------------------------------------------------------------------
+// Agent spawn types
+// ---------------------------------------------------------------------------
+
+/** Full configuration for spawning an agent process. */
+export interface AgentSpawnConfig {
+  readonly sessionId: string
+  readonly vaultRoot: string
+  readonly cwd: string
+  readonly prompt?: string
+  /** Canvas node that triggered the spawn */
+  readonly sourceNodeId?: string
+}
+
+/** IPC request shape for spawning an agent (sessionId and vaultRoot added by main). */
+export interface AgentSpawnRequest {
+  readonly cwd: string
+  readonly prompt?: string
+  readonly sourceNodeId?: string
 }
 
 // ---------------------------------------------------------------------------

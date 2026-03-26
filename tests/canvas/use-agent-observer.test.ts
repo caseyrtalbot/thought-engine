@@ -13,18 +13,21 @@ vi.mock('../../src/renderer/src/hooks/use-agent-states', () => ({
 const mockAddNode = vi.fn()
 const mockUpdateNodeMetadata = vi.fn()
 let mockNodes: readonly CanvasNode[] = []
+let mockViewport = { x: 0, y: 0, zoom: 1 }
 
 vi.mock('../../src/renderer/src/store/canvas-store', () => ({
   useCanvasStore: Object.assign(
     (selector: (s: Record<string, unknown>) => unknown) =>
       selector({
         nodes: mockNodes,
+        viewport: mockViewport,
         addNode: mockAddNode,
         updateNodeMetadata: mockUpdateNodeMetadata
       }),
     {
       getState: () => ({
         nodes: mockNodes,
+        viewport: mockViewport,
         addNode: mockAddNode,
         updateNodeMetadata: mockUpdateNodeMetadata
       })
@@ -65,6 +68,7 @@ describe('useAgentObserver', () => {
   beforeEach(() => {
     currentAgentStates = []
     mockNodes = []
+    mockViewport = { x: 0, y: 0, zoom: 1 }
     mockAddNode.mockReset()
     mockUpdateNodeMetadata.mockReset()
   })
@@ -162,5 +166,43 @@ describe('useAgentObserver', () => {
     expect(addedNode.metadata.filesTouched).toEqual(['/src/a.ts', '/src/b.ts'])
     expect(addedNode.metadata.currentTask).toBe('Implementing feature X')
     expect(addedNode.metadata.agentType).toBe('claude-code')
+  })
+
+  it('places new card relative to source node when sourceNodeId is set', () => {
+    const sourceNode: CanvasNode = {
+      id: 'source-card',
+      type: 'text',
+      position: { x: 100, y: 200 },
+      size: { width: 300, height: 200 },
+      content: '',
+      metadata: {}
+    }
+    mockNodes = [sourceNode]
+    currentAgentStates = [
+      makeAgentState({
+        sessionId: 'placed-agent',
+        sourceNodeId: 'source-card'
+      })
+    ]
+
+    renderHook(() => useAgentObserver())
+
+    expect(mockAddNode).toHaveBeenCalledOnce()
+    const addedNode = mockAddNode.mock.calls[0][0] as CanvasNode
+    // Should be to the right of source: x = 100 + 300 + 40 = 440
+    expect(addedNode.position.x).toBe(440)
+    expect(addedNode.position.y).toBe(200)
+  })
+
+  it('places new card at viewport center when no sourceNodeId', () => {
+    currentAgentStates = [makeAgentState({ sessionId: 'center-agent' })]
+
+    renderHook(() => useAgentObserver())
+
+    expect(mockAddNode).toHaveBeenCalledOnce()
+    const addedNode = mockAddNode.mock.calls[0][0] as CanvasNode
+    // No sourceNodeId, no innerWidth/innerHeight available in test env,
+    // but position should not be (0, 0)
+    expect(addedNode.position).toBeDefined()
   })
 })

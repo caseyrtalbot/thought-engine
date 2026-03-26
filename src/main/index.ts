@@ -14,6 +14,7 @@ import { registerMcpIpc } from './ipc/mcp'
 import { registerAgentIpc } from './ipc/agents'
 import { McpLifecycle } from './services/mcp-lifecycle'
 import { TmuxMonitor } from './services/tmux-monitor'
+import { AgentSpawner } from './services/agent-spawner'
 import { initVaultIndex } from './services/vault-indexing'
 import { typedHandle, typedSend } from './typed-ipc'
 
@@ -147,10 +148,11 @@ app.whenReady().then(() => {
     const deps = await initVaultIndex(vaultPath)
     mcpLifecycle.createForVault(vaultPath, deps)
 
-    // Start agent observation (tmux session monitoring)
+    // Start agent observation and spawning
     if (mainWindow) {
       agentMonitor = TmuxMonitor.tryCreate(vaultPath)
-      registerAgentIpc(mainWindow, agentMonitor)
+      const spawner = new AgentSpawner(getShellService(), vaultPath)
+      registerAgentIpc(mainWindow, agentMonitor, spawner)
     }
   })
 

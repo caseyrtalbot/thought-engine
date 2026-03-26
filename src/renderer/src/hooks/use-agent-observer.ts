@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useAgentStates } from './use-agent-states'
 import { useCanvasStore } from '../store/canvas-store'
 import { createCanvasNode } from '@shared/canvas-types'
+import { computeAgentPlacement } from '../panels/canvas/agent-placement'
 import type { AgentSidecarState } from '@shared/agent-types'
 
 /**
@@ -46,6 +47,7 @@ export function useAgentObserver(): void {
   const addNode = useCanvasStore((s) => s.addNode)
   const updateNodeMetadata = useCanvasStore((s) => s.updateNodeMetadata)
   const nodes = useCanvasStore((s) => s.nodes)
+  const viewport = useCanvasStore((s) => s.viewport)
 
   // Track which sessions we've already processed to avoid re-creating on re-render
   const processedRef = useRef(new Set<string>())
@@ -69,9 +71,15 @@ export function useAgentObserver(): void {
           updateNodeMetadata(card.id, metadata)
         }
       } else if (!processedRef.current.has(state.sessionId)) {
-        // Create new card
+        // Create new card with smart placement
         processedRef.current.add(state.sessionId)
-        const node = createCanvasNode('agent-session', { x: 0, y: 0 }, { metadata })
+        const placementViewport = {
+          ...viewport,
+          width: globalThis.innerWidth ?? 1200,
+          height: globalThis.innerHeight ?? 800
+        }
+        const position = computeAgentPlacement(state.sourceNodeId, nodes, placementViewport)
+        const node = createCanvasNode('agent-session', position, { metadata })
         addNode(node)
       }
     }
@@ -85,5 +93,5 @@ export function useAgentObserver(): void {
         updateNodeMetadata(node.id, { status: 'completed' })
       }
     }
-  }, [states, nodes, addNode, updateNodeMetadata])
+  }, [states, nodes, viewport, addNode, updateNodeMetadata])
 }

@@ -6,7 +6,7 @@ import type {
   SessionDetectedEvent
 } from './workbench-types'
 import type { SystemArtifactKind } from './system-artifacts'
-import type { AgentSidecarState } from './agent-types'
+import type { AgentSidecarState, AgentSpawnRequest } from './agent-types'
 
 export interface IpcChannels {
   // --- Filesystem ---
@@ -136,6 +136,10 @@ export interface IpcChannels {
 
   // --- Agents ---
   'agent:get-states': { request: void; response: AgentSidecarState[] }
+  'agent:spawn': {
+    request: AgentSpawnRequest
+    response: { sessionId: string } | { error: string }
+  }
 }
 
 export interface IpcEvents {
