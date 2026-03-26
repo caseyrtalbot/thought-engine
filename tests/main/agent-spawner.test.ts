@@ -68,8 +68,9 @@ describe('AgentSpawner', () => {
     const shellArg = (mockShellService.create as ReturnType<typeof vi.fn>).mock.calls[0][1]
     expect(shellArg).toContain('agent-wrapper.sh')
     expect(shellArg).toContain('--session-id')
-    expect(shellArg).toContain('--vault-root /vault/root')
-    expect(shellArg).toContain('--cwd /projects/my-app')
+    // Args are now shell-escaped (single-quoted)
+    expect(shellArg).toContain("--vault-root '/vault/root'")
+    expect(shellArg).toContain("--cwd '/projects/my-app'")
   })
 
   it('includes --prompt in shell command when prompt is provided', async () => {

@@ -149,6 +149,10 @@ export function registerFilesystemIpc(): void {
   })
 
   typedHandle('vault:list-commands', async (args) => {
+    if (!activePathGuard) {
+      throw new Error('vault:list-commands called before vault:init')
+    }
+    activePathGuard.assertWithinVault(args.dirPath)
     const { readdir } = await import('node:fs/promises')
     try {
       const entries = await readdir(args.dirPath)
@@ -162,9 +166,9 @@ export function registerFilesystemIpc(): void {
     if (!activePathGuard) {
       throw new Error('vault:read-file called before vault:init')
     }
-    activePathGuard.assertWithinVault(args.filePath)
+    const resolved = activePathGuard.assertWithinVault(args.filePath)
     const { readFile } = await import('node:fs/promises')
-    return readFile(args.filePath, 'utf-8')
+    return readFile(resolved, 'utf-8')
   })
 
   typedHandle('vault:list-system-artifacts', async (args) => {

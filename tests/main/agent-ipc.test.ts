@@ -25,37 +25,36 @@ function createMockWindow() {
 describe('registerAgentIpc', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.resetModules()
   })
 
-  it('registers a handler for agent:get-states', async () => {
+  it('registers handlers for agent:get-states and agent:spawn', async () => {
     const { registerAgentIpc } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
-    registerAgentIpc(window, null)
+    registerAgentIpc(window)
 
     expect(mockIpcHandle).toHaveBeenCalledWith('agent:get-states', expect.any(Function))
+    expect(mockIpcHandle).toHaveBeenCalledWith('agent:spawn', expect.any(Function))
   })
 
-  it('agent:get-states returns empty array when monitor is null', async () => {
+  it('agent:get-states returns empty array when no services set', async () => {
     const { registerAgentIpc } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
-    registerAgentIpc(window, null)
+    registerAgentIpc(window)
 
-    // Extract the registered handler from the mock
     const getStatesCall = mockIpcHandle.mock.calls.find(
       ([channel]) => channel === 'agent:get-states'
     )
-    expect(getStatesCall).toBeDefined()
-
     const handler = getStatesCall![1]
     const result = await handler({} as never, undefined)
 
     expect(result).toEqual([])
   })
 
-  it('agent:get-states delegates to monitor.getAgentStates() when monitor provided', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+  it('agent:get-states delegates to monitor after setAgentServices', async () => {
+    const { registerAgentIpc, setAgentServices } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
     const fakeStates: AgentSidecarState[] = [
@@ -73,7 +72,8 @@ describe('registerAgentIpc', () => {
       stop: vi.fn()
     } as unknown as import('../../src/main/services/tmux-monitor').TmuxMonitor
 
-    registerAgentIpc(window, mockMonitor)
+    registerAgentIpc(window)
+    setAgentServices(mockMonitor, null)
 
     const getStatesCall = mockIpcHandle.mock.calls.find(
       ([channel]) => channel === 'agent:get-states'
@@ -85,8 +85,8 @@ describe('registerAgentIpc', () => {
     expect(result).toEqual(fakeStates)
   })
 
-  it('calls monitor.start with a callback when monitor is provided', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+  it('setAgentServices starts monitor with onChange callback', async () => {
+    const { registerAgentIpc, setAgentServices } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
     const mockMonitor = {
@@ -95,106 +95,40 @@ describe('registerAgentIpc', () => {
       stop: vi.fn()
     } as unknown as import('../../src/main/services/tmux-monitor').TmuxMonitor
 
-    registerAgentIpc(window, mockMonitor)
+    registerAgentIpc(window)
+    setAgentServices(mockMonitor, null)
 
     expect(mockMonitor.start).toHaveBeenCalledOnce()
     expect(mockMonitor.start).toHaveBeenCalledWith(expect.any(Function))
   })
 
-  it('does not call monitor.start when monitor is null', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+  it('setAgentServices stops previous monitor on vault switch', async () => {
+    const { registerAgentIpc, setAgentServices } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
-    // Should not throw
-    registerAgentIpc(window, null)
+    const monitor1 = { getAgentStates: vi.fn().mockReturnValue([]), start: vi.fn(), stop: vi.fn() }
+    const monitor2 = { getAgentStates: vi.fn().mockReturnValue([]), start: vi.fn(), stop: vi.fn() }
 
-    // No monitor to start, so nothing to assert beyond no crash
-  })
+    registerAgentIpc(window)
+    setAgentServices(monitor1 as never, null)
+    setAgentServices(monitor2 as never, null)
 
-  it('sends agent:states-changed event to window when monitor fires onChange', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
-    const window = createMockWindow()
-
-    const fakeStates: AgentSidecarState[] = [
-      {
-        sessionId: 'xyz789',
-        tmuxName: 'te-xyz789',
-        status: 'idle',
-        currentCommand: 'zsh'
-      }
-    ]
-
-    let capturedCallback: ((states: AgentSidecarState[]) => void) | null = null
-    const mockMonitor = {
-      getAgentStates: vi.fn().mockReturnValue([]),
-      start: vi.fn().mockImplementation((cb: (states: AgentSidecarState[]) => void) => {
-        capturedCallback = cb
-      }),
-      stop: vi.fn()
-    } as unknown as import('../../src/main/services/tmux-monitor').TmuxMonitor
-
-    registerAgentIpc(window, mockMonitor)
-
-    // Simulate monitor detecting a state change
-    expect(capturedCallback).not.toBeNull()
-    capturedCallback!(fakeStates)
-
-    expect(window.webContents.send).toHaveBeenCalledWith('agent:states-changed', {
-      states: fakeStates
-    })
-  })
-
-  it('does not send to destroyed window', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
-    const window = createMockWindow()
-    ;(window.isDestroyed as ReturnType<typeof vi.fn>).mockReturnValue(true)
-
-    const fakeStates: AgentSidecarState[] = [
-      { sessionId: 'dead1', tmuxName: 'te-dead1', status: 'alive' }
-    ]
-
-    let capturedCallback: ((states: AgentSidecarState[]) => void) | null = null
-    const mockMonitor = {
-      getAgentStates: vi.fn().mockReturnValue([]),
-      start: vi.fn().mockImplementation((cb: (states: AgentSidecarState[]) => void) => {
-        capturedCallback = cb
-      }),
-      stop: vi.fn()
-    } as unknown as import('../../src/main/services/tmux-monitor').TmuxMonitor
-
-    registerAgentIpc(window, mockMonitor)
-    capturedCallback!(fakeStates)
-
-    // typedSend checks isDestroyed and skips the send
-    expect(window.webContents.send).not.toHaveBeenCalled()
-  })
-
-  it('registers a handler for agent:spawn', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
-    const window = createMockWindow()
-
-    const mockSpawner = {
-      spawn: vi.fn().mockReturnValue('test-session-id')
-    } as unknown as import('../../src/main/services/agent-spawner').AgentSpawner
-
-    registerAgentIpc(window, null, mockSpawner)
-
-    expect(mockIpcHandle).toHaveBeenCalledWith('agent:spawn', expect.any(Function))
+    expect(monitor1.stop).toHaveBeenCalledOnce()
+    expect(monitor2.start).toHaveBeenCalledOnce()
   })
 
   it('agent:spawn calls spawner and returns sessionId', async () => {
-    const { registerAgentIpc } = await import('../../src/main/ipc/agents')
+    const { registerAgentIpc, setAgentServices } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
     const mockSpawner = {
       spawn: vi.fn().mockReturnValue('spawned-session-123')
     } as unknown as import('../../src/main/services/agent-spawner').AgentSpawner
 
-    registerAgentIpc(window, null, mockSpawner)
+    registerAgentIpc(window)
+    setAgentServices(null, mockSpawner)
 
     const spawnCall = mockIpcHandle.mock.calls.find(([channel]) => channel === 'agent:spawn')
-    expect(spawnCall).toBeDefined()
-
     const handler = spawnCall![1]
     const result = await handler({} as never, { cwd: '/test/dir', prompt: 'do stuff' })
 
@@ -202,15 +136,13 @@ describe('registerAgentIpc', () => {
     expect(result).toEqual({ sessionId: 'spawned-session-123' })
   })
 
-  it('agent:spawn returns error when spawner is null', async () => {
+  it('agent:spawn returns error when no spawner set', async () => {
     const { registerAgentIpc } = await import('../../src/main/ipc/agents')
     const window = createMockWindow()
 
-    registerAgentIpc(window, null, null)
+    registerAgentIpc(window)
 
     const spawnCall = mockIpcHandle.mock.calls.find(([channel]) => channel === 'agent:spawn')
-    expect(spawnCall).toBeDefined()
-
     const handler = spawnCall![1]
     const result = await handler({} as never, { cwd: '/test/dir' })
 

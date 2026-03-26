@@ -17,23 +17,32 @@ import type { McpStatusProvider } from '../ipc/mcp'
 
 export class McpLifecycle implements McpStatusProvider {
   private server: McpServer | null = null
-  private running = false
+  private _created = false
   private _toolCount = 0
 
+  /** Whether the MCP server has been created (not necessarily connected to a transport). */
   isRunning(): boolean {
-    return this.running
+    return this._created
   }
 
   toolCount(): number {
-    return this.running ? this._toolCount : 0
+    return this._created ? this._toolCount : 0
   }
 
   /**
    * Create and prepare the MCP server for a given vault.
-   * Does not start stdio transport (that requires an external connection).
+   * The server is created with tools registered but NOT connected to a transport.
+   * A stdio or HTTP transport must be connected separately for external agents to use it.
    * Audit logs are stored outside the vault at app.getPath('userData')/audit.
    */
   createForVault(vaultRoot: string, deps?: VaultQueryDeps): McpServer {
+    // Stop previous server if switching vaults
+    if (this.server) {
+      this.server.close().catch(() => {})
+      this.server = null
+      this._created = false
+    }
+
     const guard = new PathGuard(vaultRoot)
     const logger = new AuditLogger(join(app.getPath('userData'), 'audit'))
     const facade = new VaultQueryFacade(guard, logger, vaultRoot, deps)
@@ -42,7 +51,7 @@ export class McpLifecycle implements McpStatusProvider {
 
     this.server = createMcpServer(facade, { gate, rateLimiter })
     this._toolCount = 5 // 3 read + 2 write (gate always provided)
-    this.running = true
+    this._created = true
     return this.server
   }
 
@@ -51,7 +60,7 @@ export class McpLifecycle implements McpStatusProvider {
     if (this.server) {
       await this.server.close()
       this.server = null
-      this.running = false
+      this._created = false
     }
   }
 }

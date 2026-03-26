@@ -14,7 +14,7 @@ import type { AuditEntry } from '@shared/agent-types'
 
 export class AuditLogger {
   private readonly logDir: string
-  private dirEnsured = false
+  private dirEnsurePromise: Promise<unknown> | null = null
 
   constructor(logDir: string) {
     this.logDir = logDir
@@ -43,9 +43,10 @@ export class AuditLogger {
   }
 
   private async ensureDir(): Promise<void> {
-    if (this.dirEnsured) return
-    await mkdir(this.logDir, { recursive: true })
-    this.dirEnsured = true
+    if (!this.dirEnsurePromise) {
+      this.dirEnsurePromise = mkdir(this.logDir, { recursive: true })
+    }
+    await this.dirEnsurePromise
   }
 
   private filenameForDate(date: Date): string {

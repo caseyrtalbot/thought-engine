@@ -85,12 +85,14 @@ export function useAgentObserver(): void {
     }
 
     // Mark exited sessions that are no longer in the state list
+    // and clean up processedRef so cards can be re-created if needed
     for (const node of nodes) {
       if (node.type !== 'agent-session') continue
       const sessionId = node.metadata.sessionId as string
       const stillPresent = states.some((s) => s.sessionId === sessionId)
       if (!stillPresent && node.metadata.status !== 'completed') {
         updateNodeMetadata(node.id, { status: 'completed' })
+        processedRef.current.delete(sessionId)
       }
     }
   }, [states, nodes, viewport, addNode, updateNodeMetadata])

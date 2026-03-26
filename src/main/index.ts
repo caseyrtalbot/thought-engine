@@ -11,7 +11,7 @@ import { registerConfigIpc } from './ipc/config'
 import { registerProjectIpc, getProjectWatcher, getSessionTailer } from './ipc/workbench'
 import { registerDocumentIpc, getDocumentManager } from './ipc/documents'
 import { registerMcpIpc } from './ipc/mcp'
-import { registerAgentIpc } from './ipc/agents'
+import { registerAgentIpc, setAgentServices, stopAgentServices } from './ipc/agents'
 import { McpLifecycle } from './services/mcp-lifecycle'
 import { TmuxMonitor } from './services/tmux-monitor'
 import { AgentSpawner } from './services/agent-spawner'
@@ -55,7 +55,6 @@ if (!process.env.LANG) {
 }
 
 let mainWindow: BrowserWindow | null = null
-let agentMonitor: TmuxMonitor | null = null
 const mcpLifecycle = new McpLifecycle()
 
 function createWindow(): BrowserWindow {
@@ -144,16 +143,15 @@ app.whenReady().then(() => {
   // Wire MCP server creation and agent monitoring to vault initialization.
   // Reads all .md files, builds VaultIndex + SearchEngine, then creates MCP
   // server with populated deps so search and graph queries return real data.
+  // Wire MCP + agent services to vault initialization.
+  // Services update on vault switch without re-registering IPC handlers.
   onVaultReady(async (vaultPath) => {
     const deps = await initVaultIndex(vaultPath)
     mcpLifecycle.createForVault(vaultPath, deps)
 
-    // Start agent observation and spawning
-    if (mainWindow) {
-      agentMonitor = TmuxMonitor.tryCreate(vaultPath)
-      const spawner = new AgentSpawner(getShellService(), vaultPath)
-      registerAgentIpc(mainWindow, agentMonitor, spawner)
-    }
+    const monitor = TmuxMonitor.tryCreate(vaultPath)
+    const spawner = new AgentSpawner(getShellService(), vaultPath)
+    setAgentServices(monitor, spawner)
   })
 
   const window = createWindow()
@@ -163,6 +161,7 @@ app.whenReady().then(() => {
   registerDocumentIpc(window)
   registerProjectIpc(window)
   registerMcpIpc(mcpLifecycle)
+  registerAgentIpc(window) // Register once at startup, services update via setAgentServices
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -201,7 +200,7 @@ app.on('before-quit', (event) => {
     await getDocumentManager().flushAll()
 
     // Step 3: Clean up services
-    agentMonitor?.stop()
+    stopAgentServices()
     await mcpLifecycle.stop()
     getShellService().shutdown()
     getProjectWatcher().stop()

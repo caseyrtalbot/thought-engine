@@ -4,6 +4,11 @@ import type { ShellService } from './shell-service'
 import type { AgentSpawnRequest } from '@shared/agent-types'
 import type { SessionId } from '@shared/types'
 
+/** Shell-escape a string by wrapping in single quotes and escaping embedded quotes. */
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'"
+}
+
 export class AgentSpawner {
   constructor(
     private readonly shellService: ShellService,
@@ -14,17 +19,23 @@ export class AgentSpawner {
     const sessionId = randomUUID()
     const wrapperPath = join(__dirname, '../../scripts/agent-wrapper.sh')
 
-    const promptArg = request.prompt ? ` --prompt "${request.prompt}"` : ''
+    const args = [
+      'bash',
+      shellEscape(wrapperPath),
+      '--session-id',
+      shellEscape(sessionId),
+      '--vault-root',
+      shellEscape(this.vaultRoot),
+      '--cwd',
+      shellEscape(request.cwd)
+    ]
 
-    const shellCmd =
-      `bash ${wrapperPath}` +
-      ` --session-id ${sessionId}` +
-      ` --vault-root ${this.vaultRoot}` +
-      ` --cwd ${request.cwd}` +
-      promptArg
+    if (request.prompt) {
+      args.push('--prompt', shellEscape(request.prompt))
+    }
 
     const label = `agent:${sessionId.slice(0, 8)}`
 
-    return this.shellService.create(request.cwd, shellCmd, label, this.vaultRoot)
+    return this.shellService.create(request.cwd, args.join(' '), label, this.vaultRoot)
   }
 }
