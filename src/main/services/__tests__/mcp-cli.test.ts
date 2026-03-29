@@ -100,7 +100,12 @@ describe('MCP CLI server (standalone)', () => {
     // Should only expose read tools (no gate = no write tools)
     const tools = await client.listTools()
     const toolNames = tools.tools.map((t) => t.name).sort()
-    expect(toolNames).toEqual(['graph.get_neighbors', 'search.query', 'vault.read_file'])
+    expect(toolNames).toEqual([
+      'graph.get_ghosts',
+      'graph.get_neighbors',
+      'search.query',
+      'vault.read_file'
+    ])
 
     await client.close()
     await server.close()

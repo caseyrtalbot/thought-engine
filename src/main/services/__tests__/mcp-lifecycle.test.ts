@@ -70,7 +70,7 @@ describe('McpLifecycle', () => {
 
     expect(server).toBeDefined()
     expect(lifecycle.isRunning()).toBe(true)
-    expect(lifecycle.toolCount()).toBe(5)
+    expect(lifecycle.toolCount()).toBe(6)
   })
 
   it('createForVault still works without deps (backward compatible)', () => {
