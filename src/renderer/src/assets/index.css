@@ -189,6 +189,14 @@ body {
   filter: brightness(1.35);
 }
 
+.file-row-hover .file-name-glow {
+  transition: text-shadow 120ms ease-out;
+}
+
+.file-row-hover:hover .file-name-glow {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+}
+
 /* ─── Drag Handle ─── */
 
 .te-drag-handle {

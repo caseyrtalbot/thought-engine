@@ -419,7 +419,10 @@ function FileRow({
         />
       ) : (
         <span className="truncate flex-1">
-          <span style={{ color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.78)' }}>
+          <span
+            className="file-name-glow"
+            style={{ color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.78)' }}
+          >
             {base}
           </span>
           {ext && <span style={{ color: 'rgba(255,255,255,0.32)' }}>{ext}</span>}
