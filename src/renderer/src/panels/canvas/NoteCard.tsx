@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { logError } from '../../utils/error-logger'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
@@ -105,6 +105,28 @@ export function NoteCard({ node }: NoteCardProps) {
     }
   }, [editor, body, loading])
 
+  // Auto-scroll past badge + metadata to reveal the title on first load
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolled = useRef(false)
+
+  useEffect(() => {
+    if (loading || !body || !editor || hasAutoScrolled.current) return
+    hasAutoScrolled.current = true
+    // Double-rAF: first lets React/Tiptap commit, second ensures paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current
+        if (!el) return
+        const prose = el.querySelector('.canvas-prose')
+        if (prose instanceof HTMLElement) {
+          const containerRect = el.getBoundingClientRect()
+          const proseRect = prose.getBoundingClientRect()
+          el.scrollTop += proseRect.top - containerRect.top - 8
+        }
+      })
+    })
+  }, [loading, body, editor])
+
   const openInEditor = useCallback(() => {
     useCanvasStore.getState().openSplit(filePath)
   }, [filePath])
@@ -131,7 +153,11 @@ export function NoteCard({ node }: NoteCardProps) {
       onOpenInEditor={openInEditor}
       onContextMenu={handleContextMenu}
     >
-      <div className="h-full overflow-auto canvas-card-content" style={{ minHeight: 0 }}>
+      <div
+        ref={scrollRef}
+        className="h-full overflow-auto canvas-card-content"
+        style={{ minHeight: 0 }}
+      >
         {loading ? (
           <div style={{ padding: 28 }}>
             <span className="text-sm" style={{ color: colors.text.muted }}>

@@ -15,9 +15,9 @@ import { computeOptimalEdgeSides } from './canvas-layout'
 export const IMPORT_CAP = 25
 export const HUB_COUNT = 15
 
-const GRID_SPACING_X = 360
-const GRID_SPACING_Y = 280
-const CARD_SIZE = { width: 280, height: 200 }
+const GRID_SPACING_X = 500
+const GRID_SPACING_Y = 420
+const CARD_SIZE = { width: 420, height: 340 }
 
 // ---------------------------------------------------------------------------
 // Types
@@ -233,7 +233,11 @@ export function computeImportViewport(
 
   const contentWidth = maxX - minX + padding * 2
   const contentHeight = maxY - minY + padding * 2
-  const zoom = Math.min(containerWidth / contentWidth, containerHeight / contentHeight, 1.0)
+  const MIN_READABLE_ZOOM = 0.55
+  const zoom = Math.max(
+    MIN_READABLE_ZOOM,
+    Math.min(containerWidth / contentWidth, containerHeight / contentHeight, 1.0)
+  )
   const cx = minX + (maxX - minX) / 2
   const cy = minY + (maxY - minY) / 2
 

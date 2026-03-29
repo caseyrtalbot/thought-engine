@@ -47,20 +47,20 @@ describe('computeCardSize', () => {
   it('returns minimum height for empty content', () => {
     const metrics: ContentMetrics = { titleLength: 0, bodyLength: 0, metadataCount: 0 }
     const size = computeCardSize(metrics)
-    expect(size.width).toBe(280)
+    expect(size.width).toBe(380)
     expect(size.height).toBeGreaterThanOrEqual(100) // MIN_SIZES.note.height
   })
 
   it('expands width for long titles', () => {
     const metrics: ContentMetrics = { titleLength: 50, bodyLength: 0, metadataCount: 0 }
     const size = computeCardSize(metrics)
-    expect(size.width).toBe(340)
+    expect(size.width).toBe(420)
   })
 
   it('expands width for many metadata fields', () => {
     const metrics: ContentMetrics = { titleLength: 10, bodyLength: 0, metadataCount: 6 }
     const size = computeCardSize(metrics)
-    expect(size.width).toBe(380)
+    expect(size.width).toBe(420)
   })
 
   it('grows height with metadata rows', () => {

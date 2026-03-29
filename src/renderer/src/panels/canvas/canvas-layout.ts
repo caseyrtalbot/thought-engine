@@ -51,12 +51,12 @@ interface SimNode {
 // 1. Content-adaptive card sizing
 // ---------------------------------------------------------------------------
 
-const NOTE_BASE_WIDTH = 280
+const NOTE_BASE_WIDTH = 380
 const NOTE_WIDE_TITLE_THRESHOLD = 30
-const NOTE_WIDE_TITLE_WIDTH = 340
+const NOTE_WIDE_TITLE_WIDTH = 420
 const NOTE_RICH_META_THRESHOLD = 4
-const NOTE_RICH_META_WIDTH = 380
-const NOTE_BASE_HEIGHT = 160
+const NOTE_RICH_META_WIDTH = 420
+const NOTE_BASE_HEIGHT = 260
 const NOTE_ROW_HEIGHT = 24
 const NOTE_BODY_CHARS_PER_PX = 4
 
@@ -114,8 +114,8 @@ export function computeOptimalEdgeSides(
 // 3. Force-directed placement for show-connections
 // ---------------------------------------------------------------------------
 
-const MIN_RADIAL_DISTANCE = 350
-const RADIAL_DISTANCE_PER_NODE = 30
+const MIN_RADIAL_DISTANCE = 450
+const RADIAL_DISTANCE_PER_NODE = 40
 const COLLISION_PADDING = 30
 const REPEL_STRENGTH = -200
 const RADIAL_STRENGTH = 0.3

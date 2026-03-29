@@ -11,6 +11,7 @@ import {
 import { CanvasContextMenu } from './CanvasContextMenu'
 import { CardContextMenu } from './CardContextMenu'
 import { computeShowConnections } from './show-connections'
+import { computeImportViewport } from './import-logic'
 import { useVaultStore } from '../../store/vault-store'
 import { LazyCards } from './card-registry'
 import { CardShellSkeleton } from './CardShellSkeleton'
@@ -728,6 +729,14 @@ export function CanvasView(): React.ReactElement {
                         })
                       }
                     })
+                    // Auto-zoom to fit source card + new connections
+                    const focusNodes = [menuNode, ...newNodes]
+                    const vp = computeImportViewport(
+                      focusNodes,
+                      containerSize.width,
+                      containerSize.height
+                    )
+                    setViewport(vp)
                   }
                   setCardContextMenu(null)
                 }}
