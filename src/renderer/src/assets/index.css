@@ -808,6 +808,21 @@ body {
   animation: te-card-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ─── Terminal Dock ─── */
+
+@keyframes te-dock-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.te-dock-scroll-hidden {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.te-dock-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Card Close Button ─── */
 .tile-close-btn { transition: color 0.15s ease, opacity 0.15s ease; }
 .tile-close-btn:hover { color: #e53935 !important; opacity: 1 !important; }
