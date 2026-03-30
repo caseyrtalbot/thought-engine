@@ -22,7 +22,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
   const actionInFlight = useRef(false)
   const webviewReadyRef = useRef(false)
   const shouldFocusRef = useRef(false)
-  const [sessionParam, setSessionParam] = useState(node.content)
+  const [launchSessionId, setLaunchSessionId] = useState(node.content)
   const [sessionDead, setSessionDead] = useState(false)
   const [webviewKey, setWebviewKey] = useState(0)
   const webviewRef = useRef<HTMLElement | null>(null)
@@ -57,7 +57,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
   const webviewSrc = useMemo(() => {
     const params = new URLSearchParams()
-    if (sessionParam) params.set('sessionId', sessionParam)
+    if (launchSessionId) params.set('sessionId', launchSessionId)
     if (node.metadata?.initialCwd) {
       params.set('cwd', String(node.metadata.initialCwd))
     }
@@ -84,11 +84,13 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
     const qs = params.toString()
     return qs ? `${base}?${qs}` : base
-  }, [node.id, node.metadata?.initialCwd, node.metadata?.initialCommand, sessionParam, vaultPath])
+  }, [launchSessionId, node.id, node.metadata?.initialCwd, node.metadata?.initialCommand, vaultPath])
 
   useEffect(() => {
     sessionIdRef.current = node.content ? toSessionId(node.content) : null
-    setSessionParam(node.content)
+    if (!webviewReadyRef.current || !sessionIdRef.current) {
+      setLaunchSessionId(node.content)
+    }
   }, [node.content])
 
   // ── Webview event listeners ─────────────────────────────────────────────
@@ -107,7 +109,6 @@ export function TerminalCard({ node }: TerminalCardProps) {
       if (ipcEvent.channel === 'session-created') {
         const newSessionId = String(ipcEvent.args[0])
         sessionIdRef.current = toSessionId(newSessionId)
-        setSessionParam(newSessionId)
         updateContent(node.id, newSessionId)
       }
     }
@@ -234,7 +235,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
       }
       sessionIdRef.current = null
       webviewReadyRef.current = false
-      setSessionParam('')
+      setLaunchSessionId('')
       updateContent(node.id, '')
       setSessionDead(false)
       setWebviewKey((k) => k + 1)

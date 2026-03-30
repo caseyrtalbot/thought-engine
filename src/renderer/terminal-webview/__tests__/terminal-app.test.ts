@@ -49,6 +49,10 @@ describe('TerminalApp component', () => {
       expect(src).toContain("from '@xterm/addon-search'")
     })
 
+    it('imports WebglAddon', () => {
+      expect(src).toContain("from '@xterm/addon-webgl'")
+    })
+
     it('uses Catppuccin Mocha theme colors', () => {
       expect(src).toContain('#0c0e14') // background
       expect(src).toContain('#cdd6f4') // foreground
@@ -86,8 +90,9 @@ describe('TerminalApp component', () => {
       expect(src).not.toContain('new CanvasAddon()')
     })
 
-    it('does not force WebGL in the canvas webview', () => {
-      expect(src).not.toContain('new WebglAddon()')
+    it('attempts to enable WebGL with graceful fallback', () => {
+      expect(src).toContain('new WebglAddon()')
+      expect(src).toContain('onContextLoss')
     })
   })
 
@@ -162,6 +167,10 @@ describe('TerminalApp component', () => {
 
     it('uses requestAnimationFrame for fit timing', () => {
       expect(src).toContain('requestAnimationFrame')
+    })
+
+    it('refits after fonts finish loading', () => {
+      expect(src).toContain('document.fonts?.ready')
     })
 
     it('calls terminalApi.resize with session dimensions', () => {

@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
+import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 
 /**
@@ -174,7 +175,16 @@ export function TerminalApp() {
 
     if (containerRef.current) {
       term.open(containerRef.current)
-      fitAddon.fit()
+
+      // Match the production terminal tile: use WebGL when available to avoid
+      // partial paint artifacts during rapid redraws, but fall back silently.
+      try {
+        const webglAddon = new WebglAddon()
+        webglAddon.onContextLoss(() => webglAddon.dispose())
+        term.loadAddon(webglAddon)
+      } catch {
+        // GPU renderer unavailable, DOM renderer remains active.
+      }
 
       // Show cursor immediately so the terminal looks alive on creation
       term.focus()
@@ -211,6 +221,12 @@ export function TerminalApp() {
       scheduleFitAndRefresh()
     }
     window.addEventListener('resize', handleWindowResize)
+
+    void document.fonts?.ready.then(() => {
+      if (!cancelled) {
+        scheduleFitAndRefresh()
+      }
+    })
 
     // ── User keystrokes -> PTY ──────────────────────────────────────────
 

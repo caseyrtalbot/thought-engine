@@ -336,6 +336,7 @@ describe('TerminalCard (webview host)', () => {
     })
     const restarted = container.querySelector('webview') as HTMLElement | null
     expect(restarted?.getAttribute('src') ?? '').not.toContain('sessionId=session-old')
+    const launchSrc = restarted?.getAttribute('src') ?? ''
 
     await act(async () => {
       dispatchWebviewEvent(restarted!, 'ipc-message', {
@@ -345,5 +346,6 @@ describe('TerminalCard (webview host)', () => {
     })
 
     expect(mockUpdateContent).toHaveBeenCalledWith('term-1', 'session-new')
+    expect(restarted?.getAttribute('src')).toBe(launchSrc)
   })
 })
