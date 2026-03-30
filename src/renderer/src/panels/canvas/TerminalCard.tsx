@@ -15,6 +15,40 @@ interface TerminalCardProps {
 type TerminalWebviewElement = HTMLElement & {
   focus: () => void
   send: (channel: string) => void
+  sendInputEvent?: (event: {
+    type: 'mouseDown' | 'mouseUp'
+    x: number
+    y: number
+    button: 'left'
+    clickCount: number
+  }) => void
+}
+
+function forwardClickToWebview(webview: TerminalWebviewElement, mouseEvent: MouseEvent): void {
+  if (!webview.sendInputEvent) return
+
+  const rect = webview.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) return
+
+  const x = Math.round((mouseEvent.clientX - rect.left) * (webview.offsetWidth / rect.width))
+  const y = Math.round((mouseEvent.clientY - rect.top) * (webview.offsetHeight / rect.height))
+  if (x < 0 || y < 0) return
+  if (x > webview.offsetWidth || y > webview.offsetHeight) return
+
+  webview.sendInputEvent({
+    type: 'mouseDown',
+    x,
+    y,
+    button: 'left',
+    clickCount: 1
+  })
+  webview.sendInputEvent({
+    type: 'mouseUp',
+    x,
+    y,
+    button: 'left',
+    clickCount: 1
+  })
 }
 
 export function TerminalCard({ node }: TerminalCardProps) {
@@ -244,10 +278,35 @@ export function TerminalCard({ node }: TerminalCardProps) {
     }
   }, [node.id, updateContent])
 
+  const handleActivateContentClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const wv = webviewRef.current
+    if (!wv) return
+
+    const webview = wv as TerminalWebviewElement
+    webview.focus()
+
+    if (!webviewReadyRef.current) return
+
+    try {
+      webview.send('focus')
+    } catch {
+      webviewReadyRef.current = false
+      return
+    }
+
+    forwardClickToWebview(webview, event.nativeEvent)
+  }, [])
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <CardShell node={node} title={displayTitle} onClose={handleClose} titleExtra={contextBadge}>
+    <CardShell
+      node={node}
+      title={displayTitle}
+      onClose={handleClose}
+      onActivateContentClick={handleActivateContentClick}
+      titleExtra={contextBadge}
+    >
       {sessionDead ? (
         <div
           className="absolute inset-0 flex items-center justify-center"

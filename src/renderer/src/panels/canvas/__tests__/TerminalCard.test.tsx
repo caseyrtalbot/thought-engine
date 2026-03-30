@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CanvasNode } from '@shared/canvas-types'
 
@@ -9,16 +9,20 @@ vi.mock('../CardShell', () => ({
   CardShell: ({
     title,
     children,
+    onActivateContentClick,
     titleExtra
   }: {
     title: string
     children: React.ReactNode
+    onActivateContentClick?: (e: React.MouseEvent<HTMLDivElement>) => void
     titleExtra?: React.ReactNode
   }) => (
     <div data-testid="card-shell">
       <div data-testid="card-title">{title}</div>
       {titleExtra && <div data-testid="title-extra">{titleExtra}</div>}
-      <div data-testid="card-content">{children}</div>
+      <div data-testid="card-content" onClick={onActivateContentClick}>
+        {children}
+      </div>
     </div>
   )
 }))
@@ -117,25 +121,38 @@ function makeClaudeNode(overrides?: Partial<CanvasNode>): CanvasNode {
 }
 
 function attachWebviewHarness(container: HTMLElement): {
-  webview: HTMLElement & { send: ReturnType<typeof vi.fn>; focus: ReturnType<typeof vi.fn> }
+  webview: HTMLElement & {
+    send: ReturnType<typeof vi.fn>
+    focus: ReturnType<typeof vi.fn>
+    sendInputEvent: ReturnType<typeof vi.fn>
+  }
   send: ReturnType<typeof vi.fn>
   focus: ReturnType<typeof vi.fn>
+  sendInputEvent: ReturnType<typeof vi.fn>
 } {
   const webview = container.querySelector('webview') as
-    | (HTMLElement & { send?: ReturnType<typeof vi.fn>; focus?: ReturnType<typeof vi.fn> })
+    | (HTMLElement & {
+        send?: ReturnType<typeof vi.fn>
+        focus?: ReturnType<typeof vi.fn>
+        sendInputEvent?: ReturnType<typeof vi.fn>
+      })
     | null
   expect(webview).toBeTruthy()
   const send = vi.fn()
   const focus = vi.fn()
+  const sendInputEvent = vi.fn()
   webview!.send = send
   webview!.focus = focus
+  webview!.sendInputEvent = sendInputEvent
   return {
     webview: webview as HTMLElement & {
       send: ReturnType<typeof vi.fn>
       focus: ReturnType<typeof vi.fn>
+      sendInputEvent: ReturnType<typeof vi.fn>
     },
     send,
-    focus
+    focus,
+    sendInputEvent
   }
 }
 
@@ -286,6 +303,58 @@ describe('TerminalCard (webview host)', () => {
     expect(focus).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith('focus')
     expect(mockSetFocusedTerminal).toHaveBeenCalledWith('term-1')
+  })
+
+  it('forwards the first content click into the terminal webview', async () => {
+    const { TerminalCard } = await import('../TerminalCard')
+    const node = makeTerminalNode()
+    const { container } = render(<TerminalCard node={node} />)
+    const { webview, send, focus, sendInputEvent } = attachWebviewHarness(container)
+
+    Object.defineProperty(webview, 'offsetWidth', {
+      configurable: true,
+      value: 400
+    })
+    Object.defineProperty(webview, 'offsetHeight', {
+      configurable: true,
+      value: 300
+    })
+    webview.getBoundingClientRect = () =>
+      ({
+        left: 100,
+        top: 200,
+        width: 200,
+        height: 150
+      }) as DOMRect
+
+    dispatchWebviewEvent(webview, 'dom-ready')
+    send.mockClear()
+    focus.mockClear()
+    sendInputEvent.mockClear()
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('card-content'), {
+        clientX: 200,
+        clientY: 300
+      })
+    })
+
+    expect(focus).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith('focus')
+    expect(sendInputEvent).toHaveBeenNthCalledWith(1, {
+      type: 'mouseDown',
+      x: 200,
+      y: 200,
+      button: 'left',
+      clickCount: 1
+    })
+    expect(sendInputEvent).toHaveBeenNthCalledWith(2, {
+      type: 'mouseUp',
+      x: 200,
+      y: 200,
+      button: 'left',
+      clickCount: 1
+    })
   })
 
   it('sends a refresh message to the webview when resize completes', async () => {

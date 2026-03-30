@@ -23,6 +23,7 @@ interface CardShellProps {
   readonly onClose: () => void
   readonly onOpenInEditor?: () => void
   readonly onContextMenu?: (e: React.MouseEvent) => void
+  readonly onActivateContentClick?: (e: React.MouseEvent<HTMLDivElement>) => void
   readonly titleExtra?: React.ReactNode
 }
 
@@ -162,6 +163,7 @@ export function CardShell({
   onClose,
   onOpenInEditor,
   onContextMenu,
+  onActivateContentClick,
   titleExtra
 }: CardShellProps) {
   const copyText = filePath ?? title
@@ -184,16 +186,31 @@ export function CardShell({
   const isTerminalCard = node.type === 'terminal'
 
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
+      const target = e.target as HTMLElement
+      const clickedContent =
+        isTerminalCard &&
+        !isFocused &&
+        !isLocked &&
+        e.button === 0 &&
+        !e.shiftKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        Boolean(target.closest('[data-canvas-card-content]'))
+
       if (e.shiftKey) {
         toggleSelection(node.id)
       } else {
         setSelection(new Set([node.id]))
       }
       setFocusedCard(node.id)
+      if (clickedContent) {
+        onActivateContentClick?.(e)
+      }
     },
-    [node.id, setSelection, toggleSelection, setFocusedCard]
+    [isFocused, isLocked, isTerminalCard, node.id, onActivateContentClick, setSelection, toggleSelection, setFocusedCard]
   )
 
   const handleDoubleClick = useCallback(
@@ -417,6 +434,7 @@ export function CardShell({
 
       {/* Content area — hidden scrollbars via .canvas-card-content */}
       <div
+        data-canvas-card-content
         className={`flex-1 relative${isTerminalCard ? '' : ' canvas-card-content'}`}
         style={{ minHeight: 0, overflow: isTerminalCard ? 'hidden' : undefined }}
       >
