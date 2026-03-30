@@ -1,7 +1,6 @@
 import { ShellService } from '../services/shell-service'
 import { typedHandle, typedHandleWithEvent } from '../typed-ipc'
 import { register, unregister, getWebContents } from '../services/session-router'
-import { sessionId } from '@shared/types'
 
 const shellService = new ShellService()
 
@@ -71,18 +70,6 @@ export function registerShellIpc(): void {
       register(args.sessionId, event.sender.id)
     }
     return result
-  })
-
-  typedHandle('terminal:discover', async () => {
-    const discovered = shellService.discover()
-    return discovered.map((d) => ({
-      sessionId: sessionId(d.sessionId),
-      meta: d.meta
-    }))
-  })
-
-  typedHandle('terminal:tmux-available', async () => {
-    return shellService.tmuxAvailable
   })
 }
 

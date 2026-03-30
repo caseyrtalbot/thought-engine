@@ -104,14 +104,6 @@ export interface IpcChannels {
       meta: { shell: string; cwd: string; label?: string }
     } | null
   }
-  'terminal:discover': {
-    request: void
-    response: Array<{
-      sessionId: SessionId
-      meta: { shell: string; cwd: string; createdAt: string; label?: string; vaultPath?: string }
-    }>
-  }
-  'terminal:tmux-available': { request: void; response: boolean }
 
   // --- Document Manager ---
   'doc:open': { request: { path: string }; response: { content: string; version: number } }

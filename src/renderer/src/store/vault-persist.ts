@@ -59,9 +59,8 @@ function gatherVaultState(): VaultState {
   return {
     version: existing?.version ?? 1,
     lastOpenNote: editor.activeNotePath,
-    panelLayout: existing?.panelLayout ?? { sidebarWidth: 280, terminalWidth: 360 },
+    panelLayout: { sidebarWidth: existing?.panelLayout?.sidebarWidth ?? 280 },
     contentView,
-    terminalSessions: existing?.terminalSessions ?? [],
     fileTreeCollapseState: existing?.fileTreeCollapseState ?? {},
     selectedNodeId: existing?.selectedNodeId ?? null,
     recentFiles: existing?.recentFiles ?? [],

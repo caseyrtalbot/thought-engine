@@ -93,9 +93,7 @@ const api = {
     kill: (sessionId: SessionId) => typedInvoke('terminal:kill', { sessionId }),
     getProcessName: (sessionId: SessionId) => typedInvoke('terminal:process-name', { sessionId }),
     reconnect: (sessionId: SessionId, cols: number, rows: number) =>
-      typedInvoke('terminal:reconnect', { sessionId, cols, rows }),
-    discover: () => typedInvoke('terminal:discover'),
-    tmuxAvailable: () => typedInvoke('terminal:tmux-available')
+      typedInvoke('terminal:reconnect', { sessionId, cols, rows })
   },
   agent: {
     getStates: () => typedInvoke('agent:get-states'),

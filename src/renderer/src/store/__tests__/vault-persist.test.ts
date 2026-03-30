@@ -60,9 +60,8 @@ describe('registerQuitHandler', () => {
       state: {
         version: 1,
         lastOpenNote: null,
-        panelLayout: { sidebarWidth: 280, terminalWidth: 360 },
+        panelLayout: { sidebarWidth: 280 },
         contentView: 'editor',
-        terminalSessions: [],
         fileTreeCollapseState: {},
         selectedNodeId: null,
         recentFiles: []

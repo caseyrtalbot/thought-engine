@@ -107,9 +107,8 @@ describe('vault-persist integration', () => {
         state: {
           version: 2,
           lastOpenNote: null,
-          panelLayout: { sidebarWidth: 300, terminalWidth: 400 },
+          panelLayout: { sidebarWidth: 300 },
           contentView: 'editor',
-          terminalSessions: ['session-1'],
           fileTreeCollapseState: { '/docs': true },
           selectedNodeId: 'node-42',
           recentFiles: ['a.md', 'b.md']
@@ -134,9 +133,8 @@ describe('vault-persist integration', () => {
       expect(state).toEqual({
         version: 2,
         lastOpenNote: '/test/vault/notes/hello.md',
-        panelLayout: { sidebarWidth: 300, terminalWidth: 400 },
+        panelLayout: { sidebarWidth: 300 },
         contentView: 'canvas',
-        terminalSessions: ['session-1'],
         fileTreeCollapseState: { '/docs': true },
         selectedNodeId: 'node-42',
         recentFiles: ['a.md', 'b.md'],
@@ -156,9 +154,8 @@ describe('vault-persist integration', () => {
 
       expect(state.version).toBe(1)
       expect(state.lastOpenNote).toBeNull()
-      expect(state.panelLayout).toEqual({ sidebarWidth: 280, terminalWidth: 360 })
+      expect(state.panelLayout).toEqual({ sidebarWidth: 280 })
       expect(state.contentView).toBe('editor')
-      expect(state.terminalSessions).toEqual([])
       expect(state.fileTreeCollapseState).toEqual({})
       expect(state.selectedNodeId).toBeNull()
       expect(state.recentFiles).toEqual([])
@@ -357,9 +354,8 @@ describe('vault-persist integration', () => {
         state: {
           version: 1,
           lastOpenNote: null,
-          panelLayout: { sidebarWidth: 280, terminalWidth: 360 },
+          panelLayout: { sidebarWidth: 280 },
           contentView: 'editor',
-          terminalSessions: [],
           fileTreeCollapseState: {},
           selectedNodeId: null,
           recentFiles: [],
@@ -384,9 +380,8 @@ describe('vault-persist integration', () => {
         state: {
           version: 1,
           lastOpenNote: null,
-          panelLayout: { sidebarWidth: 280, terminalWidth: 360 },
+          panelLayout: { sidebarWidth: 280 },
           contentView: 'editor',
-          terminalSessions: [],
           fileTreeCollapseState: {},
           selectedNodeId: null,
           recentFiles: []
@@ -416,9 +411,8 @@ describe('vault-persist integration', () => {
         state: {
           version: 1,
           lastOpenNote: null,
-          panelLayout: { sidebarWidth: 280, terminalWidth: 360 },
+          panelLayout: { sidebarWidth: 280 },
           contentView: 'editor',
-          terminalSessions: [],
           fileTreeCollapseState: {},
           selectedNodeId: null,
           recentFiles: [],

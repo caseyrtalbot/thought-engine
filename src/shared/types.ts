@@ -136,9 +136,8 @@ export interface UiPersistedState {
 export interface VaultState {
   version: number
   lastOpenNote: string | null
-  panelLayout: { sidebarWidth: number; terminalWidth: number }
+  panelLayout: { sidebarWidth: number }
   contentView: 'editor' | 'canvas' | 'skills'
-  terminalSessions: string[]
   fileTreeCollapseState: Record<string, boolean>
   selectedNodeId: string | null
   recentFiles: string[]

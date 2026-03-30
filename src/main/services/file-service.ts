@@ -196,9 +196,8 @@ export class FileService {
     const defaultState: VaultState = {
       version: 1,
       lastOpenNote: null,
-      panelLayout: { sidebarWidth: 240, terminalWidth: 400 },
+      panelLayout: { sidebarWidth: 240 },
       contentView: 'editor',
-      terminalSessions: [],
       fileTreeCollapseState: {},
       selectedNodeId: null,
       recentFiles: []
