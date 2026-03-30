@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { useTerminalStore } from '../../store/terminal-store'
 import { useTerminalActionStore } from '../../store/terminal-actions-store'
@@ -21,11 +22,36 @@ interface TerminalInstance {
   terminal: Terminal
   fitAddon: FitAddon
   sessionId: SessionId
+  webglAttached: boolean
+  needsReconnect: boolean
+}
+
+function loadSharedAddons(term: Terminal, fitAddon: FitAddon, searchAddon: SearchAddon): void {
+  term.loadAddon(fitAddon)
+  term.loadAddon(new WebLinksAddon())
+  term.loadAddon(searchAddon)
+
+  const unicode11Addon = new Unicode11Addon()
+  term.loadAddon(unicode11Addon)
+  term.unicode.activeVersion = '11'
+}
+
+function attachRawEnterHandler(term: Terminal, sessionId: SessionId): void {
+  term.attachCustomKeyEventHandler((event) => {
+    if (event.key === 'Enter' && event.shiftKey) {
+      if (event.type === 'keydown') {
+        void window.api.terminal.sendRawKeys(sessionId, '\x1b[13;2u')
+      }
+      return false
+    }
+    return true
+  })
 }
 
 export function TerminalPanel() {
   const containerRef = useRef<HTMLDivElement>(null)
   const instancesRef = useRef<Map<SessionId, TerminalInstance>>(new Map())
+  const pendingViewportClearRef = useRef<Set<SessionId>>(new Set())
   const searchAddonsRef = useRef<Map<SessionId, SearchAddon>>(new Map())
   const activeContainerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,20 +100,24 @@ export function TerminalPanel() {
     })
 
     const fitAddon = new FitAddon()
-    const webLinksAddon = new WebLinksAddon()
     const searchAddon = new SearchAddon()
 
-    term.loadAddon(fitAddon)
-    term.loadAddon(webLinksAddon)
-    term.loadAddon(searchAddon)
+    loadSharedAddons(term, fitAddon, searchAddon)
 
     searchAddonsRef.current.set(sessionId, searchAddon)
+    attachRawEnterHandler(term, sessionId)
 
     term.onData((data) => {
       window.api.terminal.write(sessionId, data)
     })
 
-    instancesRef.current.set(sessionId, { terminal: term, fitAddon, sessionId })
+    instancesRef.current.set(sessionId, {
+      terminal: term,
+      fitAddon,
+      sessionId,
+      webglAttached: false,
+      needsReconnect: false
+    })
 
     return sessionId
   }, [vaultPath, sessions.length, addSession, termFontSize])
@@ -161,13 +191,25 @@ export function TerminalPanel() {
     instance.terminal.open(container)
 
     // Load WebGL addon for GPU-accelerated rendering
-    try {
-      instance.terminal.loadAddon(new WebglAddon())
-    } catch {
-      // WebGL unavailable
+    if (!instance.webglAttached) {
+      try {
+        const webglAddon = new WebglAddon()
+        webglAddon.onContextLoss(() => {
+          instance.webglAttached = false
+          webglAddon.dispose()
+        })
+        instance.terminal.loadAddon(webglAddon)
+        instance.webglAttached = true
+      } catch {
+        // WebGL unavailable
+      }
     }
 
     instance.fitAddon.fit()
+
+    if (!instance.needsReconnect) {
+      return
+    }
 
     // Reconnect: replay scrollback for surviving sessions
     const { cols, rows } = instance.terminal
@@ -175,11 +217,14 @@ export function TerminalPanel() {
       .reconnect(activeSessionId, cols, rows)
       .then((result) => {
         if (result?.scrollback) {
+          pendingViewportClearRef.current.add(activeSessionId)
           instance.terminal.write(result.scrollback)
         }
+        instance.needsReconnect = false
       })
       .catch(() => {
         // Not a tmux session or reconnect failed, data flows via terminalData listener
+        instance.needsReconnect = false
       })
   }, [activeSessionId])
 
@@ -188,6 +233,10 @@ export function TerminalPanel() {
     const unsubData = window.api.on.terminalData((payload) => {
       const instance = instancesRef.current.get(payload.sessionId)
       if (instance) {
+        if (pendingViewportClearRef.current.has(payload.sessionId)) {
+          pendingViewportClearRef.current.delete(payload.sessionId)
+          instance.terminal.write('\x1b[2J\x1b[H')
+        }
         instance.terminal.write(payload.data)
       }
     })
@@ -198,6 +247,7 @@ export function TerminalPanel() {
         instance.terminal.writeln(`\r\n[Process exited with code ${payload.code}]`)
         instancesRef.current.delete(payload.sessionId)
       }
+      pendingViewportClearRef.current.delete(payload.sessionId)
       searchAddonsRef.current.delete(payload.sessionId)
       removeSession(payload.sessionId)
     })
@@ -311,6 +361,7 @@ export function TerminalPanel() {
         instance.terminal.dispose()
         instancesRef.current.delete(sessionId)
       }
+      pendingViewportClearRef.current.delete(sessionId)
       searchAddonsRef.current.delete(sessionId)
       removeSession(sessionId)
     },
@@ -362,16 +413,21 @@ export function TerminalPanel() {
 
             const fitAddon = new FitAddon()
             const searchAddon = new SearchAddon()
-            term.loadAddon(fitAddon)
-            term.loadAddon(new WebLinksAddon())
-            term.loadAddon(searchAddon)
+            loadSharedAddons(term, fitAddon, searchAddon)
             searchAddonsRef.current.set(sessionId, searchAddon)
+            attachRawEnterHandler(term, sessionId)
 
             term.onData((data) => {
               window.api.terminal.write(sessionId, data)
             })
 
-            instancesRef.current.set(sessionId, { terminal: term, fitAddon, sessionId })
+            instancesRef.current.set(sessionId, {
+              terminal: term,
+              fitAddon,
+              sessionId,
+              webglAttached: false,
+              needsReconnect: true
+            })
             discoveredCount++
           } catch (err) {
             console.error(`Failed to restore session ${sessionId}:`, err)
@@ -398,6 +454,7 @@ export function TerminalPanel() {
         instance.terminal.dispose()
       }
       instances.clear()
+      pendingViewportClearRef.current.clear()
     }
   }, [])
 

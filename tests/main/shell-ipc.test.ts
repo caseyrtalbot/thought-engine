@@ -192,4 +192,17 @@ describe('shell IPC with SessionRouter', () => {
 
     expect(mockPty.write).toHaveBeenCalledWith('ls\n')
   })
+
+  it('terminal:send-raw-keys routes raw input through the shell service', async () => {
+    registerShellIpc()
+
+    const createHandler = getHandler('terminal:create')
+    const fakeEvent = { sender: { id: 2 } }
+    const sid = (await createHandler(fakeEvent, { cwd: '/tmp' })) as unknown as string
+
+    const rawHandler = getHandler('terminal:send-raw-keys')
+    await rawHandler({}, { sessionId: sid, data: '\x1b[13;2u' })
+
+    expect(mockPty.write).toHaveBeenCalledWith('\x1b[13;2u')
+  })
 })

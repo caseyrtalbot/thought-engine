@@ -8,6 +8,7 @@ interface TerminalApi {
     vaultPath?: string
   }) => Promise<string>
   write: (args: { sessionId: string; data: string }) => Promise<void>
+  sendRawKeys: (args: { sessionId: string; data: string }) => Promise<void>
   resize: (args: { sessionId: string; cols: number; rows: number }) => Promise<void>
   kill: (args: { sessionId: string }) => Promise<void>
   reconnect: (args: {

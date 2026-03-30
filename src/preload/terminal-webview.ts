@@ -30,6 +30,9 @@ const terminalApi = {
 
   write: (args: { sessionId: string; data: string }) => ipcRenderer.invoke('terminal:write', args),
 
+  sendRawKeys: (args: { sessionId: string; data: string }) =>
+    ipcRenderer.invoke('terminal:send-raw-keys', args),
+
   resize: (args: { sessionId: string; cols: number; rows: number }) =>
     ipcRenderer.invoke('terminal:resize', args),
 

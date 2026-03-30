@@ -86,6 +86,8 @@ const api = {
       typedInvoke('terminal:create', { cwd, shell, label, vaultPath }),
     write: (sessionId: SessionId, data: string) =>
       typedInvoke('terminal:write', { sessionId, data }),
+    sendRawKeys: (sessionId: SessionId, data: string) =>
+      typedInvoke('terminal:send-raw-keys', { sessionId, data }),
     resize: (sessionId: SessionId, cols: number, rows: number) =>
       typedInvoke('terminal:resize', { sessionId, cols, rows }),
     kill: (sessionId: SessionId) => typedInvoke('terminal:kill', { sessionId }),

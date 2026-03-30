@@ -89,6 +89,14 @@ export class ShellService {
     }
   }
 
+  sendRawKeys(id: SessionId, data: string): void {
+    if (this.tmux) {
+      this.tmux.sendRawKeys(id, data)
+    } else {
+      this.ephemeralSessions.get(id)?.write(data)
+    }
+  }
+
   resize(id: SessionId, cols: number, rows: number): void {
     if (this.tmux) {
       this.tmux.resize(id, cols, rows)

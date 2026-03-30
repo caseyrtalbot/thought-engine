@@ -25,6 +25,7 @@ const mockTmuxService = {
   reconnect: vi.fn(),
   discover: vi.fn(() => []),
   write: vi.fn(),
+  sendRawKeys: vi.fn(),
   resize: vi.fn(),
   kill: vi.fn(),
   detachAll: vi.fn(),
@@ -92,6 +93,17 @@ describe('ShellService', () => {
       const id = service.create('/tmp')
       service.write(id, 'test')
       expect(mockPty.write).toHaveBeenCalledWith('test')
+    })
+
+    it('sendRawKeys delegates to ephemeral pty', () => {
+      const service = new ShellService()
+      service.setCallbacks(
+        () => {},
+        () => {}
+      )
+      const id = service.create('/tmp')
+      service.sendRawKeys(id, '\x1b[13;2u')
+      expect(mockPty.write).toHaveBeenCalledWith('\x1b[13;2u')
     })
 
     it('resize delegates to ephemeral pty', () => {
@@ -198,6 +210,16 @@ describe('ShellService', () => {
       )
       service.write(sessionId('test'), 'hello')
       expect(mockTmuxService.write).toHaveBeenCalledWith('test', 'hello')
+    })
+
+    it('sendRawKeys delegates to TmuxService', () => {
+      const service = new ShellService()
+      service.setCallbacks(
+        () => {},
+        () => {}
+      )
+      service.sendRawKeys(sessionId('test'), '\x1b[13;2u')
+      expect(mockTmuxService.sendRawKeys).toHaveBeenCalledWith('test', '\x1b[13;2u')
     })
 
     it('resize delegates to TmuxService', () => {

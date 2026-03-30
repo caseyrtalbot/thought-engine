@@ -49,6 +49,10 @@ describe('TerminalApp component', () => {
       expect(src).toContain("from '@xterm/addon-search'")
     })
 
+    it('imports Unicode11Addon', () => {
+      expect(src).toContain("from '@xterm/addon-unicode11'")
+    })
+
     it('imports WebglAddon', () => {
       expect(src).toContain("from '@xterm/addon-webgl'")
     })
@@ -101,9 +105,20 @@ describe('TerminalApp component', () => {
       expect(src).toContain('new SearchAddon()')
     })
 
+    it('enables Unicode11 width handling', () => {
+      expect(src).toContain('new Unicode11Addon()')
+      expect(src).toContain("term.unicode.activeVersion = '11'")
+    })
+
     it('attaches a custom key event handler for Cmd/Ctrl+F', () => {
       expect(src).toContain('attachCustomKeyEventHandler')
       expect(src).toContain("e.key === 'f'")
+    })
+
+    it('routes Shift+Enter through sendRawKeys', () => {
+      expect(src).toContain("e.key === 'Enter'")
+      expect(src).toContain('window.terminalApi.sendRawKeys')
+      expect(src).toContain('\\x1b[13;2u')
     })
   })
 
@@ -257,6 +272,10 @@ describe('terminal-api.d.ts type declarations', () => {
 
   it('declares write method', () => {
     expect(dts).toContain('write:')
+  })
+
+  it('declares sendRawKeys method', () => {
+    expect(dts).toContain('sendRawKeys:')
   })
 
   it('declares resize method', () => {

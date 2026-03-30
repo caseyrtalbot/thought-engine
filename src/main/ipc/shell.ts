@@ -44,6 +44,11 @@ export function registerShellIpc(): void {
     shellService.write(args.sessionId, args.data)
   })
 
+  typedHandle('terminal:send-raw-keys', async (args) => {
+    assertValidSessionId(args.sessionId)
+    shellService.sendRawKeys(args.sessionId, args.data)
+  })
+
   typedHandle('terminal:resize', async (args) => {
     assertValidSessionId(args.sessionId)
     shellService.resize(args.sessionId, args.cols, args.rows)

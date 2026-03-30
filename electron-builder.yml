@@ -12,6 +12,14 @@ files:
 extraResources:
   - from: scripts/agent-wrapper.sh
     to: scripts/agent-wrapper.sh
+  - from: vendor/tmux/tmux
+    to: tmux
+  - from: vendor/tmux/lib
+    to: lib
+  - from: resources/tmux.conf
+    to: tmux.conf
+  - from: resources/terminfo
+    to: terminfo
 asarUnpack:
   - resources/**
   - node_modules/node-pty/**

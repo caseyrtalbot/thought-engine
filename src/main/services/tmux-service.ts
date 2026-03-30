@@ -3,7 +3,10 @@ import { readdirSync } from 'fs'
 import {
   TMUX_SOCKET,
   SESSION_PREFIX,
+  getTmuxBin,
+  getTmuxConf,
   tmuxExec,
+  tmuxRuntimeEnv,
   tmuxSessionName,
   verifyTmuxAvailable,
   ensureSessionDir,
@@ -29,6 +32,15 @@ export interface ReconnectResult {
 export interface DiscoveredSession {
   readonly sessionId: string
   readonly meta: SessionMeta
+}
+
+function stripTrailingBlanks(text: string): string {
+  const lines = text.split('\n')
+  let end = lines.length
+  while (end > 0 && lines[end - 1]!.trim() === '') {
+    end--
+  }
+  return lines.slice(0, end).join('\n')
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +103,7 @@ export class TmuxService {
 
     // Set generous scrollback limit and hide the status bar.
     // The status bar leaks tmux internals into the embedded terminal UI.
-    tmuxExec('set-option', '-t', name, 'history-limit', '100000')
+    tmuxExec('set-option', '-t', name, 'history-limit', '200000')
     tmuxExec('set-option', '-t', name, 'status', 'off')
 
     // Persist metadata
@@ -130,15 +142,12 @@ export class TmuxService {
       return null
     }
 
-    // Resize the tmux window to match the new terminal dimensions BEFORE attaching.
-    // When the client attaches, tmux redraws the current screen at the correct size.
-    // We skip scrollback replay because capture-pane captures at the OLD dimensions,
-    // and ANSI escape codes with hardcoded cursor positions render as garbled dots
-    // when replayed into a differently-sized xterm.
+    let scrollback = ''
     try {
-      tmuxExec('resize-window', '-t', name, '-x', String(cols), '-y', String(rows))
+      const raw = tmuxExec('capture-pane', '-t', name, '-p', '-e', '-S', '-200000')
+      scrollback = stripTrailingBlanks(raw)
     } catch {
-      // resize can fail if session has no window
+      // Proceed without scrollback if capture-pane fails.
     }
 
     // Only attach a new client if one isn't already connected.
@@ -151,8 +160,14 @@ export class TmuxService {
       this.resize(sessionId, cols, rows)
     }
 
+    try {
+      tmuxExec('resize-window', '-t', name, '-x', String(cols), '-y', String(rows))
+    } catch {
+      // resize can fail if session has no window
+    }
+
     return {
-      scrollback: '',
+      scrollback,
       meta: { shell: meta.shell, cwd: meta.cwd, label: meta.label }
     }
   }
@@ -212,6 +227,15 @@ export class TmuxService {
 
   write(sessionId: string, data: string): void {
     this.clients.get(sessionId)?.write(data)
+  }
+
+  sendRawKeys(sessionId: string, data: string): void {
+    try {
+      tmuxExec('send-keys', '-l', '-t', tmuxSessionName(sessionId), data)
+    } catch {
+      // Fall back to the attached client when tmux rejects the raw send.
+      this.clients.get(sessionId)?.write(data)
+    }
   }
 
   resize(sessionId: string, cols: number, rows: number): void {
@@ -317,20 +341,21 @@ export class TmuxService {
     }
 
     // Build UTF-8 safe environment (matches Collaborator pattern)
-    const env: Record<string, string> = {
-      ...(process.env as Record<string, string>),
-      PROMPT_EOL_MARK: ''
-    }
+    const env: Record<string, string> = { ...tmuxRuntimeEnv(), PROMPT_EOL_MARK: '' }
     if (!env.LANG || !env.LANG.includes('UTF-8')) {
       env.LANG = 'en_US.UTF-8'
     }
 
-    const pty = spawn('tmux', ['-L', TMUX_SOCKET, '-u', 'attach-session', '-t', tmuxName], {
-      name: 'xterm-256color',
-      cols,
-      rows,
-      env
-    })
+    const pty = spawn(
+      getTmuxBin(),
+      ['-L', TMUX_SOCKET, '-u', '-f', getTmuxConf(), 'attach-session', '-t', tmuxName],
+      {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        env
+      }
+    )
 
     pty.onData((data) => this.onData(sessionId, data))
     pty.onExit(({ exitCode }) => {

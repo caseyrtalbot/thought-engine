@@ -205,6 +205,12 @@ describe('terminal-webview preload', () => {
       expect(mockInvoke).toHaveBeenCalledWith('terminal:write', args)
     })
 
+    it('sendRawKeys calls ipcRenderer.invoke with terminal:send-raw-keys', () => {
+      const args = { sessionId: 'sess-1', data: '\x1b[13;2u' }
+      captured.exposeCallback.sendRawKeys(args)
+      expect(mockInvoke).toHaveBeenCalledWith('terminal:send-raw-keys', args)
+    })
+
     it('resize calls ipcRenderer.invoke with terminal:resize', () => {
       const args = { sessionId: 'sess-1', cols: 80, rows: 24 }
       captured.exposeCallback.resize(args)

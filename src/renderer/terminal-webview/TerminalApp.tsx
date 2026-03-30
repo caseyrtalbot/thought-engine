@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebglAddon } from '@xterm/addon-webgl'
 import '@xterm/xterm/css/xterm.css'
 
@@ -164,8 +165,21 @@ export function TerminalApp() {
     searchRef.current = searchAddon
     term.loadAddon(searchAddon)
 
+    const unicode11Addon = new Unicode11Addon()
+    term.loadAddon(unicode11Addon)
+    term.unicode.activeVersion = '11'
+
     // Cmd+F / Ctrl+F to trigger search
     term.attachCustomKeyEventHandler((e) => {
+      if (e.key === 'Enter' && e.shiftKey) {
+        if (e.type === 'keydown') {
+          const sid = sessionIdRef.current
+          if (sid) {
+            void window.terminalApi.sendRawKeys({ sessionId: sid, data: '\x1b[13;2u' })
+          }
+        }
+        return false
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         searchAddon.findNext('')
         return false

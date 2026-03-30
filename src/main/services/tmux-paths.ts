@@ -51,10 +51,67 @@ export function tmuxSessionName(sessionId: string): string {
 
 const EXEC_TIMEOUT = 5_000
 
+function getApp(): typeof import('electron').app | null {
+  try {
+    return require('electron').app
+  } catch {
+    return null
+  }
+}
+
+function baseArgs(): string[] {
+  return ['-L', TMUX_SOCKET, '-u', '-f', getTmuxConf()]
+}
+
+export function getTmuxBin(): string {
+  const app = getApp()
+  if (app?.isPackaged) {
+    const bundled = join(process.resourcesPath, 'tmux')
+    if (existsSync(bundled)) {
+      return bundled
+    }
+  }
+  return 'tmux'
+}
+
+export function getTmuxConf(): string {
+  const app = getApp()
+  if (app?.isPackaged) {
+    const bundled = join(process.resourcesPath, 'tmux.conf')
+    if (existsSync(bundled)) {
+      return bundled
+    }
+  }
+
+  const root = app?.getAppPath?.() ?? process.cwd()
+  return join(root, 'resources', 'tmux.conf')
+}
+
+export function getTerminfoDir(): string | undefined {
+  const app = getApp()
+  if (app?.isPackaged) {
+    const bundled = join(process.resourcesPath, 'terminfo')
+    return existsSync(bundled) ? bundled : undefined
+  }
+
+  const devDir = join(process.cwd(), 'resources', 'terminfo')
+  return existsSync(devDir) ? devDir : undefined
+}
+
+export function tmuxRuntimeEnv(): Record<string, string> {
+  const env = { ...(process.env as Record<string, string>) }
+  const terminfoDir = getTerminfoDir()
+  if (terminfoDir) {
+    env.TERMINFO = terminfoDir
+  }
+  return env
+}
+
 export function tmuxExec(...args: string[]): string {
-  return execFileSync('tmux', ['-L', TMUX_SOCKET, ...args], {
+  return execFileSync(getTmuxBin(), [...baseArgs(), ...args], {
     encoding: 'utf-8',
-    timeout: EXEC_TIMEOUT
+    timeout: EXEC_TIMEOUT,
+    env: tmuxRuntimeEnv()
   }).trim()
 }
 
@@ -64,9 +121,10 @@ export function tmuxExec(...args: string[]): string {
 
 export function verifyTmuxAvailable(): boolean {
   try {
-    const output = execFileSync('tmux', ['-V'], {
+    const output = execFileSync(getTmuxBin(), ['-V'], {
       encoding: 'utf-8',
-      timeout: EXEC_TIMEOUT
+      timeout: EXEC_TIMEOUT,
+      env: tmuxRuntimeEnv()
     }).trim()
 
     // Parse version from "tmux 3.4" or "tmux 2.6a"

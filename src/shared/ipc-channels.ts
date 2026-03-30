@@ -87,6 +87,10 @@ export interface IpcChannels {
     response: SessionId
   }
   'terminal:write': { request: { sessionId: SessionId; data: string }; response: void }
+  'terminal:send-raw-keys': {
+    request: { sessionId: SessionId; data: string }
+    response: void
+  }
   'terminal:resize': {
     request: { sessionId: SessionId; cols: number; rows: number }
     response: void
