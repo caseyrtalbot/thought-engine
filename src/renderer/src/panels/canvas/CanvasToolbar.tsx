@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
+import { useSettingsStore } from '../../store/settings-store'
 import { createCanvasNode } from '@shared/canvas-types'
 import { generateClaudeMd } from '../../engine/claude-md-template'
 import { TILE_PATTERNS, type TilePattern } from './canvas-tiling'
-import { colors, borderRadius, floatingPanel, typography } from '../../design/tokens'
+import { colors } from '../../design/tokens'
 
 interface CanvasToolbarProps {
   readonly canUndo: boolean
@@ -26,7 +27,40 @@ export function CanvasToolbar({
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
   const focusFrames = useCanvasStore((s) => s.focusFrames)
+  const gridDotVisibility = useSettingsStore((s) => s.env.gridDotVisibility)
+  const cardBlur = useSettingsStore((s) => s.env.cardBlur)
+  const setEnv = useSettingsStore((s) => s.setEnv)
   const [tileMenuOpen, setTileMenuOpen] = useState(false)
+  const [envMenuOpen, setEnvMenuOpen] = useState(false)
+  const tileMenuRef = useRef<HTMLDivElement>(null)
+  const envMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!tileMenuOpen && !envMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (tileMenuRef.current && !tileMenuRef.current.contains(event.target as Node)) {
+        setTileMenuOpen(false)
+      }
+      if (envMenuRef.current && !envMenuRef.current.contains(event.target as Node)) {
+        setEnvMenuOpen(false)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setTileMenuOpen(false)
+        setEnvMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [tileMenuOpen, envMenuOpen])
 
   const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
   const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
@@ -34,38 +68,18 @@ export function CanvasToolbar({
 
   const zoomPercent = Math.round(viewport.zoom * 100)
 
-  const btnStyle: React.CSSProperties = {
-    color: colors.text.secondary,
-    backgroundColor: 'transparent',
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.inline,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 13,
-    cursor: 'pointer',
-    border: 'none'
-  }
-
-  const disabledStyle: React.CSSProperties = {
-    ...btnStyle,
-    color: colors.text.muted,
-    cursor: 'default'
-  }
-
   return (
     <div
-      className="absolute top-3 right-3 flex flex-col gap-1 z-30"
-      style={{
-        backgroundColor: floatingPanel.glass.bg,
-        borderRadius: floatingPanel.borderRadius,
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2)',
-        backdropFilter: floatingPanel.glass.blur,
-        padding: 8
-      }}
+      className="canvas-toolrail absolute top-3 left-3 z-30"
+      style={{ backgroundColor: 'var(--canvas-hud-bg)' }}
     >
-      <button onClick={onAddCard} style={btnStyle} title="Add card" data-testid="canvas-add-card">
+      <button
+        onClick={onAddCard}
+        className="canvas-toolbtn"
+        title="Add card"
+        data-testid="canvas-add-card"
+        style={{ color: colors.text.secondary }}
+      >
         <svg
           width={14}
           height={14}
@@ -80,9 +94,10 @@ export function CanvasToolbar({
       </button>
       <button
         onClick={onOpenImport}
-        style={btnStyle}
+        className="canvas-toolbtn"
         title="Import notes (Cmd+G)"
         data-testid="canvas-import"
+        style={{ color: colors.text.secondary }}
       >
         <svg
           width={14}
@@ -101,27 +116,28 @@ export function CanvasToolbar({
         </svg>
       </button>
 
-      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+      <div className="canvas-toolrail__divider" />
 
-      <button onClick={zoomIn} style={btnStyle} title="Zoom in">
+      <button onClick={zoomIn} className="canvas-toolbtn" title="Zoom in">
         +
       </button>
       <button
         onClick={resetZoom}
-        style={{ ...btnStyle, fontSize: 11, fontFamily: typography.fontFamily.mono }}
-        title={`${zoomPercent}% — click to reset`}
+        className="canvas-toolbtn canvas-zoom-badge"
+        title={`${zoomPercent}% (click to reset)`}
       >
         {zoomPercent}%
       </button>
-      <button onClick={zoomOut} style={btnStyle} title="Zoom out">
+      <button onClick={zoomOut} className="canvas-toolbtn" title="Zoom out">
         -
       </button>
 
-      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+      <div className="canvas-toolrail__divider" />
 
       <button
         onClick={onUndo}
-        style={canUndo ? btnStyle : disabledStyle}
+        className="canvas-toolbtn"
+        disabled={!canUndo}
         title="Undo (Cmd+Z)"
         data-testid="canvas-undo"
       >
@@ -140,7 +156,8 @@ export function CanvasToolbar({
       </button>
       <button
         onClick={onRedo}
-        style={canRedo ? btnStyle : disabledStyle}
+        className="canvas-toolbtn"
+        disabled={!canRedo}
         title="Redo (Cmd+Shift+Z)"
         data-testid="canvas-redo"
       >
@@ -158,13 +175,12 @@ export function CanvasToolbar({
         </svg>
       </button>
 
-      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+      <div className="canvas-toolrail__divider" />
 
-      {/* Tiling layout */}
-      <div style={{ position: 'relative' }}>
+      <div ref={tileMenuRef} style={{ position: 'relative' }}>
         <button
           onClick={() => setTileMenuOpen((prev) => !prev)}
-          style={btnStyle}
+          className="canvas-toolbtn"
           title="Tile layout (Cmd+L)"
           data-testid="canvas-tile"
         >
@@ -184,29 +200,20 @@ export function CanvasToolbar({
         </button>
         {tileMenuOpen && (
           <div
-            className="absolute flex flex-col py-1"
+            className="sidebar-popover absolute flex flex-col py-1"
             style={{
               top: 0,
-              right: '100%',
-              marginRight: 6,
+              left: '100%',
+              marginLeft: 6,
               minWidth: 150,
-              backgroundColor: colors.bg.elevated,
-              border: `1px solid ${colors.border.default}`,
-              borderRadius: borderRadius.container,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
               zIndex: 50
             }}
           >
             {TILE_PATTERNS.map((p) => (
               <button
                 key={p.id}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80"
-                style={{
-                  color: colors.text.secondary,
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
+                className="sidebar-popover-item"
+                style={{ color: colors.text.secondary }}
                 onClick={() => {
                   const vp = useCanvasStore.getState().viewport
                   // Compute viewport center in canvas coordinates
@@ -229,7 +236,7 @@ export function CanvasToolbar({
         )}
       </div>
 
-      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+      <div className="canvas-toolrail__divider" />
 
       <button
         onClick={async () => {
@@ -253,7 +260,7 @@ export function CanvasToolbar({
           )
           useCanvasStore.getState().addNode(node)
         }}
-        style={{ ...btnStyle, color: '#f59e0b' }}
+        className="canvas-toolbtn canvas-toolbtn--accent"
         title="Start Claude"
       >
         <svg
@@ -269,9 +276,92 @@ export function CanvasToolbar({
         </svg>
       </button>
 
-      <div style={{ height: 1, backgroundColor: colors.border.subtle, margin: '2px 0' }} />
+      <div className="canvas-toolrail__divider" />
 
-      <div className="flex flex-col items-center gap-1" style={{ padding: '2px 0' }}>
+      <div ref={envMenuRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setEnvMenuOpen((prev) => !prev)}
+          className="canvas-toolbtn"
+          title="Environment settings"
+          data-testid="canvas-env-settings"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <circle cx="8" cy="8" r="3" />
+            <line x1="8" y1="1" x2="8" y2="4" />
+            <line x1="8" y1="12" x2="8" y2="15" />
+            <line x1="1" y1="8" x2="4" y2="8" />
+            <line x1="12" y1="8" x2="15" y2="8" />
+          </svg>
+        </button>
+        {envMenuOpen && (
+          <div
+            className="sidebar-popover absolute flex flex-col gap-3 p-3"
+            style={{
+              top: 0,
+              left: '100%',
+              marginLeft: 6,
+              minWidth: 180,
+              zIndex: 50
+            }}
+          >
+            <div className="flex flex-col gap-1">
+              <span
+                style={{
+                  fontSize: 10,
+                  color: colors.text.muted,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Grid dots
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={gridDotVisibility}
+                onChange={(e) => setEnv('gridDotVisibility', Number(e.target.value))}
+                className="graph-slider w-full"
+                style={{ accentColor: colors.accent.default }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span
+                style={{
+                  fontSize: 10,
+                  color: colors.text.muted,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase'
+                }}
+              >
+                Card blur
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={32}
+                step={2}
+                value={cardBlur}
+                onChange={(e) => setEnv('cardBlur', Number(e.target.value))}
+                className="graph-slider w-full"
+                style={{ accentColor: colors.accent.default }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="canvas-toolrail__divider" />
+
+      <div className="flex w-full flex-col items-center gap-1" style={{ padding: '2px 0' }}>
         {[1, 2, 3, 4, 5].map((slot) => {
           const filled = String(slot) in focusFrames
           return (

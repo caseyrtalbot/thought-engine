@@ -24,10 +24,22 @@ import {
 
 /** Indent guide via border-l on the row element.
  *  Simpler than background-image gradients, more native-feeling. */
+function treeGuideColor(emphasis: 'rest' | 'active' | 'hover' = 'rest'): string {
+  switch (emphasis) {
+    case 'active':
+      return 'color-mix(in srgb, var(--color-accent-default) 24%, var(--color-text-primary) 4%)'
+    case 'hover':
+      return 'color-mix(in srgb, var(--color-text-primary) 18%, transparent)'
+    case 'rest':
+    default:
+      return 'color-mix(in srgb, var(--color-text-primary) 8%, transparent)'
+  }
+}
+
 function indentBorderStyle(depth: number, isActive?: boolean): React.CSSProperties {
   if (depth === 0) return {}
   return {
-    borderLeft: `1px solid rgba(255, 255, 255, ${isActive ? '0.12' : '0.06'})`,
+    borderLeft: `1px solid ${treeGuideColor(isActive ? 'active' : 'rest')}`,
     marginLeft: 8 + (depth - 1) * 16 + 7,
     paddingLeft: 9
   }
@@ -268,11 +280,11 @@ export const FileTree = memo(function FileTree({
   )
 
   const settingsFontSize = useSettingsStore((s) => s.env.sidebarFontSize)
-  const resolvedFont = 'inherit'
+  const resolvedFont = 'var(--font-body)'
   const showDateHeaders = sortMode === 'modified'
 
   return (
-    <div data-testid="file-tree" className="text-sm select-none px-1 py-1">
+    <div data-testid="file-tree" className="file-tree text-sm select-none px-1 py-1">
       {visibleNodes.map((node, i) => {
         // Insert date separator when sorted by modified and the date bucket changes
         let dateHeader: React.ReactNode = null
@@ -358,27 +370,31 @@ function DirectoryRow({
     <div
       onClick={() => onToggleDirectory(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, true)}
-      className="flex items-center py-[2px] cursor-pointer transition-colors"
+      className="tree-directory-row flex items-center py-[2px] cursor-pointer transition-colors"
       style={{
         paddingLeft: node.depth === 0 ? 8 : undefined,
         paddingRight: 8,
         marginTop: node.depth === 0 ? 6 : undefined,
-        color: 'rgba(255, 255, 255, 0.60)',
+        color: 'color-mix(in srgb, var(--color-text-secondary) 88%, transparent)',
         fontFamily: treeFontFamily,
         fontWeight: 600,
-        fontSize: treeFontSize - 1,
+        fontSize: Math.max(treeFontSize - 1, 11),
         letterSpacing: '0.02em',
         transition: 'color 120ms ease-out',
         ...indentBorderStyle(node.depth)
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.82)'
+        e.currentTarget.style.color = 'var(--color-text-primary)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.60)'
+        e.currentTarget.style.color =
+          'color-mix(in srgb, var(--color-text-secondary) 88%, transparent)'
       }}
     >
-      <span className="mr-1 flex items-center" style={{ color: 'rgba(255, 255, 255, 0.30)' }}>
+      <span
+        className="mr-1 flex items-center"
+        style={{ color: 'color-mix(in srgb, var(--color-text-muted) 88%, transparent)' }}
+      >
         <Chevron isExpanded={!isCollapsed} />
       </span>
       <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: 0.8 }}>
@@ -395,9 +411,10 @@ function DirectoryRow({
       )}
       {!isRenaming && node.itemCount > 0 && (
         <span
-          className="ml-auto text-[11px]"
+          className="ml-auto"
           style={{
-            color: 'rgba(255, 255, 255, 0.20)',
+            color: 'color-mix(in srgb, var(--color-text-muted) 72%, transparent)',
+            fontSize: 'var(--env-sidebar-tertiary-font-size)',
             fontVariantNumeric: 'tabular-nums'
           }}
         >
@@ -470,11 +487,11 @@ function FileRow({
         ...indentBorderStyle(node.depth, isActive)
       }}
       onMouseEnter={(e) => {
-        if (node.depth > 0) e.currentTarget.style.borderLeftColor = 'rgba(255, 255, 255, 0.15)'
+        if (node.depth > 0) e.currentTarget.style.borderLeftColor = treeGuideColor('hover')
       }}
       onMouseLeave={(e) => {
         if (node.depth > 0)
-          e.currentTarget.style.borderLeftColor = `rgba(255, 255, 255, ${isActive ? '0.12' : '0.06'})`
+          e.currentTarget.style.borderLeftColor = treeGuideColor(isActive ? 'active' : 'rest')
       }}
     >
       <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: isActive ? 0.9 : 0.7 }}>
@@ -487,9 +504,9 @@ function FileRow({
           onCancel={onRenameCancel ?? (() => {})}
         />
       ) : (
-        <span className="truncate flex-1 file-name-text" style={{ color: 'rgb(220, 220, 220)' }}>
+        <span className="truncate flex-1 file-name-text" style={{ color: colors.text.primary }}>
           {base}
-          {ext && <span style={{ opacity: 0.4 }}>{ext}</span>}
+          {ext && <span className="file-name-text__ext">{ext}</span>}
         </span>
       )}
       {canvasConnectionCount >= 2 ? (
@@ -498,7 +515,7 @@ function FileRow({
           style={{
             color: colors.accent.default,
             opacity: 0.6,
-            fontSize: 10,
+            fontSize: 'var(--env-sidebar-tertiary-font-size)',
             fontVariantNumeric: 'tabular-nums'
           }}
         >

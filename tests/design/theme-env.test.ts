@@ -1,6 +1,22 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, cleanup } from '@testing-library/react'
+import { createElement } from 'react'
+import { ThemeProvider } from '../../src/renderer/src/design/Theme'
 import { resolveTheme } from '../../src/renderer/src/store/settings-store'
+import { useSettingsStore } from '../../src/renderer/src/store/settings-store'
 import { ENV_DEFAULTS, type EnvironmentSettings } from '../../src/renderer/src/design/themes'
+
+function stubMatchMedia(matches = false): void {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    }))
+  )
+}
 
 describe('resolveTheme', () => {
   afterEach(() => {
@@ -16,29 +32,13 @@ describe('resolveTheme', () => {
   })
 
   it('returns dark when system prefers dark', () => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn((query: string) => ({
-        matches: query.includes('dark'),
-        media: query,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn()
-      }))
-    )
+    stubMatchMedia(true)
 
     expect(resolveTheme('system')).toBe('dark')
   })
 
   it('returns light when system prefers light', () => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn((query: string) => ({
-        matches: false,
-        media: query,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn()
-      }))
-    )
+    stubMatchMedia(false)
 
     expect(resolveTheme('system')).toBe('light')
   })
@@ -77,6 +77,51 @@ describe('ENV_DEFAULTS', () => {
       expect(ENV_DEFAULTS.light).toHaveProperty(key)
       expect(typeof ENV_DEFAULTS.light[key]).toBe('number')
     }
+  })
+})
+
+describe('ThemeProvider environment CSS vars', () => {
+  beforeEach(() => {
+    stubMatchMedia(false)
+    localStorage.clear()
+    document.documentElement.removeAttribute('style')
+    useSettingsStore.setState({
+      theme: 'light',
+      accentColor: 'matrix',
+      env: {
+        ...ENV_DEFAULTS.light,
+        activityBarOpacity: 34,
+        sidebarFontSize: 15,
+        cardBlur: 18,
+        cardTitleFontSize: 14
+      },
+      displayFont: 'Inter',
+      bodyFont: 'Inter',
+      monoFont: 'JetBrains Mono',
+      defaultEditorMode: 'rich',
+      autosaveInterval: 1500,
+      spellCheck: false,
+      terminalShell: '',
+      terminalFontSize: 13,
+      scrollbackLines: 10000
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    document.documentElement.removeAttribute('style')
+  })
+
+  it('applies shared environment variables for rail chrome and sidebar sizing', () => {
+    render(createElement(ThemeProvider, null, createElement('div', null, 'themed')))
+
+    const rootStyle = document.documentElement.style
+    expect(rootStyle.getPropertyValue('--chrome-rail-bg')).toBe('rgba(232, 236, 240, 0.34)')
+    expect(rootStyle.getPropertyValue('--env-card-blur')).toBe('18px')
+    expect(rootStyle.getPropertyValue('--env-card-title-font-size')).toBe('14px')
+    expect(rootStyle.getPropertyValue('--env-sidebar-font-size')).toBe('15px')
+    expect(rootStyle.getPropertyValue('--env-sidebar-secondary-font-size')).toBe('14px')
+    expect(rootStyle.getPropertyValue('--env-sidebar-tertiary-font-size')).toBe('12px')
   })
 })
 

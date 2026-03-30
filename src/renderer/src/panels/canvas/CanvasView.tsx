@@ -1,5 +1,4 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { colors, typography } from '../../design/tokens'
 import { CanvasSurface } from './CanvasSurface'
 import { useCanvasStore } from '../../store/canvas-store'
 import {
@@ -31,6 +30,7 @@ import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
 import { findOpenPosition } from './canvas-layout'
 import { CanvasSplitEditor } from './CanvasSplitEditor'
+import { CanvasWelcomeCard, EmptyCanvasHint } from './CanvasEmptyStates'
 import { useTabStore } from '../../store/tab-store'
 
 /** Draggable divider + editor panel. Separate component to isolate drag
@@ -69,97 +69,6 @@ function SplitDividerAndPanel({ filePath }: { readonly filePath: string }) {
         <CanvasSplitEditor filePath={filePath} />
       </div>
     </>
-  )
-}
-
-function CanvasWelcomeCard() {
-  const [isHovered, setIsHovered] = useState(false)
-
-  const handleOpenFolder = useCallback(async () => {
-    const path = await window.api.fs.selectVault()
-    if (path) {
-      window.dispatchEvent(new CustomEvent('te:open-vault', { detail: path }))
-    }
-  }, [])
-
-  return (
-    <div
-      className="absolute inset-0 flex items-center justify-center z-[1]"
-      style={{ marginTop: -40 }}
-    >
-      <div
-        style={{
-          width: 360,
-          padding: '32px 28px',
-          borderRadius: 16,
-          backgroundColor: 'var(--canvas-card-bg)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          border: '1px solid var(--canvas-card-border)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)'
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            fontFamily: typography.fontFamily.mono,
-            color: colors.text.muted,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            marginBottom: 12
-          }}
-        >
-          Thought Engine
-        </div>
-        <h2
-          style={{
-            margin: 0,
-            fontSize: 18,
-            fontWeight: 500,
-            fontFamily: typography.fontFamily.display,
-            color: colors.text.primary,
-            lineHeight: 1.4,
-            marginBottom: 8
-          }}
-        >
-          Open a folder to get started.
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontFamily: typography.fontFamily.body,
-            color: colors.text.secondary,
-            lineHeight: 1.6,
-            marginBottom: 24
-          }}
-        >
-          Point Thought Engine at any folder of markdown files. Your notes become an explorable
-          knowledge graph with connections, clusters, and tensions.
-        </p>
-        <button
-          type="button"
-          onClick={handleOpenFolder}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          style={{
-            padding: '9px 20px',
-            fontSize: 13,
-            fontWeight: 500,
-            fontFamily: typography.fontFamily.body,
-            color: '#fff',
-            backgroundColor: isHovered ? colors.accent.hover : colors.accent.default,
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'pointer',
-            transition: 'background-color 150ms ease-out',
-            lineHeight: 1.5
-          }}
-        >
-          Open Folder
-        </button>
-      </div>
-    </div>
   )
 }
 
@@ -645,23 +554,7 @@ export function CanvasView(): React.ReactElement {
 
         {nodes.length === 0 && !vaultPath && <CanvasWelcomeCard />}
 
-        {nodes.length === 0 && vaultPath && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
-            <p
-              style={{
-                fontSize: 12,
-                fontFamily: typography.fontFamily.mono,
-                color: colors.text.muted,
-                letterSpacing: '0.04em',
-                marginTop: -60
-              }}
-            >
-              drop files to begin
-              <span style={{ opacity: 0.4, margin: '0 10px' }}>|</span>
-              <span style={{ opacity: 0.6 }}>Cmd+G</span>
-            </p>
-          </div>
-        )}
+        {nodes.length === 0 && vaultPath && <EmptyCanvasHint rawFileCount={rawFileCount} />}
 
         <ZoomIndicator />
 
@@ -673,22 +566,27 @@ export function CanvasView(): React.ReactElement {
             <div
               className="text-center px-4 py-2 rounded-full"
               style={{
-                backgroundColor: 'rgba(14, 14, 18, 0.92)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid var(--color-border-default)'
+                backgroundColor: 'rgba(10, 10, 14, 0.92)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(92, 184, 196, 0.18)',
+                boxShadow: '0 12px 28px rgba(0, 0, 0, 0.28)'
               }}
             >
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} without metadata
+              <span
+                className="text-[10px] uppercase tracking-[0.16em]"
+                style={{ color: 'rgba(92, 184, 196, 0.82)' }}
+              >
+                Enrichment
               </span>
               <span
                 className="text-xs mx-2"
-                style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}
+                style={{ color: 'var(--color-text-muted)', opacity: 0.25 }}
               >
                 |
               </span>
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>
-                /connect-vault
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} still need metadata. Run
+                {' /connect-vault'}
               </span>
             </div>
           </div>

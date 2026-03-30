@@ -5,7 +5,6 @@ import { useVaultStore } from '../store/vault-store'
 import { useUiStore } from '../store/ui-store'
 import { buildGhostIndex } from '../engine/ghost-index'
 import { colors } from '../design/tokens'
-import { useEnv } from '../design/Theme'
 import { Atom } from '@phosphor-icons/react'
 
 const ICON_SIZE = 20
@@ -122,67 +121,53 @@ export function ActivityBar({
   const activeTabId = useTabStore((s) => s.activeTabId)
   const openTab = useTabStore((s) => s.openTab)
   const ghostCount = useGhostCount()
-  const { activityBarOpacity } = useEnv()
 
   return (
     <div
-      className="flex flex-col items-center shrink-0 pt-12 gap-1 relative"
+      className="workspace-activity-rail flex flex-col items-center shrink-0 pt-12 gap-1 relative"
       style={{
         width: 48,
-        backgroundColor: `rgba(0, 0, 0, ${activityBarOpacity / 100})`,
+        backgroundColor: 'var(--chrome-rail-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)'
       }}
     >
-      {/* Border line starts below traffic lights, flush with search bar top */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 40,
-          right: 0,
-          bottom: 0,
-          width: 1,
-          backgroundColor: colors.border.default
-        }}
-      />
-      {ITEMS.map(({ view, label, icon }) => {
-        const isActive = activeTabId === view
-        const def = TAB_DEFINITIONS[view]
-        const isGhostTab = view === 'ghosts'
-        const ghostTint = isGhostTab
-          ? ghostCount > 0
-            ? '#f59e0b' // amber: unresolved ghosts
-            : '#4ade80' // green: all resolved
-          : undefined
-        return (
-          <button
-            key={view}
-            type="button"
-            onClick={() =>
-              openTab({ id: view, type: view, label: def.label, closeable: view !== 'editor' })
-            }
-            className="activity-btn relative flex items-center justify-center cursor-pointer"
-            data-active={isActive || undefined}
-            aria-pressed={isActive}
-            style={
-              {
-                width: 34,
-                height: 34,
-                '--base-opacity': isActive ? 0.9 : isGhostTab && ghostTint ? 0.7 : 0.4,
-                '--base-bg': isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                color: ghostTint ?? colors.text.primary,
-                borderRadius: 8,
-                transition:
-                  'opacity 150ms ease-out, background-color 150ms ease-out, color 300ms ease-out'
-              } as React.CSSProperties
-            }
-            title={isGhostTab ? `${label} (${ghostCount})` : label}
-            aria-label={`Switch to ${label} view`}
-          >
-            {icon}
-          </button>
-        )
-      })}
+      <div className="flex flex-col items-center gap-1 w-full">
+        {ITEMS.map(({ view, label, icon }) => {
+          const isActive = activeTabId === view
+          const def = TAB_DEFINITIONS[view]
+          const isGhostTab = view === 'ghosts'
+          const ghostTint = isGhostTab ? (ghostCount > 0 ? '#f59e0b' : '#4ade80') : undefined
+          return (
+            <button
+              key={view}
+              type="button"
+              onClick={() =>
+                openTab({ id: view, type: view, label: def.label, closeable: view !== 'editor' })
+              }
+              className="activity-btn relative flex items-center justify-center cursor-pointer"
+              data-active={isActive || undefined}
+              aria-pressed={isActive}
+              style={
+                {
+                  width: 34,
+                  height: 36,
+                  '--base-opacity': isActive ? 0.94 : isGhostTab && ghostTint ? 0.74 : 0.46,
+                  '--base-bg': isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                  color: ghostTint ?? colors.text.primary,
+                  borderRadius: 10,
+                  transition:
+                    'opacity 150ms ease-out, background-color 150ms ease-out, color 300ms ease-out'
+                } as React.CSSProperties
+              }
+              title={isGhostTab ? `${label} (${ghostCount})` : label}
+              aria-label={`Switch to ${label} view`}
+            >
+              {icon}
+            </button>
+          )
+        })}
+      </div>
 
       {onToggleSidebar && (
         <button
@@ -192,11 +177,11 @@ export function ActivityBar({
           style={
             {
               width: 34,
-              height: 34,
-              '--base-opacity': 0.4,
+              height: 36,
+              '--base-opacity': 0.46,
               '--base-bg': 'transparent',
               color: colors.text.primary,
-              borderRadius: 8,
+              borderRadius: 10,
               transition: 'opacity 150ms ease-out, background-color 150ms ease-out'
             } as React.CSSProperties
           }

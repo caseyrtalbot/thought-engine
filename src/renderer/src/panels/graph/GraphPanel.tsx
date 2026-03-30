@@ -5,6 +5,7 @@ import { GraphRenderer } from './graph-renderer'
 import { LabelLayer } from './graph-label-layer'
 import { GraphSettingsPanel } from './GraphSettingsPanel'
 import { getGraphLod } from './graph-lod'
+import { colors, floatingPanel } from '@renderer/design/tokens'
 import type { SimNode, PhysicsCommand, PhysicsResult, ForceParams } from './graph-types'
 import type { KnowledgeGraph } from '@shared/types'
 
@@ -122,6 +123,43 @@ function GraphEmptyState({
         <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           {description}
         </p>
+      </div>
+    </div>
+  )
+}
+
+function GraphStatusRail({
+  nodeCount,
+  edgeCount
+}: {
+  readonly nodeCount: number
+  readonly edgeCount: number
+}) {
+  return (
+    <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-none">
+      <div
+        className="px-3 py-1.5 rounded-full text-xs font-mono"
+        style={{
+          backgroundColor: 'rgba(10, 10, 14, 0.86)',
+          backdropFilter: floatingPanel.glass.blur,
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          color: colors.text.secondary
+        }}
+      >
+        {nodeCount} nodes
+        <span style={{ opacity: 0.3, margin: '0 8px' }}>|</span>
+        {edgeCount} edges
+      </div>
+      <div
+        className="px-3 py-1.5 rounded-full text-xs"
+        style={{
+          backgroundColor: 'rgba(10, 10, 14, 0.72)',
+          backdropFilter: 'blur(14px)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          color: colors.text.muted
+        }}
+      >
+        Hover to isolate neighborhoods. Drag to compare clusters.
       </div>
     </div>
   )
@@ -425,8 +463,20 @@ export function GraphPanel() {
       className="relative w-full h-full overflow-hidden"
       style={{ background: 'var(--color-bg-base)' }}
     >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 40%, rgba(152, 135, 232, 0.08), transparent 32%), linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.03))'
+        }}
+      />
+
       {isGraphEmpty && (
         <GraphEmptyState artifactCount={artifactCount} rawFileCount={rawFileCount} />
+      )}
+
+      {!isGraphEmpty && (
+        <GraphStatusRail nodeCount={graph.nodes.length} edgeCount={graph.edges.length} />
       )}
 
       {/* Hint: files need enrichment */}
@@ -435,22 +485,27 @@ export function GraphPanel() {
           <div
             className="text-center px-4 py-2 rounded-full"
             style={{
-              backgroundColor: 'rgba(14, 14, 18, 0.92)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid var(--color-border-default)'
+              backgroundColor: 'rgba(10, 10, 14, 0.92)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(92, 184, 196, 0.18)',
+              boxShadow: '0 12px 28px rgba(0, 0, 0, 0.28)'
             }}
           >
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} without metadata
+            <span
+              className="text-[10px] uppercase tracking-[0.16em]"
+              style={{ color: 'rgba(92, 184, 196, 0.82)' }}
+            >
+              Enrichment
             </span>
             <span
               className="text-xs mx-2"
-              style={{ color: 'var(--color-text-muted)', opacity: 0.4 }}
+              style={{ color: 'var(--color-text-muted)', opacity: 0.25 }}
             >
               |
             </span>
-            <span className="text-xs" style={{ color: 'var(--color-text-muted)', opacity: 0.7 }}>
-              /connect-vault
+            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} still need metadata. Run
+              {' /connect-vault'}
             </span>
           </div>
         </div>
@@ -458,15 +513,17 @@ export function GraphPanel() {
 
       {/* Settings toggle button */}
       <button
+        type="button"
         onClick={() => setShowSettings((prev) => !prev)}
         className="absolute top-3 right-3 z-20 flex items-center justify-center rounded-lg transition-all"
         style={{
           width: 32,
           height: 32,
-          backgroundColor: showSettings ? 'var(--color-accent-default)' : 'rgba(20, 20, 20, 0.85)',
-          border: '1px solid var(--color-border-default)',
+          backgroundColor: showSettings ? 'var(--color-accent-default)' : 'rgba(12, 12, 16, 0.86)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
           color: showSettings ? '#141414' : 'var(--color-text-secondary)',
-          backdropFilter: 'blur(8px)'
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 10px 24px rgba(0, 0, 0, 0.22)'
         }}
         title="Graph settings"
       >
@@ -494,12 +551,13 @@ export function GraphPanel() {
       {!isGraphEmpty && (
         <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
           <button
+            type="button"
             onClick={handleFitAll}
             className="text-xs px-3 py-1.5 rounded-full transition-all cursor-pointer"
             style={{
-              backgroundColor: 'rgba(20, 20, 20, 0.85)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid var(--color-border-default)',
+              backgroundColor: 'rgba(12, 12, 16, 0.86)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               color: 'var(--color-text-secondary)'
             }}
             onMouseEnter={(e) => {
@@ -515,9 +573,9 @@ export function GraphPanel() {
           <span
             className="text-xs tabular-nums font-mono px-2 py-1.5 rounded-full"
             style={{
-              backgroundColor: 'rgba(20, 20, 20, 0.85)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid var(--color-border-default)',
+              backgroundColor: 'rgba(12, 12, 16, 0.86)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               color: 'var(--color-text-muted)',
               fontSize: 10,
               minWidth: 44,

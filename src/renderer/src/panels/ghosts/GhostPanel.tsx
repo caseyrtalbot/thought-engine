@@ -6,7 +6,7 @@ import { useTabStore, TAB_DEFINITIONS } from '../../store/tab-store'
 import { useGraphViewStore } from '../../store/graph-view-store'
 import { buildGhostIndex, inferFolder, type GhostEntry } from '../../engine/ghost-index'
 import { serializeArtifact } from '../../engine/parser'
-import { colors, typography } from '../../design/tokens'
+import { colors, floatingPanel, typography } from '../../design/tokens'
 import type { Artifact } from '@shared/types'
 
 export function GhostPanel() {
@@ -31,12 +31,33 @@ export function GhostPanel() {
     <div
       className="h-full overflow-y-auto"
       style={{
-        padding: '16px',
+        padding: '18px 16px 28px',
         fontFamily: typography.fontFamily.body
       }}
     >
-      <div className="text-xs mb-3" style={{ color: colors.text.muted, letterSpacing: '0.05em' }}>
-        {visibleGhosts.length} UNRESOLVED REFERENCE{visibleGhosts.length !== 1 ? 'S' : ''}
+      <div className="mb-4 flex items-end justify-between gap-3">
+        <div>
+          <div
+            className="text-[10px] uppercase tracking-[0.16em] mb-1"
+            style={{ color: colors.text.muted }}
+          >
+            Ghosts
+          </div>
+          <div className="text-sm" style={{ color: colors.text.secondary, lineHeight: 1.5 }}>
+            {visibleGhosts.length} unresolved reference{visibleGhosts.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+        <div
+          className="text-[11px] px-3 py-1.5 rounded-full"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            color: colors.text.muted,
+            fontFamily: typography.fontFamily.mono
+          }}
+        >
+          Create notes for already-mentioned ideas
+        </div>
       </div>
       <div className="flex flex-col gap-2">
         {visibleGhosts.map((ghost) => (
@@ -162,15 +183,22 @@ function GhostCard({
   return (
     <div
       style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 8,
-        border: '1px solid rgba(255, 255, 255, 0.06)',
-        overflow: 'hidden'
+        backgroundColor: floatingPanel.glass.bg,
+        borderRadius: 14,
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        overflow: 'hidden',
+        boxShadow: floatingPanel.shadowCompact
       }}
     >
       <button
         className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer"
-        style={{ backgroundColor: 'transparent', color: colors.text.primary }}
+        style={{
+          background: expanded
+            ? 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))'
+            : 'transparent',
+          color: colors.text.primary,
+          borderBottom: expanded ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent'
+        }}
         onClick={() => setExpanded(!expanded)}
       >
         <span
@@ -187,7 +215,7 @@ function GhostCard({
         <span
           className="text-xs px-1.5 py-0.5 rounded-full"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
             color: colors.text.secondary
           }}
         >
@@ -203,7 +231,8 @@ function GhostCard({
                 key={i}
                 className="text-xs rounded px-2 py-1.5"
                 style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
                   color: colors.text.secondary
                 }}
               >
@@ -215,12 +244,14 @@ function GhostCard({
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               className="text-xs px-2.5 py-1 rounded cursor-pointer"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                color: colors.text.primary,
+                backgroundColor: colors.accent.default,
+                color: '#0b0c10',
+                fontWeight: 600,
                 opacity: creating ? 0.5 : 1
               }}
               onClick={handleCreate}
@@ -229,10 +260,12 @@ function GhostCard({
               {creating ? 'Creating...' : 'Create File'}
             </button>
             <button
+              type="button"
               className="text-xs px-2.5 py-1 rounded cursor-pointer"
               style={{
-                backgroundColor: 'transparent',
-                color: colors.text.muted
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: colors.text.secondary
               }}
               onClick={() => {
                 const def = TAB_DEFINITIONS.graph
@@ -248,10 +281,12 @@ function GhostCard({
               Show on graph
             </button>
             <button
+              type="button"
               className="text-xs px-2.5 py-1 rounded cursor-pointer"
               style={{
                 backgroundColor: 'transparent',
-                color: colors.text.muted
+                color: colors.text.muted,
+                border: '1px solid rgba(255, 255, 255, 0.08)'
               }}
               onClick={onDismiss}
             >

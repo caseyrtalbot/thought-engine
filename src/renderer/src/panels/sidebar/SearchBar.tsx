@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { colors, floatingPanel } from '../../design/tokens'
+import { colors } from '../../design/tokens'
 
 interface SearchBarProps {
   onSearch: (query: string) => void
@@ -10,49 +10,31 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const [focused, setFocused] = useState(false)
 
   return (
-    <div className="relative">
-      <svg
-        width={13}
-        height={13}
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        style={{
-          position: 'absolute',
-          left: 10,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          pointerEvents: 'none',
-          color: focused ? colors.text.secondary : colors.text.muted,
-          transition: 'color 200ms ease-out'
-        }}
-      >
-        <circle cx="7" cy="7" r="5" />
-        <path d="M11 11l3.5 3.5" />
-      </svg>
-      <input
-        type="text"
-        placeholder="Search vault..."
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value)
-          onSearch(e.target.value)
-        }}
-        className="sidebar-search w-full outline-none"
-        style={{
-          backgroundColor: focused ? floatingPanel.glass.inputBgFocus : floatingPanel.glass.inputBg,
-          color: colors.text.primary,
-          border: `1px solid rgba(255, 255, 255, ${focused ? '0.15' : '0.08'})`,
-          borderRadius: 2,
-          padding: '8px 12px 8px 32px',
-          fontSize: 12,
-          transition: 'background-color 200ms ease-out, border-color 200ms ease-out'
-        }}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      />
+    <div className="flex flex-col gap-2">
+      <div className="sidebar-kicker">Vault Console</div>
+      <div className="sidebar-search-shell" data-focused={focused ? 'true' : 'false'}>
+        <span className="sidebar-search-prompt" aria-hidden="true">
+          /
+        </span>
+        <input
+          type="text"
+          placeholder="Query vault"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            onSearch(e.target.value)
+          }}
+          className="sidebar-search sidebar-search-input"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        <span
+          className="sidebar-search-meta"
+          style={{ color: focused ? colors.text.secondary : colors.text.muted }}
+        >
+          live
+        </span>
+      </div>
     </div>
   )
 }

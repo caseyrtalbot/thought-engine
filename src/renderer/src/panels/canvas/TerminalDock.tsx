@@ -100,6 +100,7 @@ function TerminalPill({
   return (
     <div
       data-testid="terminal-pill"
+      className="terminal-pill"
       style={pillStyle}
       title={fullCwd || status.label}
       onMouseEnter={() => setHovered(true)}
@@ -193,16 +194,13 @@ export function TerminalDock({
       <div style={wrapperStyle}>
         <div
           data-testid="terminal-dock-collapsed"
-          className="te-card-enter"
+          className="terminal-dock-shell te-card-enter"
           style={{
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
             gap: spacing.unit * 2,
             padding: '4px 10px',
-            backgroundColor: floatingPanel.glass.bg,
-            backdropFilter: floatingPanel.glass.blur,
-            border: `1px solid ${colors.border.subtle}`,
             borderRadius: floatingPanel.borderRadius,
             pointerEvents: 'auto',
             cursor: 'pointer'
@@ -254,18 +252,14 @@ export function TerminalDock({
     <div style={wrapperStyle}>
       <div
         data-testid="terminal-dock-bar"
-        className="te-card-enter te-dock-scroll-hidden"
+        className="terminal-dock-shell te-card-enter te-dock-scroll-hidden"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: spacing.unit,
           height: spacing.unit * 9,
           padding: '0 8px',
-          backgroundColor: floatingPanel.glass.bg,
-          backdropFilter: floatingPanel.glass.blur,
-          boxShadow: floatingPanel.shadowCompact,
           borderRadius: floatingPanel.borderRadius,
-          border: `1px solid ${colors.border.subtle}`,
           pointerEvents: 'auto',
           width: 'fit-content',
           maxWidth: '100%',

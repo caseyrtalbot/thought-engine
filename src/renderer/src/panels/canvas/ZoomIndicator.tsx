@@ -11,13 +11,13 @@ export function ZoomIndicator() {
   return (
     <div
       key={zoomPercent}
-      className="absolute bottom-3 right-3 px-2 py-1 rounded-md pointer-events-none"
+      className="canvas-zoom-indicator absolute bottom-3 right-3 px-3 py-1.5 rounded-md pointer-events-none"
       style={{
-        backgroundColor: 'rgba(20, 20, 22, 0.8)',
-        backdropFilter: 'blur(4px)',
         color: colors.text.muted,
         fontFamily: typography.fontFamily.mono,
-        fontSize: 11,
+        fontSize: 10,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
         animation: 'te-zoom-fade 1.7s ease forwards',
         zIndex: 10
       }}

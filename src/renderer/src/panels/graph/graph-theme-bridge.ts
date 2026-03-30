@@ -30,12 +30,12 @@ export function edgeOpacity(kind: RelationshipKind): number {
     case 'connection':
     case 'cluster':
     case 'tension':
-      return 0.85
+      return 0.42
     case 'appears_in':
-      return 0.75
+      return 0.32
     case 'related':
-      return 0.8
+      return 0.28
     case 'co-occurrence':
-      return 0.6
+      return 0.18
   }
 }

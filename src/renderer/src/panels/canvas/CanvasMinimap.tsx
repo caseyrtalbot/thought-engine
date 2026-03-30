@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
-import { floatingPanel } from '../../design/tokens'
 import type { CanvasNode, CanvasViewport } from '@shared/canvas-types'
 
 /** Type-based colors for minimap rectangles (mirrors CardLodPreview) */
@@ -162,22 +161,18 @@ export function CanvasMinimap({
     <div
       ref={minimapRef}
       data-testid="canvas-minimap"
-      className="absolute pointer-events-auto"
+      className="canvas-minimap absolute pointer-events-auto"
       style={{
         bottom: 12,
         right: 12,
         width: MINIMAP_WIDTH,
         height: MINIMAP_HEIGHT,
-        backgroundColor: floatingPanel.glass.bg,
-        borderRadius: floatingPanel.borderRadius,
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
-        backdropFilter: floatingPanel.glass.blur,
         zIndex: 20,
-        overflow: 'hidden',
         cursor: 'crosshair'
       }}
       onClick={handleMinimapClick}
     >
+      <div className="canvas-minimap__label">Map</div>
       {/* Card rectangles */}
       {nodes.map((node) => (
         <div

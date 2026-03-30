@@ -102,12 +102,12 @@ export function CanvasSurface({
       e.preventDefault()
       // Only trigger on background clicks (not on cards)
       if ((e.target as HTMLElement).closest('[data-canvas-node]')) return
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
+      const bounds = containerRef.current?.getBoundingClientRect()
+      if (!bounds) return
 
       // Convert screen coords to canvas coords
-      const canvasX = (e.clientX - rect.left - viewport.x) / viewport.zoom
-      const canvasY = (e.clientY - rect.top - viewport.y) / viewport.zoom
+      const canvasX = (e.clientX - bounds.left - viewport.x) / viewport.zoom
+      const canvasY = (e.clientY - bounds.top - viewport.y) / viewport.zoom
       onContextMenu(canvasX, canvasY, e.clientX, e.clientY)
     },
     [viewport, onContextMenu]
@@ -235,12 +235,14 @@ export function CanvasSurface({
       style={{
         backgroundColor: canvasTokens.surface,
         backgroundImage: [
-          'radial-gradient(ellipse at 25% 15%, rgba(255,255,255,0.02) 0%, transparent 55%)',
-          'radial-gradient(ellipse at 75% 85%, rgba(255,255,255,0.012) 0%, transparent 50%)',
+          'linear-gradient(180deg, color-mix(in srgb, var(--color-text-primary) 3%, transparent), transparent 24%)',
+          'linear-gradient(90deg, color-mix(in srgb, var(--color-accent-default) 6%, transparent), transparent 18%, transparent 82%, color-mix(in srgb, var(--color-text-primary) 3%, transparent))',
+          'radial-gradient(ellipse at 24% 16%, rgba(255,255,255,0.024) 0%, transparent 56%)',
+          'radial-gradient(ellipse at 76% 84%, rgba(255,255,255,0.014) 0%, transparent 52%)',
           svgDataUri
         ].join(', '),
-        backgroundSize: `100% 100%, 100% 100%, ${tileSize}px ${tileSize}px`,
-        backgroundPosition: `0 0, 0 0, ${bgPos}`,
+        backgroundSize: `100% 100%, 100% 100%, 100% 100%, 100% 100%, ${tileSize}px ${tileSize}px`,
+        backgroundPosition: `0 0, 0 0, 0 0, 0 0, ${bgPos}`,
         cursor: 'default'
       }}
       onPointerDown={(e) => {
@@ -287,9 +289,10 @@ export function CanvasSurface({
             top: Math.min(rect.startY, rect.endY),
             width: Math.abs(rect.endX - rect.startX),
             height: Math.abs(rect.endY - rect.startY),
-            borderColor: '#4a9eff',
+            borderColor: 'color-mix(in srgb, var(--color-accent-default) 82%, white 18%)',
             borderWidth: 1.5,
-            backgroundColor: 'rgba(74, 158, 255, 0.08)'
+            background:
+              'linear-gradient(180deg, color-mix(in srgb, var(--color-accent-default) 12%, transparent), color-mix(in srgb, var(--color-accent-default) 4%, transparent))'
           }}
         />
       )}
@@ -299,8 +302,11 @@ export function CanvasSurface({
         <div
           className="absolute inset-2 rounded-lg pointer-events-none"
           style={{
-            border: `2px dashed ${colors.accent.default}`,
-            backgroundColor: 'rgba(99, 102, 241, 0.05)'
+            border: `1px dashed ${colors.accent.default}`,
+            background:
+              'linear-gradient(180deg, color-mix(in srgb, var(--color-accent-default) 10%, transparent), color-mix(in srgb, var(--color-accent-default) 4%, transparent))',
+            boxShadow:
+              'inset 0 0 0 1px color-mix(in srgb, var(--color-accent-default) 12%, transparent)'
           }}
         />
       )}

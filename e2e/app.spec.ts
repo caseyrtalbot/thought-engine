@@ -40,6 +40,16 @@ async function launchWithVault(): Promise<{ app: ElectronApplication; page: Page
   return { app, page }
 }
 
+async function setRangeValue(locator: ReturnType<Page['locator']>, value: number): Promise<void> {
+  await locator.evaluate((el, nextValue) => {
+    const input = el as HTMLInputElement
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')
+    descriptor?.set?.call(input, String(nextValue))
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  }, value)
+}
+
 // ─────────────────────────────────────────────────────────
 // 1. APP LAUNCH — one Electron instance for all launch tests
 // ─────────────────────────────────────────────────────────
@@ -79,9 +89,9 @@ test.describe.serial('App Launch', () => {
 })
 
 // ─────────────────────────────────────────────────────────
-// 2. WELCOME SCREEN — needs its own instance (no vault)
+// 2. EMPTY WORKSPACE — needs its own instance (no vault)
 // ─────────────────────────────────────────────────────────
-test.describe.serial('Welcome Screen', () => {
+test.describe.serial('Empty Workspace', () => {
   let app: ElectronApplication
   let page: Page
 
@@ -90,7 +100,7 @@ test.describe.serial('Welcome Screen', () => {
     page = await app.firstWindow()
     await page.waitForLoadState('domcontentloaded')
 
-    // Clear saved vault path so the welcome screen shows
+    // Clear the saved vault path so the app falls back to its empty workspace shell
     await app.evaluate(async ({ BrowserWindow }) => {
       const win = BrowserWindow.getAllWindows()[0]
       if (win) {
@@ -104,26 +114,25 @@ test.describe.serial('Welcome Screen', () => {
     })
 
     await page.waitForLoadState('domcontentloaded')
-    await page.waitForSelector('h1', { timeout: 8000 })
+    await page.waitForSelector('[data-testid="file-tree"]', { timeout: 8000 })
+    await page.waitForSelector('text=No file selected', { timeout: 8000 })
   })
 
   test.afterAll(async () => {
     if (app) await app.close()
   })
 
-  test('shows Machina heading', async () => {
-    const heading = page.locator('h1').first()
-    await expect(heading).toBeVisible({ timeout: 5000 })
-    const text = await heading.textContent()
-    expect(text).toContain('Machina')
+  test('shows the empty editor state when no vault is loaded', async () => {
+    await expect(page.getByText('No file selected')).toBeVisible({ timeout: 5000 })
+    await expect(
+      page.getByText('Select a file from the sidebar or press Cmd+N to create one')
+    ).toBeVisible({ timeout: 5000 })
   })
 
-  test('shows Create New Vault and Open Existing Folder buttons', async () => {
-    const createBtn = page.locator('button', { hasText: 'Create New Vault' })
-    const openBtn = page.locator('button', { hasText: 'Open Existing Folder' })
-
-    await expect(createBtn).toBeVisible({ timeout: 5000 })
-    await expect(openBtn).toBeVisible({ timeout: 5000 })
+  test('keeps the workspace shell mounted without vault contents', async () => {
+    const fileTree = page.locator('[data-testid="file-tree"]')
+    await expect(fileTree).toBeVisible({ timeout: 5000 })
+    await expect(fileTree.locator('button, [role="treeitem"], .date-separator')).toHaveCount(0)
   })
 })
 
@@ -160,6 +169,25 @@ test.describe.serial('Workspace', () => {
     // Sidebar contains the file tree
     const sidebar = page.locator('[data-testid="file-tree"]').locator('..')
     await expect(sidebar).toBeVisible()
+  })
+
+  test('environment settings update sidebar typography and expose card blur control', async () => {
+    await page.getByTitle('Settings').click()
+    const dialog = page.getByRole('dialog', { name: 'Settings' })
+    await expect(dialog).toBeVisible({ timeout: 5000 })
+
+    await dialog.getByRole('button', { name: 'Environment' }).click()
+    await expect(dialog.getByText('Card Blur')).toBeVisible()
+
+    const sidebarFontSlider = dialog
+      .locator('.settings-row', { hasText: 'Sidebar Font Size' })
+      .locator('input[type="range"]')
+
+    await setRangeValue(sidebarFontSlider, 16)
+    await expect(page.locator('[data-testid="file-tree"] .file-row-hover').first()).toHaveCSS(
+      'font-size',
+      '16px'
+    )
   })
 })
 

@@ -30,7 +30,6 @@ import { useEditorStore, flushPendingSave } from './store/editor-store'
 import { useViewStore } from './store/view-store'
 import { useWorkbenchActionStore } from './store/workbench-actions-store'
 import { colors } from './design/tokens'
-import { useEnv } from './design/Theme'
 import { SettingsModal } from './components/SettingsModal'
 import { PanelErrorBoundary } from './components/PanelErrorBoundary'
 import pLimit from 'p-limit'
@@ -588,12 +587,13 @@ function ResizableSidebar({
   collapsed: boolean
 }) {
   const [width, setWidth] = useState(264)
+  const [isDragging, setIsDragging] = useState(false)
   const dragging = useRef(false)
   const activityBarWidth = 48
-  const { activityBarOpacity } = useEnv()
 
   const handleMouseDown = useCallback(() => {
     dragging.current = true
+    setIsDragging(true)
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
 
@@ -605,6 +605,7 @@ function ResizableSidebar({
 
     const onUp = () => {
       dragging.current = false
+      setIsDragging(false)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
       document.removeEventListener('mousemove', onMove)
@@ -618,11 +619,11 @@ function ResizableSidebar({
   return (
     <>
       <aside
-        className="h-full flex flex-col shrink-0 overflow-hidden pt-8"
+        className="workspace-sidebar-panel h-full flex flex-col shrink-0 overflow-hidden pt-8"
         style={{
           width: collapsed ? 0 : width,
-          transition: dragging.current ? undefined : 'width 200ms ease-out',
-          backgroundColor: `rgba(0, 0, 0, ${activityBarOpacity / 100})`,
+          transition: isDragging ? undefined : 'width 200ms ease-out',
+          backgroundColor: 'var(--chrome-rail-bg)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)'
         }}
@@ -1072,7 +1073,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   return (
     <div
-      className="h-screen w-screen relative flex"
+      className="workspace-shell h-screen w-screen relative flex"
       style={{
         backgroundColor: 'transparent',
         color: colors.text.primary

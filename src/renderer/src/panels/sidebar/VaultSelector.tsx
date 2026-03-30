@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { colors, floatingPanel } from '../../design/tokens'
+import { colors } from '../../design/tokens'
 
 interface ContextMenuState {
   readonly x: number
@@ -83,13 +83,10 @@ export function VaultSelector({
     <div className="relative" ref={menuRef}>
       <button
         onClick={toggle}
-        className="flex items-center gap-1.5 w-full px-2 py-1 rounded text-left hover:opacity-80"
-        style={{
-          color: colors.text.primary,
-          backgroundColor: open ? 'rgba(255, 255, 255, 0.06)' : 'transparent'
-        }}
+        className="sidebar-vault-button"
+        data-open={open ? 'true' : 'false'}
+        style={{ color: colors.text.primary }}
       >
-        {/* Vault icon */}
         <svg
           width={14}
           height={14}
@@ -103,11 +100,14 @@ export function VaultSelector({
         >
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
         </svg>
-        <span
-          className="text-xs truncate flex-1"
-          style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 500 }}
-        >
-          {currentName}
+        <span className="sidebar-vault-copy">
+          <span className="sidebar-vault-kicker">Vault</span>
+          <span className="sidebar-vault-name truncate">{currentName}</span>
+          {currentPath && (
+            <span className="sidebar-vault-path truncate" title={currentPath}>
+              {currentPath}
+            </span>
+          )}
         </span>
         <svg
           width={10}
@@ -126,28 +126,17 @@ export function VaultSelector({
 
       {open && (
         <div
-          className="absolute left-0 right-0 flex flex-col py-1 z-50"
+          className="sidebar-popover absolute left-0 right-0 flex flex-col py-1 z-50"
           style={{
             top: '100%',
-            marginTop: 2,
-            backgroundColor: floatingPanel.glass.popoverBg,
-            backdropFilter: floatingPanel.glass.popoverBlur,
-            WebkitBackdropFilter: floatingPanel.glass.popoverBlur,
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
+            marginTop: 6
           }}
         >
-          {/* Recent vaults */}
           {recentVaults.length > 0 && (
             <>
-              <div
-                className="mx-2 my-1"
-                style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
-              />
+              <div className="px-3 pt-2 pb-1 sidebar-kicker">Recent</div>
               {recentVaults.map((path) => {
                 const name = vaultDisplayName(path)
-                const isCurrent = path === currentPath
                 return (
                   <button
                     key={path}
@@ -162,11 +151,8 @@ export function VaultSelector({
                         setCtxMenu({ x: e.clientX, y: e.clientY, path })
                       }
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80"
-                    style={{
-                      color: isCurrent ? colors.text.primary : colors.text.secondary,
-                      backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.06)' : 'transparent'
-                    }}
+                    className="sidebar-popover-item"
+                    style={{ color: colors.text.secondary }}
                   >
                     <svg
                       width={12}
@@ -180,28 +166,19 @@ export function VaultSelector({
                       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                     </svg>
                     <span className="truncate">{name}</span>
-                    {isCurrent && (
-                      <span style={{ color: colors.accent.default, marginLeft: 'auto' }}>
-                        &#10003;
-                      </span>
-                    )}
                   </button>
                 )
               })}
             </>
           )}
 
-          {/* Open different vault */}
-          <div
-            className="mx-2 my-1"
-            style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
-          />
+          <div className="sidebar-popover-divider mx-3 my-1" />
           <button
             onClick={() => {
               setOpen(false)
               onOpenPicker()
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80"
+            className="sidebar-popover-item"
             style={{ color: colors.text.muted }}
           >
             <span>Open Different Vault...</span>
@@ -213,16 +190,10 @@ export function VaultSelector({
       {ctxMenu && (
         <div
           ref={ctxMenuRef}
-          className="fixed z-[100] py-1"
+          className="sidebar-popover fixed z-[100] py-1"
           style={{
             left: ctxMenu.x,
-            top: ctxMenu.y,
-            backgroundColor: floatingPanel.glass.popoverBg,
-            backdropFilter: floatingPanel.glass.popoverBlur,
-            WebkitBackdropFilter: floatingPanel.glass.popoverBlur,
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
+            top: ctxMenu.y
           }}
         >
           <button
@@ -230,7 +201,7 @@ export function VaultSelector({
               window.api.shell.showInFolder(ctxMenu.path)
               setCtxMenu(null)
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
+            className="sidebar-popover-item"
             style={{ color: colors.text.secondary }}
           >
             Reveal in Finder
@@ -240,21 +211,18 @@ export function VaultSelector({
               navigator.clipboard.writeText(ctxMenu.path)
               setCtxMenu(null)
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
+            className="sidebar-popover-item"
             style={{ color: colors.text.secondary }}
           >
             Copy Path
           </button>
-          <div
-            className="mx-2 my-1"
-            style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
-          />
+          <div className="sidebar-popover-divider mx-3 my-1" />
           <button
             onClick={() => {
               onRemoveFromHistory?.(ctxMenu.path)
               setCtxMenu(null)
             }}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:opacity-80 w-full"
+            className="sidebar-popover-item"
             style={{ color: '#EF4444' }}
           >
             Remove from History

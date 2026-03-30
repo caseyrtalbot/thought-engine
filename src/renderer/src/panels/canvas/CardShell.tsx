@@ -104,7 +104,13 @@ function ConvertMenu({
               onClose()
             }}
           >
-            <span style={{ color: colors.text.muted, fontFamily: 'monospace', width: 20 }}>
+            <span
+              style={{
+                color: colors.text.muted,
+                fontFamily: typography.fontFamily.mono,
+                width: 20
+              }}
+            >
               {info.icon}
             </span>
             {info.label}
@@ -137,7 +143,7 @@ function TitleBarButton({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center rounded hover:opacity-80"
+      className="canvas-card__action-btn flex items-center justify-center rounded hover:opacity-80"
       style={{
         width: 24,
         height: 24,
@@ -210,7 +216,16 @@ export function CardShell({
         onActivateContentClick?.(e)
       }
     },
-    [isFocused, isLocked, isTerminalCard, node.id, onActivateContentClick, setSelection, toggleSelection, setFocusedCard]
+    [
+      isFocused,
+      isLocked,
+      isTerminalCard,
+      node.id,
+      onActivateContentClick,
+      setSelection,
+      toggleSelection,
+      setFocusedCard
+    ]
   )
 
   const handleDoubleClick = useCallback(
@@ -245,16 +260,21 @@ export function CardShell({
         top: node.position.y,
         width: node.size.width,
         height: node.size.height,
-        backgroundColor: isTerminalCard ? '#080808' : canvasTokens.card,
-        borderRadius: 8,
-        border: `1px solid ${colors.border.default}`,
+        background: isTerminalCard
+          ? '#070809'
+          : `linear-gradient(180deg, color-mix(in srgb, var(--canvas-card-bg) 96%, white 4%), var(--canvas-card-bg))`,
+        borderRadius: 10,
+        border:
+          isFocused || isLocked
+            ? '1px solid color-mix(in srgb, var(--color-accent-default) 24%, var(--canvas-card-border))'
+            : `1px solid ${canvasTokens.cardBorder}`,
         boxShadow: isLocked
-          ? `0 0 0 1px rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5)`
+          ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 22%, transparent), 0 28px 48px rgba(0, 0, 0, 0.28)'
           : isFocused
-            ? `0 0 0 1px rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5)`
+            ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 18%, transparent), 0 24px 44px rgba(0, 0, 0, 0.24)'
             : isSelected
-              ? `0 0 0 1px #4a9eff, 0 2px 8px rgba(0, 0, 0, 0.5)`
-              : `0 2px 8px rgba(0, 0, 0, 0.5)`,
+              ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 32%, transparent), 0 22px 40px rgba(0, 0, 0, 0.22)'
+              : '0 18px 36px rgba(0, 0, 0, 0.2)',
         overflow: 'hidden',
         contain: isTerminalCard ? undefined : 'layout style',
         backdropFilter: isTerminalCard ? undefined : `blur(${cardBlur}px) saturate(1.2)`,
@@ -281,12 +301,14 @@ export function CardShell({
     >
       {/* Title bar */}
       <div
-        className="flex items-center justify-between shrink-0 select-none"
+        className="canvas-card__titlebar flex items-center justify-between shrink-0 select-none"
         style={{
-          padding: '7px 10px',
-          backgroundColor: isTerminalCard ? '#080808' : canvasTokens.cardTitleBar,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-          borderRadius: '7px 7px 0 0',
+          padding: '8px 11px',
+          background: isTerminalCard
+            ? 'linear-gradient(180deg, rgba(5, 6, 7, 0.96), rgba(5, 6, 7, 0.9))'
+            : `linear-gradient(180deg, color-mix(in srgb, var(--canvas-card-title-bg) 86%, var(--color-bg-base)), color-mix(in srgb, var(--canvas-card-title-bg) 58%, transparent))`,
+          borderBottom: `1px solid ${canvasTokens.cardBorder}`,
+          borderRadius: '9px 9px 0 0',
           cursor: 'grab'
         }}
         onPointerDown={onDragStart}
@@ -294,14 +316,14 @@ export function CardShell({
         <span className="flex items-center gap-1.5 min-w-0 flex-1">
           {isActive && <span className="te-active-dot shrink-0" />}
           <span
-            className="truncate"
+            className="canvas-card__title truncate"
             style={{
               fontFamily: typography.fontFamily.mono,
-              fontSize: cardTitleFontSize,
+              fontSize: cardTitleFontSize - 0.25,
               lineHeight: 1,
-              fontWeight: 500,
-              color: colors.text.primary,
-              opacity: 0.8,
+              fontWeight: 600,
+              color: colors.text.secondary,
+              opacity: 0.94,
               direction: 'rtl',
               textAlign: 'left',
               unicodeBidi: 'plaintext'
@@ -314,17 +336,16 @@ export function CardShell({
         </span>
         {node.metadata?.scope === 'project' && (
           <span
-            className="px-1 py-0.5 rounded shrink-0 ml-2"
-            style={{ backgroundColor: '#6366f122', color: '#818cf8', fontSize: 9 }}
+            className="canvas-card__badge px-1.5 py-0.5 rounded shrink-0 ml-2"
+            style={{ color: '#818cf8', fontSize: 9 }}
           >
             PROJECT
           </span>
         )}
         <div
-          className="flex items-center gap-0.5 ml-2 shrink-0 relative"
+          className="canvas-card__actions flex items-center gap-0.5 ml-2 shrink-0 relative"
           style={{
-            opacity: hovered || isFocused || isLocked ? 1 : 0,
-            transition: 'opacity 150ms ease'
+            opacity: hovered || isFocused || isLocked ? 1 : undefined
           }}
         >
           <TitleBarButton
@@ -403,7 +424,7 @@ export function CardShell({
               e.stopPropagation()
               onClose()
             }}
-            className="tile-close-btn flex items-center justify-center rounded"
+            className="canvas-card__action-btn tile-close-btn flex items-center justify-center rounded"
             style={{
               width: 24,
               height: 24,
@@ -464,8 +485,9 @@ export function CardShell({
             position: 'absolute',
             width: 8,
             height: 8,
-            borderRadius: '50%',
-            backgroundColor: 'rgb(72, 210, 130)',
+            borderRadius: 2,
+            backgroundColor: 'color-mix(in srgb, var(--color-accent-default) 74%, white 26%)',
+            boxShadow: '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 18%, transparent)',
             cursor: 'crosshair',
             zIndex: 10,
             transition: 'opacity 200ms ease',

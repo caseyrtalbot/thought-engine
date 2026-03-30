@@ -41,12 +41,20 @@ src/main/                       src/preload/               src/renderer/src/
 │   ├── watcher.ts                 namespaces              ├── hooks/
 │   ├── documents.ts                                       ├── panels/ (UI sections)
 │   ├── workbench.ts                                       └── design/ (tokens, primitives)
-│   └── shell.ts
+│   ├── shell.ts
+│   ├── mcp.ts
+│   └── agents.ts
 └── services/
     ├── document-manager.ts    # Owns all open file content
     ├── file-service.ts        # Atomic disk I/O
     ├── vault-watcher.ts       # chokidar file watching
-    └── shell-service.ts
+    ├── vault-indexing.ts      # Full vault index build
+    ├── vault-query-facade.ts  # Query layer for MCP
+    ├── mcp-server.ts          # MCP tool definitions
+    ├── hitl-gate.ts           # HITL dialog + write rate limiter
+    ├── shell-service.ts
+    ├── agent-spawner.ts       # Agent process spawning (tmux)
+    └── audit-logger.ts        # MCP write audit log
 
 src/shared/                    ← importable from ALL three processes
 ├── ipc-channels.ts            # Canonical typed IPC contract
@@ -57,9 +65,11 @@ src/shared/                    ← importable from ALL three processes
 └── engine/                    # Pure domain kernel (no Electron/React deps)
     ├── parser.ts              # Markdown → Artifact
     ├── graph-builder.ts       # Artifacts → KnowledgeGraph
+    ├── ghost-index.ts         # Unresolved wikilink ghosts
     ├── indexer.ts             # VaultIndex for MCP queries
     ├── search-engine.ts       # MiniSearch wrapper
-    └── tag-index.ts           # Hierarchical tag tree
+    ├── tag-index.ts           # Hierarchical tag tree
+    └── concept-extractor.ts   # Concept extraction from content
 ```
 
 **Shared engine kernel**: `src/shared/engine/` has zero Electron or React dependencies. Both the main process (MCP server, vault indexing) and the renderer (Web Worker) import these same modules. Engine code must stay dependency-free.
@@ -122,7 +132,9 @@ Single owner of all open file content. Renderer views are thin IPC clients via `
 Parses markdown into typed Artifacts and builds a KnowledgeGraph:
 - **parser.ts**: gray-matter frontmatter (JS engine disabled) into Artifact. Extracts `[[wikilinks]]` into `bodyLinks`. Title: frontmatter TITLE > first H1 > filename stem.
 - **graph-builder.ts**: Artifacts into nodes + edges. Six edge types: `connection`, `cluster`, `tension`, `appears_in`, `related`, `co-occurrence`.
+- **ghost-index.ts**: Builds ghost entries (unresolved wikilinks) sorted by reference count, filters path-style ghosts.
 - **vault-worker.ts**: Web Worker for bulk parse + graph build with incremental updates.
+- **graph-physics-worker.ts**: D3-force simulation off main thread for graph panel.
 - **vault-event-hub.ts**: Singleton dispatching batched watcher events to three subscriber tiers (batch, any-file, path-specific).
 - **search-engine.ts**: MiniSearch (title x10, tags x5, body x1).
 - **tag-index.ts**: Hierarchical tag tree with aggregate counts.
@@ -130,9 +142,32 @@ Parses markdown into typed Artifacts and builds a KnowledgeGraph:
 ### MCP Server
 
 Exposes vault to AI agents via Model Context Protocol:
-- Five tools: `vault.read_file`, `search.query`, `graph.get_neighbors` (reads), `vault.write_file`, `vault.create_file` (writes gated by ElectronHitlGate + WriteRateLimiter)
+- Six tools: `vault.read_file`, `search.query`, `graph.get_neighbors`, `graph.get_ghosts` (reads); `vault.write_file`, `vault.create_file` (writes gated by ElectronHitlGate + WriteRateLimiter)
 - Read results wrapped in Spotlighting trust markers for prompt injection mitigation
 - `mcp-cli.ts` provides headless stdio mode for Claude Desktop integration
+
+### Terminal Webview Isolation
+
+The terminal panel runs inside an Electron `<webview>` tag with its own preload (`src/preload/terminal-webview.ts`) and HTML entry (`src/renderer/terminal-webview/index.html`). This keeps xterm.js rendering and PTY data off the main renderer thread. The webview communicates with the main process via its own IPC bridge, separate from the main renderer's `window.api`.
+
+### Agent System
+
+Agents are spawned as tmux sessions via `agent-spawner.ts`. The system includes:
+- **tmux-service.ts / tmux-monitor.ts**: Session management and live observation
+- **session-tailer.ts**: Tails agent session logs in real-time
+- **use-agent-observer.ts / use-agent-states.ts**: Renderer hooks for agent lifecycle
+- IPC namespace: `window.api.agent` with `agent:get-states`, `agent:spawn` channels
+
+### Coordinated Quit (2-phase)
+
+```
+before-quit → event.preventDefault
+  → typedSend(mainWindow, 'app:will-quit')
+  → renderer flushes vault state + canvas + dirty docs
+  → signals app:quit-ready
+  → main: documentManager.flushAll() + service cleanup
+  → app.quit()
+```
 
 ### Canvas System (`src/renderer/src/panels/canvas/`)
 
@@ -152,7 +187,7 @@ KeepAlive pattern: panels are mounted once on first visit, then hidden via `disp
 - **tab-store**: View tabs, persisted state
 - **settings-store**: Theme, accent, fonts (localStorage)
 
-**Persistence**: `vault-persist.ts` gathers state from stores and writes to `.machina/state.json` via IPC on 1s debounce. Two-phase coordinated quit: renderer flushes state, then signals main to flush dirty documents and stop services.
+**Persistence**: `vault-persist.ts` gathers state from stores and writes to `.machina/state.json` via IPC on 1s debounce. See "Coordinated Quit" above for shutdown sequence.
 
 ### Rich Text Editor
 
@@ -190,3 +225,4 @@ Three-layer material model: canvas void (darkest), cards (semi-transparent with 
 - **Immutable data**: Return new copies, never mutate in-place.
 - **Files under 800 lines**, organized by feature/domain.
 - **IPC timeouts**: Wrap critical IPC calls with `withTimeout(call, ms, label)` to prevent renderer hangs.
+- **Buffer shim**: `main.tsx` shims `globalThis.Buffer` before gray-matter import. Renderer lacks Node globals; this polyfill is required for frontmatter parsing in the browser context.

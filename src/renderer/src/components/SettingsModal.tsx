@@ -20,11 +20,9 @@ interface SettingRowProps {
 
 function SettingRow({ label, children }: SettingRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <span className="text-xs flex-shrink-0 w-44" style={{ color: colors.text.secondary }}>
-        {label}
-      </span>
-      <div className="flex items-center gap-2 flex-1 justify-end">{children}</div>
+    <div className="settings-row">
+      <span className="settings-label flex-shrink-0 w-44">{label}</span>
+      <div className="settings-field">{children}</div>
     </div>
   )
 }
@@ -40,7 +38,7 @@ interface SliderInputProps {
 
 function SliderInput({ value, min, max, step, onChange, unit }: SliderInputProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <input
         type="range"
         min={min}
@@ -48,11 +46,11 @@ function SliderInput({ value, min, max, step, onChange, unit }: SliderInputProps
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-28"
+        className="graph-slider w-28"
         style={{ accentColor: colors.accent.default }}
       />
       <span
-        className="text-xs w-12 text-right tabular-nums"
+        className="settings-label w-12 text-right tabular-nums"
         style={{ color: colors.text.secondary }}
       >
         {value}
@@ -74,7 +72,7 @@ function Toggle({ value, onChange }: ToggleProps) {
       role="switch"
       aria-checked={value}
       onClick={() => onChange(!value)}
-      className="w-9 h-5 rounded-full relative transition-colors flex-shrink-0"
+      className="settings-toggle w-9 h-5 rounded-full relative transition-colors flex-shrink-0"
       style={{
         backgroundColor: value ? colors.accent.default : colors.bg.elevated,
         border: `1px solid ${value ? colors.accent.default : colors.border.default}`
@@ -107,11 +105,8 @@ function SelectInput({ value, options, onChange }: SelectInputProps) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="text-xs px-2 py-1 rounded"
+      className="settings-select text-xs rounded"
       style={{
-        backgroundColor: colors.bg.elevated,
-        color: colors.text.primary,
-        border: `1px solid ${colors.border.default}`,
         outline: 'none'
       }}
     >
@@ -125,14 +120,7 @@ function SelectInput({ value, options, onChange }: SelectInputProps) {
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3
-      className="text-[11px] uppercase tracking-widest mb-3 mt-1"
-      style={{ color: colors.text.muted }}
-    >
-      {children}
-    </h3>
-  )
+  return <h3 className="settings-section-heading">{children}</h3>
 }
 
 function AppearanceTab() {
@@ -168,10 +156,10 @@ function AppearanceTab() {
               key={id}
               type="button"
               onClick={() => setTheme(id)}
-              className="rounded-lg px-4 py-2 text-center transition-all text-xs flex-1"
+              className="settings-button text-center transition-all text-xs flex-1"
               style={{
                 border: `1.5px solid ${isSelected ? colors.accent.default : colors.border.default}`,
-                backgroundColor: colors.bg.elevated
+                backgroundColor: isSelected ? colors.accent.muted : colors.bg.elevated
               }}
             >
               <span style={{ color: colors.text.primary }}>{label}</span>
@@ -253,6 +241,16 @@ function EnvironmentTab() {
           onChange={(v) => setEnv('cardHeaderDarkness', v)}
         />
       </SettingRow>
+      <SettingRow label="Card Blur">
+        <SliderInput
+          value={env.cardBlur}
+          min={0}
+          max={24}
+          step={1}
+          unit="px"
+          onChange={(v) => setEnv('cardBlur', v)}
+        />
+      </SettingRow>
       <SettingRow label="Grid Dot Visibility">
         <SliderInput
           value={env.gridDotVisibility}
@@ -275,7 +273,7 @@ function EnvironmentTab() {
           onChange={(v) => setEnv('panelLightness', v)}
         />
       </SettingRow>
-      <SettingRow label="Menu Opacity">
+      <SettingRow label="Rail Opacity">
         <SliderInput
           value={env.activityBarOpacity}
           min={20}
@@ -312,11 +310,9 @@ function EnvironmentTab() {
         <button
           type="button"
           onClick={resetEnv}
-          className="text-xs px-3 py-1.5 rounded transition-colors"
+          className="settings-button text-xs transition-colors"
           style={{
-            backgroundColor: colors.bg.elevated,
-            color: colors.text.primary,
-            border: `1px solid ${colors.border.default}`
+            color: colors.text.primary
           }}
         >
           Reset to Defaults
@@ -380,11 +376,8 @@ function TerminalTab() {
           value={terminalShell}
           onChange={(e) => setTerminalShell(e.target.value)}
           placeholder="/bin/zsh"
-          className="text-xs px-2 py-1 rounded w-44"
+          className="settings-input text-xs w-44"
           style={{
-            backgroundColor: colors.bg.elevated,
-            color: colors.text.primary,
-            border: `1px solid ${colors.border.default}`,
             outline: 'none'
           }}
         />
@@ -434,22 +427,16 @@ function VaultTab({ onChangeVault }: { onChangeVault?: () => void }) {
         <button
           type="button"
           onClick={onChangeVault}
-          className="text-xs px-3 py-1.5 rounded transition-colors"
-          style={{
-            backgroundColor: colors.accent.default,
-            color: '#fff'
-          }}
+          className="settings-primary-button text-xs transition-colors"
         >
           Open Vault...
         </button>
         <button
           type="button"
           onClick={handleReindex}
-          className="text-xs px-3 py-1.5 rounded"
+          className="settings-button text-xs"
           style={{
-            backgroundColor: colors.bg.elevated,
-            color: colors.text.primary,
-            border: `1px solid ${colors.border.default}`
+            color: colors.text.primary
           }}
         >
           Re-index Vault
@@ -512,7 +499,7 @@ export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalP
       }}
     >
       <div
-        className="flex flex-col h-full w-full"
+        className="settings-shell flex flex-col h-full w-full"
         style={{
           backgroundColor: colors.bg.surface,
           borderLeft: `1px solid ${colors.border.default}`,
@@ -521,48 +508,37 @@ export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalP
           boxShadow: isOpen ? '-8px 0 32px rgba(0, 0, 0, 0.3)' : 'none'
         }}
       >
-        {/* Header with close and tab nav */}
-        <div
-          className="flex items-center justify-between px-4 pt-10 pb-2 flex-shrink-0"
-          style={{ borderBottom: `1px solid ${colors.border.default}` }}
-        >
-          <span className="text-xs font-medium" style={{ color: colors.text.muted }}>
-            Settings
-          </span>
+        <div className="settings-header flex items-start justify-between px-4 pt-10 pb-3 flex-shrink-0">
+          <div className="flex flex-col gap-2">
+            <span className="settings-kicker">Workspace</span>
+            <span className="settings-title">Settings</span>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-xs px-2 py-1 rounded transition-colors"
+            className="settings-button text-xs transition-colors"
             style={{ color: colors.text.muted }}
           >
             Close
           </button>
         </div>
 
-        {/* Tab strip */}
-        <div
-          className="flex gap-0.5 px-3 py-2 flex-shrink-0"
-          style={{ borderBottom: `1px solid ${colors.border.default}` }}
-        >
+        <div className="settings-tab-strip flex-shrink-0">
           {TABS.map((tab, i) => (
             <button
               key={tab.id}
               ref={i === 0 ? firstTabRef : undefined}
               type="button"
               onClick={() => setCurrentTab(tab.id)}
-              className="text-[11px] px-2 py-1 rounded transition-colors"
-              style={{
-                color: currentTab === tab.id ? colors.text.primary : colors.text.muted,
-                backgroundColor: currentTab === tab.id ? colors.accent.muted : 'transparent'
-              }}
+              className="settings-tab transition-colors"
+              data-active={currentTab === tab.id ? 'true' : 'false'}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="settings-content flex-1 overflow-y-auto">
           {renderTabContent(currentTab, onChangeVault)}
         </div>
       </div>

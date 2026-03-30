@@ -8,10 +8,10 @@ interface WorkspaceFilterProps {
 
 export function WorkspaceFilter({ workspaces, active, onSelect }: WorkspaceFilterProps) {
   return (
-    <div className="flex items-center gap-1 px-2 py-1 text-xs overflow-x-auto">
+    <div className="workspace-filter text-xs">
       <button
         onClick={() => onSelect(null)}
-        className="px-2 py-0.5 rounded whitespace-nowrap transition-colors"
+        className="workspace-chip"
         style={{
           backgroundColor: active === null ? colors.accent.muted : 'transparent',
           color: active === null ? colors.accent.default : colors.text.secondary
@@ -23,7 +23,7 @@ export function WorkspaceFilter({ workspaces, active, onSelect }: WorkspaceFilte
         <button
           key={ws}
           onClick={() => onSelect(ws)}
-          className="px-2 py-0.5 rounded whitespace-nowrap transition-colors"
+          className="workspace-chip"
           style={{
             backgroundColor: active === ws ? colors.accent.muted : 'transparent',
             color: active === ws ? colors.accent.default : colors.text.secondary

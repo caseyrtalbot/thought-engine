@@ -27,7 +27,7 @@ function TagNode({
       <button
         type="button"
         onClick={() => onToggle(node.fullPath)}
-        className="w-full flex items-center gap-1.5 px-2 py-1 text-left rounded interactive-hover"
+        className="tag-browser__row w-full flex items-center gap-1.5 px-2 py-1 text-left interactive-hover"
         style={{
           paddingLeft: 8 + depth * 12,
           transition: transitions.hover,
@@ -36,8 +36,13 @@ function TagNode({
       >
         {hasChildren && (
           <span
-            className="text-[10px] shrink-0 cursor-pointer"
-            style={{ color: colors.text.muted, width: 12, textAlign: 'center' }}
+            className="shrink-0 cursor-pointer"
+            style={{
+              color: colors.text.muted,
+              width: 12,
+              textAlign: 'center',
+              fontSize: 'var(--env-sidebar-tertiary-font-size)'
+            }}
             onClick={(e) => {
               e.stopPropagation()
               onToggleExpand(node.fullPath)
@@ -48,12 +53,21 @@ function TagNode({
         )}
         {!hasChildren && <span style={{ width: 12 }} />}
         <span
-          className="text-xs truncate flex-1"
-          style={{ color: isSelected ? colors.accent.default : colors.text.secondary }}
+          className="truncate flex-1"
+          style={{
+            color: isSelected ? colors.accent.default : colors.text.secondary,
+            fontSize: 'var(--env-sidebar-font-size)'
+          }}
         >
           {node.name}
         </span>
-        <span className="text-[11px] shrink-0" style={{ color: colors.text.muted }}>
+        <span
+          className="shrink-0"
+          style={{
+            color: colors.text.muted,
+            fontSize: 'var(--env-sidebar-secondary-font-size)'
+          }}
+        >
           {node.count}
         </span>
       </button>
@@ -99,32 +113,35 @@ export function TagBrowser() {
   if (tagTree.length === 0) return null
 
   return (
-    <div className="flex-shrink-0 py-1">
-      {/* Header: click to expand/collapse */}
+    <div className="tag-browser flex-shrink-0">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="w-full flex items-center justify-between px-3 py-1 interactive-hover"
+        className="tag-browser__toggle interactive-hover"
         style={{ transition: transitions.hover }}
       >
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px]" style={{ color: colors.text.muted }}>
+          <span
+            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+          >
             {expanded ? '\u25BE' : '\u25B8'}
           </span>
           <span
-            className="text-[10px] uppercase font-medium tracking-[0.15em]"
-            style={{ color: colors.text.muted }}
+            className="uppercase font-medium tracking-[0.15em]"
+            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
           >
             Tags
           </span>
-          <span className="text-[10px]" style={{ color: colors.text.muted }}>
+          <span
+            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+          >
             {tagTree.length}
           </span>
         </div>
         {expanded && (
           <span
-            className="text-[10px] uppercase px-1 rounded"
-            style={{ color: colors.text.muted }}
+            className="uppercase px-1 rounded"
+            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
             onClick={(e) => {
               e.stopPropagation()
               setTagOperator(tagOperator === 'and' ? 'or' : 'and')
@@ -138,23 +155,15 @@ export function TagBrowser() {
 
       {expanded && (
         <>
-          {/* Selected tag chips */}
           {selectedTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 px-3 py-1">
+            <div className="tag-browser__chips">
               {selectedTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[11px] px-2 py-0.5 rounded-full inline-flex items-center gap-1"
-                  style={{
-                    color: colors.accent.default,
-                    backgroundColor: colors.accent.muted
-                  }}
-                >
+                <span key={tag} className="tag-browser__chip inline-flex items-center">
                   {tag}
                   <button
                     type="button"
                     onClick={() => useSidebarFilterStore.getState().toggleTag(tag)}
-                    className="text-[10px] opacity-60 hover:opacity-100"
+                    className="opacity-60 hover:opacity-100"
                     style={{ transition: transitions.hover }}
                   >
                     ×
@@ -164,16 +173,19 @@ export function TagBrowser() {
               <button
                 type="button"
                 onClick={clearTags}
-                className="text-[10px] px-1 opacity-60 hover:opacity-100"
-                style={{ color: colors.text.muted, transition: transitions.hover }}
+                className="px-1 opacity-60 hover:opacity-100"
+                style={{
+                  color: colors.text.muted,
+                  transition: transitions.hover,
+                  fontSize: 'var(--env-sidebar-tertiary-font-size)'
+                }}
               >
                 Clear
               </button>
             </div>
           )}
 
-          {/* Tag tree: capped height with own scroll */}
-          <div className="px-1 max-h-48 overflow-y-auto scrollbar-hover">
+          <div className="tag-browser__tree max-h-48 overflow-y-auto scrollbar-hover">
             {tagTree.map((node) => (
               <TagNodeWrapper key={node.fullPath} node={node} depth={0} />
             ))}

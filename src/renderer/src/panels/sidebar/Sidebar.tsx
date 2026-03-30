@@ -71,6 +71,7 @@ function ActionBar({
   sortMode = 'modified',
   vaultName,
   vaultHistory = [],
+  fileCount = 0,
   filesCollapsed = false,
   onNewFile,
   onSortChange,
@@ -83,6 +84,7 @@ function ActionBar({
   sortMode?: SortMode
   vaultName?: string
   vaultHistory?: readonly string[]
+  fileCount?: number
   filesCollapsed?: boolean
   onNewFile?: () => void
   onSortChange?: (mode: SortMode) => void
@@ -98,9 +100,8 @@ function ActionBar({
   }
 
   return (
-    <div className="flex flex-col gap-2 px-3 py-1">
-      {/* Vault selector row */}
-      <div className="flex items-center">
+    <div className="sidebar-action-bar">
+      <div className="flex items-center gap-2">
         {vaultName && onSelectVault && onOpenVaultPicker ? (
           <div className="flex-1 min-w-0">
             <VaultSelector
@@ -118,14 +119,8 @@ function ActionBar({
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
-            className="flex items-center justify-center shrink-0 rounded cursor-pointer"
-            style={{ width: 24, height: 24, color: colors.text.muted, opacity: 0.5 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.5'
-            }}
+            className="sidebar-icon-button shrink-0"
+            style={{ color: colors.text.muted }}
             title="Settings"
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
@@ -135,13 +130,8 @@ function ActionBar({
           </button>
         )}
       </div>
-      {/* Section header: Files label with action icons */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => onToggleFiles?.()}
-          className="flex items-center gap-1 cursor-pointer"
-          style={{ background: 'none', border: 'none', padding: 0 }}
-        >
+      <div className="sidebar-section-bar">
+        <button onClick={() => onToggleFiles?.()} className="sidebar-section-toggle">
           <svg
             width="10"
             height="10"
@@ -161,29 +151,16 @@ function ActionBar({
               strokeLinejoin="round"
             />
           </svg>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.15em',
-              color: 'rgba(255, 255, 255, 0.25)'
-            }}
-          >
-            Files
+          <span className="sidebar-section-copy">
+            <span className="sidebar-section-label">Files</span>
+            <span className="sidebar-section-count">{fileCount}</span>
           </span>
         </button>
         <div className="flex items-center gap-0.5">
           <button
             onClick={onNewFile}
-            className="flex items-center justify-center rounded cursor-pointer"
-            style={{ width: 22, height: 22, color: colors.text.muted, opacity: 0.5 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.5'
-            }}
+            className="sidebar-icon-button"
+            style={{ color: colors.text.muted }}
             title="New file"
           >
             <svg
@@ -200,14 +177,8 @@ function ActionBar({
           </button>
           <button
             onClick={cycleSortMode}
-            className="flex items-center justify-center rounded cursor-pointer"
-            style={{ width: 22, height: 22, color: colors.text.muted, opacity: 0.5 }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.5'
-            }}
+            className="sidebar-icon-button"
+            style={{ color: colors.text.muted }}
             title={`Sort: ${sortMode}`}
           >
             <svg
@@ -265,7 +236,7 @@ function SystemArtifactCollections({
         return (
           <div key={kind} className="mb-3 last:mb-0">
             <div
-              className="px-2 pb-1 text-[10px] uppercase tracking-[0.1em]"
+              className="px-2 pb-2 sidebar-section-label"
               style={{ color: colors.text.muted, opacity: 0.7 }}
             >
               {prettyKind(kind)}
@@ -279,17 +250,8 @@ function SystemArtifactCollections({
                   <button
                     key={item.id}
                     onClick={() => onSelect?.(item)}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-left transition-colors"
-                    style={{
-                      backgroundColor: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive)
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
-                    }}
+                    className="file-row-hover flex items-center gap-2 px-2 py-1.5 text-left transition-colors"
+                    data-active={isActive ? 'true' : 'false'}
                     title={item.path}
                   >
                     <span
@@ -298,15 +260,21 @@ function SystemArtifactCollections({
                     />
                     <span className="min-w-0 flex-1">
                       <span
-                        className="block truncate text-xs"
-                        style={{ color: isActive ? colors.text.primary : colors.text.secondary }}
+                        className="block truncate"
+                        style={{
+                          color: isActive ? colors.text.primary : colors.text.secondary,
+                          fontSize: 'var(--env-sidebar-font-size)'
+                        }}
                       >
                         {item.title}
                       </span>
                       {item.status && (
                         <span
-                          className="block truncate text-[10px] uppercase tracking-[0.08em]"
-                          style={{ color: colors.text.muted }}
+                          className="block truncate uppercase tracking-[0.08em]"
+                          style={{
+                            color: colors.text.muted,
+                            fontSize: 'var(--env-sidebar-tertiary-font-size)'
+                          }}
                         >
                           {item.status}
                         </span>
@@ -353,6 +321,7 @@ export function Sidebar({
   const [contextMenu, setContextMenu] = useState<FileContextMenuState | null>(null)
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const [filesCollapsed, setFilesCollapsed] = useState(false)
+  const fileCount = nodes.filter((node) => !node.isDirectory).length
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, path: string, isDirectory: boolean) => {
@@ -417,15 +386,16 @@ export function Sidebar({
   )
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex-shrink-0">
-        <div className="px-3 pt-2 pb-1">
+    <div className="workspace-sidebar-shell">
+      <div className="sidebar-top-stack flex-shrink-0">
+        <div className="pb-1">
           <SearchBar onSearch={onSearch} />
         </div>
         <ActionBar
           sortMode={sortMode}
           vaultName={vaultName}
           vaultHistory={vaultHistory}
+          fileCount={fileCount}
           filesCollapsed={filesCollapsed}
           onNewFile={onNewFile}
           onSortChange={onSortChange}

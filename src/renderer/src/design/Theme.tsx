@@ -107,6 +107,21 @@ function applyEnvCssVars(resolved: ResolvedThemeId, env: EnvironmentSettings): v
   root.style.setProperty('--canvas-card-border', structural.canvas.cardBorder)
   root.style.setProperty('--canvas-text-heading', structural.canvas.textHeading)
   root.style.setProperty('--canvas-blockquote-bar', structural.canvas.blockquoteBar)
+  root.style.setProperty(
+    '--chrome-rail-bg',
+    `rgba(${base.canvasSurface.r}, ${base.canvasSurface.g}, ${base.canvasSurface.b}, ${env.activityBarOpacity / 100})`
+  )
+  root.style.setProperty('--env-card-blur', `${env.cardBlur}px`)
+  root.style.setProperty('--env-card-title-font-size', `${env.cardTitleFontSize}px`)
+  root.style.setProperty('--env-sidebar-font-size', `${env.sidebarFontSize}px`)
+  root.style.setProperty(
+    '--env-sidebar-secondary-font-size',
+    `${Math.max(env.sidebarFontSize - 1, 11)}px`
+  )
+  root.style.setProperty(
+    '--env-sidebar-tertiary-font-size',
+    `${Math.max(env.sidebarFontSize - 3, 10)}px`
+  )
 }
 
 function applyAccentCssVars(accentHex: string): void {

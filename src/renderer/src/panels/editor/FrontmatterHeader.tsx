@@ -10,6 +10,10 @@ interface MetadataEntry {
   readonly value: string
 }
 
+function formatPropertyLabel(key: string): string {
+  return key.replace(/_/g, ' ')
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildMetadataEntries(artifact: Artifact): readonly MetadataEntry[] {
   const entries: MetadataEntry[] = [
@@ -33,12 +37,35 @@ const pillStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
   fontSize: '10px',
   fontWeight: 500,
-  letterSpacing: '0.04em',
-  borderRadius: 4,
-  padding: '2px 8px',
-  border: `1px solid ${colors.text.muted}50`,
-  color: colors.text.secondary,
+  letterSpacing: '0.08em',
+  borderRadius: 999,
+  padding: '4px 10px',
+  border: `1px solid ${colors.border.default}`,
+  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  color: colors.text.primary,
   lineHeight: 1.4
+}
+
+const sectionLabelStyle: React.CSSProperties = {
+  textTransform: 'uppercase',
+  letterSpacing: '0.16em',
+  fontSize: '10px',
+  fontWeight: 600,
+  color: colors.text.muted
+}
+
+const rowLabelStyle: React.CSSProperties = {
+  ...sectionLabelStyle,
+  paddingTop: '0.2rem'
+}
+
+const rowValueStyle: React.CSSProperties = {
+  color: colors.text.secondary,
+  minHeight: 22,
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '0.4rem'
 }
 
 // ── Tag Pills Editor ──
@@ -208,7 +235,7 @@ function EditableValue({ value, displayValue, onChange }: EditableValueProps) {
         setDraft(value)
         setEditing(true)
       }}
-      style={{ color: colors.text.secondary, cursor: 'text' }}
+      style={{ ...rowValueStyle, cursor: 'text' }}
     >
       {(displayValue ?? value) || '\u00A0'}
     </span>
@@ -378,26 +405,28 @@ export function FrontmatterHeader({
         fontFamily: 'var(--font-mono)',
         fontSize: '11px',
         color: colors.text.muted,
-        lineHeight: 1.8,
-        maxWidth: '48rem',
+        lineHeight: 1.7,
+        maxWidth: '52rem',
         margin: '0 auto',
-        marginBottom: '2em'
+        marginBottom: '2.25em'
       }}
-      className="px-8 pt-6"
+      className="px-8 pt-5"
     >
       {/* Type badge with neon border */}
-      <div style={{ marginBottom: '0.75em' }}>
+      <div style={{ marginBottom: '1rem' }}>
         <span
           style={{
             color: typeColor,
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.14em',
             fontSize: '10px',
             fontWeight: 600,
             border: `1px solid ${typeColor}60`,
-            borderRadius: 4,
-            padding: '2px 8px',
-            display: 'inline-block'
+            borderRadius: 999,
+            padding: '4px 10px',
+            display: 'inline-block',
+            backgroundColor: `${typeColor}10`,
+            boxShadow: `0 0 0 1px ${typeColor}14 inset`
           }}
         >
           {artifactType}
@@ -405,51 +434,70 @@ export function FrontmatterHeader({
       </div>
 
       {/* Key-value lines: editable */}
-      {displayKeys.map((key) => {
-        const value = properties[key]
-        if (key.toLowerCase() === 'type') return null
+      <div
+        style={{
+          display: 'grid',
+          gap: '0.55rem',
+          borderTop: `1px solid ${colors.border.default}`,
+          paddingTop: '0.9rem'
+        }}
+      >
+        {displayKeys.map((key, index) => {
+          const value = properties[key]
+          if (key.toLowerCase() === 'type') return null
 
-        const isTagField = key.toLowerCase() === 'tags'
+          const isTagField = key.toLowerCase() === 'tags'
 
-        if (isTagField) {
-          const tagArray = Array.isArray(value)
-            ? value.map(String)
-            : typeof value === 'string'
-              ? value
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : []
-          return (
-            <div key={key} style={{ marginTop: '0.4em', marginBottom: '0.2em' }}>
+          if (isTagField) {
+            const tagArray = Array.isArray(value)
+              ? value.map(String)
+              : typeof value === 'string'
+                ? value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            return (
               <div
+                key={key}
                 style={{
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: '0.3em'
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
+                  columnGap: '1rem',
+                  alignItems: 'start',
+                  paddingTop: index === 0 ? 0 : '0.1rem'
                 }}
               >
-                {key}
+                <div style={rowLabelStyle}>{formatPropertyLabel(key)}</div>
+                <div style={rowValueStyle}>
+                  <TagEditor tags={tagArray} onChange={(tags) => handlePropertyChange(key, tags)} />
+                </div>
               </div>
-              <TagEditor tags={tagArray} onChange={(tags) => handlePropertyChange(key, tags)} />
+            )
+          }
+
+          const rawValue = Array.isArray(value) ? value.join(', ') : String(value)
+          return (
+            <div
+              key={key}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
+                columnGap: '1rem',
+                alignItems: 'start',
+                paddingTop: index === 0 ? 0 : '0.1rem'
+              }}
+            >
+              <span style={rowLabelStyle}>{formatPropertyLabel(key)}</span>
+              <EditableValue
+                value={rawValue}
+                displayValue={stripWikilinks(rawValue)}
+                onChange={(v) => handlePropertyChange(key, v)}
+              />
             </div>
           )
-        }
-
-        const rawValue = Array.isArray(value) ? value.join(', ') : String(value)
-        return (
-          <div key={key}>
-            <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {key.padEnd(Math.max(key.length + 1, 12))}
-            </span>
-            <EditableValue
-              value={rawValue}
-              displayValue={stripWikilinks(rawValue)}
-              onChange={(v) => handlePropertyChange(key, v)}
-            />
-          </div>
-        )
-      })}
+        })}
+      </div>
 
       {/* Relationship section */}
       {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
@@ -482,7 +530,14 @@ function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps)
   if (rows.length === 0) return null
 
   return (
-    <div style={{ marginTop: '0.5em' }}>
+    <div
+      style={{
+        marginTop: '1.1rem',
+        paddingTop: '0.9rem',
+        borderTop: `1px solid ${colors.border.default}`
+      }}
+    >
+      <div style={{ ...sectionLabelStyle, marginBottom: '0.7rem' }}>Relationships</div>
       {rows.map(({ key, label }) => (
         <RelationshipRow key={key} label={label} ids={artifact[key]} onNavigate={onNavigate} />
       ))}
@@ -500,30 +555,40 @@ interface RelationshipRowProps {
 
 function RelationshipRow({ label, ids, onNavigate }: RelationshipRowProps) {
   return (
-    <div>
-      <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label.padEnd(Math.max(label.length + 1, 12))}
-      </span>
-      {ids.map((id, i) => (
-        <span key={id}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
+        columnGap: '1rem',
+        alignItems: 'start',
+        marginBottom: '0.55rem'
+      }}
+    >
+      <span style={rowLabelStyle}>{label}</span>
+      <div style={{ ...rowValueStyle, gap: '0.45rem' }}>
+        {ids.map((id) => (
           <span
+            key={id}
             onClick={() => onNavigate?.(id)}
             style={{
-              color: colors.text.secondary,
-              cursor: 'pointer'
+              ...pillStyle,
+              cursor: onNavigate ? 'pointer' : 'default',
+              color: colors.text.secondary
             }}
             onMouseEnter={(e) => {
+              if (!onNavigate) return
+              e.currentTarget.style.borderColor = colors.accent.default
               e.currentTarget.style.color = colors.text.primary
             }}
             onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = colors.border.default
               e.currentTarget.style.color = colors.text.secondary
             }}
           >
             {id}
           </span>
-          {i < ids.length - 1 && <span>, </span>}
-        </span>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
