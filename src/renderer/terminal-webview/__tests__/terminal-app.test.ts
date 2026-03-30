@@ -45,8 +45,8 @@ describe('TerminalApp component', () => {
       expect(src).toContain("from '@xterm/addon-web-links'")
     })
 
-    it('imports WebglAddon', () => {
-      expect(src).toContain("from '@xterm/addon-webgl'")
+    it('imports CanvasAddon', () => {
+      expect(src).toContain("from '@xterm/addon-canvas'")
     })
 
     it('imports SearchAddon', () => {
@@ -85,11 +85,10 @@ describe('TerminalApp component', () => {
     })
   })
 
-  describe('WebGL with canvas fallback', () => {
-    it('creates WebglAddon inside a try block', () => {
-      expect(src).toContain('new WebglAddon()')
-      // The try-catch pattern for WebGL fallback
-      expect(src).toMatch(/try\s*\{[\s\S]*?new WebglAddon\(\)[\s\S]*?\}\s*catch/)
+  describe('Canvas 2D renderer', () => {
+    it('creates CanvasAddon inside a try block', () => {
+      expect(src).toContain('new CanvasAddon()')
+      expect(src).toMatch(/try\s*\{[\s\S]*?new CanvasAddon\(\)[\s\S]*?\}\s*catch/)
     })
   })
 
@@ -184,8 +183,8 @@ describe('TerminalApp component', () => {
       expect(src).toContain('term.dispose()')
     })
 
-    it('disposes the WebGL addon', () => {
-      expect(src).toMatch(/webgl.*\.dispose\(\)/)
+    it('disposes the Canvas addon', () => {
+      expect(src).toMatch(/canvas.*\.dispose\(\)/)
     })
 
     it('clears the flush timer', () => {

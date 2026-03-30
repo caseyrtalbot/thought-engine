@@ -3,7 +3,7 @@ import { useRef, useEffect, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { WebglAddon } from '@xterm/addon-webgl'
+import { CanvasAddon } from '@xterm/addon-canvas'
 import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 
@@ -48,7 +48,7 @@ export function TerminalApp() {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
-  const webglRef = useRef<WebglAddon | null>(null)
+  const canvasRef = useRef<CanvasAddon | null>(null)
   const searchRef = useRef<SearchAddon | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -94,7 +94,6 @@ export function TerminalApp() {
       cursorStyle: 'bar',
       cursorWidth: 2,
       allowProposedApi: true,
-      smoothScrollDuration: 100,
       drawBoldTextInBrightColors: true,
       minimumContrastRatio: 1,
       theme: {
@@ -147,27 +146,15 @@ export function TerminalApp() {
     if (containerRef.current) {
       term.open(containerRef.current)
 
-      // WebGL addon for GPU-accelerated rendering with canvas fallback
+      // Canvas 2D renderer — avoids WebGL shared-image lifetime races
+      // in Electron webview OOPIF contexts (pink atlas artifacts).
+      // WebGL is kept for the panel terminal (main BrowserWindow).
       try {
-        const webgl = new WebglAddon()
-        webgl.onContextLoss(() => {
-          webgl.dispose()
-          webglRef.current = null
-        })
-        term.loadAddon(webgl)
-        webglRef.current = webgl
+        const canvas = new CanvasAddon()
+        term.loadAddon(canvas)
+        canvasRef.current = canvas
       } catch {
-        // WebGL unavailable — Canvas 2D renderer remains active
-      }
-
-      // Force xterm viewport to fill the container
-      const xtermEl = containerRef.current.querySelector('.xterm') as HTMLElement | null
-      if (xtermEl) {
-        xtermEl.style.height = '100%'
-      }
-      const screenEl = containerRef.current.querySelector('.xterm-screen') as HTMLElement | null
-      if (screenEl) {
-        screenEl.style.height = '100%'
+        // Canvas addon unavailable — DOM renderer remains active
       }
 
       fitAddon.fit()
@@ -222,22 +209,32 @@ export function TerminalApp() {
     // ── Resize handling ─────────────────────────────────────────────────
 
     let resizeObserver: ResizeObserver | null = null
+    let resizeRaf = 0
+    let lastCols = 0
+    let lastRows = 0
+
     if (containerRef.current) {
-      resizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(() => {
+      resizeObserver = new ResizeObserver((entries) => {
+        const { width, height } = entries[0].contentRect
+        if (width <= 0 || height <= 0) return
+
+        cancelAnimationFrame(resizeRaf)
+        resizeRaf = requestAnimationFrame(() => {
           if (cancelled || !fitRef.current || !termRef.current) return
           try {
             fitRef.current.fit()
           } catch {
             return
           }
+          // Only send resize IPC if dimensions actually changed
+          const { cols: newCols, rows: newRows } = termRef.current
+          if (newCols === lastCols && newRows === lastRows) return
+          lastCols = newCols
+          lastRows = newRows
+
           const sid = sessionIdRef.current
           if (sid) {
-            window.terminalApi.resize({
-              sessionId: sid,
-              cols: termRef.current.cols,
-              rows: termRef.current.rows
-            })
+            window.terminalApi.resize({ sessionId: sid, cols: newCols, rows: newRows })
           }
         })
       })
@@ -341,15 +338,16 @@ export function TerminalApp() {
       dataBufferRef.current = []
 
       // Disconnect resize observer
+      cancelAnimationFrame(resizeRaf)
       resizeObserver?.disconnect()
 
       // Dispose addons and terminal
       try {
-        webglRef.current?.dispose()
+        canvasRef.current?.dispose()
       } catch {
-        // WebGL context already lost
+        // Already disposed
       }
-      webglRef.current = null
+      canvasRef.current = null
 
       try {
         searchRef.current = null
@@ -369,9 +367,8 @@ export function TerminalApp() {
       style={{
         width: '100%',
         height: '100%',
-        padding: '8px 12px',
         minHeight: 0,
-        background: 'rgba(12, 14, 20, 0.85)',
+        background: '#0c0e14',
         overflow: 'hidden'
       }}
     />
