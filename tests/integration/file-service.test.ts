@@ -61,7 +61,12 @@ describe('FileService', () => {
 
     const files = await svc.listAllFilesRecursive(dir)
 
-    expect(files).toEqual([join(dir, 'src', 'index.ts')])
+    expect(files).toEqual([
+      {
+        path: join(dir, 'src', 'index.ts'),
+        mtime: expect.any(String)
+      }
+    ])
   })
 
   it('initializes vault directory', async () => {

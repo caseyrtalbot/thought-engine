@@ -1,19 +1,25 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockInvoke, mockOn, mockSendToHost, captured } = vi.hoisted(() => {
+const { mockInvoke, mockOn, mockOff, mockSendToHost, captured } = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const state = { exposeCallback: undefined as any }
   return {
     mockInvoke: vi.fn(),
     mockOn: vi.fn(),
+    mockOff: vi.fn(),
     mockSendToHost: vi.fn(),
     captured: state
   }
 })
 
 vi.mock('electron', () => ({
-  ipcRenderer: { invoke: mockInvoke, on: mockOn, sendToHost: mockSendToHost },
+  ipcRenderer: {
+    invoke: mockInvoke,
+    on: mockOn,
+    off: mockOff,
+    sendToHost: mockSendToHost
+  },
   contextBridge: {
     exposeInMainWorld: vi.fn((_name: string, api: unknown) => {
       captured.exposeCallback = api
@@ -45,6 +51,7 @@ const exitRegistrationCount = mockOn.mock.calls.filter(
 describe('terminal-webview preload', () => {
   beforeEach(() => {
     mockInvoke.mockClear()
+    mockOff.mockClear()
     mockSendToHost.mockClear()
   })
 
@@ -133,6 +140,30 @@ describe('terminal-webview preload', () => {
 
     it('registers exactly one listener for terminal:exit', () => {
       expect(exitRegistrationCount).toBe(1)
+    })
+  })
+
+  describe('focus / blur subscriptions', () => {
+    it('registers focus and blur listeners through ipcRenderer.on', () => {
+      const onFocus = vi.fn()
+      const onBlur = vi.fn()
+
+      captured.exposeCallback.onFocus(onFocus)
+      captured.exposeCallback.onBlur(onBlur)
+
+      expect(mockOn).toHaveBeenCalledWith('focus', onFocus)
+      expect(mockOn).toHaveBeenCalledWith('blur', onBlur)
+    })
+
+    it('removes focus and blur listeners through ipcRenderer.off', () => {
+      const onFocus = vi.fn()
+      const onBlur = vi.fn()
+
+      captured.exposeCallback.offFocus(onFocus)
+      captured.exposeCallback.offBlur(onBlur)
+
+      expect(mockOff).toHaveBeenCalledWith('focus', onFocus)
+      expect(mockOff).toHaveBeenCalledWith('blur', onBlur)
     })
   })
 

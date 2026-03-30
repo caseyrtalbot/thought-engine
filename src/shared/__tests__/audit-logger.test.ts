@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
+import { mkdirSync, rmSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { AuditLogger } from '../../main/services/audit-logger'
@@ -183,6 +183,27 @@ describe('AuditLogger', () => {
 
     await waitForWrite()
     // If we get here without crashing, the test passes
+  })
+
+  it('recovers after an initial mkdir failure once the log directory becomes creatable', async () => {
+    const blockedParent = join(tempDir, 'blocked-parent')
+    writeFileSync(blockedParent, 'not a directory')
+    const recoveringLogDir = join(blockedParent, 'audit')
+    const logger = new AuditLogger(recoveringLogDir)
+
+    logger.log(makeEntry({ tool: 'first-attempt' }))
+    await waitForWrite()
+    expect(existsSync(recoveringLogDir)).toBe(false)
+
+    rmSync(blockedParent, { force: true })
+    mkdirSync(blockedParent, { recursive: true })
+
+    logger.log(makeEntry({ tool: 'second-attempt' }))
+    await waitForWrite()
+
+    expect(existsSync(recoveringLogDir)).toBe(true)
+    const files = readDir(recoveringLogDir)
+    expect(files.length).toBe(1)
   })
 })
 

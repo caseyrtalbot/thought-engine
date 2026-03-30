@@ -2,6 +2,7 @@ import { createWorkerHelpers } from './vault-worker-helpers'
 
 type WorkerInMessage =
   | { type: 'load'; files: Array<{ path: string; content: string }> }
+  | { type: 'append'; files: Array<{ path: string; content: string }> }
   | { type: 'update'; path: string; content: string }
   | { type: 'remove'; path: string }
 
@@ -16,6 +17,10 @@ self.onmessage = (e: MessageEvent<WorkerInMessage>): void => {
   switch (msg.type) {
     case 'load':
       clearAll()
+      for (const file of msg.files) addFile(file.path, file.content)
+      postResult('loaded')
+      break
+    case 'append':
       for (const file of msg.files) addFile(file.path, file.content)
       postResult('loaded')
       break

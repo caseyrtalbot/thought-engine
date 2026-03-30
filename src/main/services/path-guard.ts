@@ -6,9 +6,8 @@
  * to sensitive directories regardless of location.
  */
 
-import { realpathSync } from 'node:fs'
-import { resolve, normalize } from 'node:path'
 import { PathGuardError } from '@shared/agent-types'
+import { canonicalizePath } from '../utils/paths'
 
 /** Segments that are always denied, even inside the vault. */
 const DENY_LIST = new Set(['.git', '.ssh', '.env', 'node_modules', '.DS_Store'])
@@ -23,14 +22,7 @@ export class PathGuard {
   private readonly resolvedRoot: string
 
   constructor(vaultRoot: string) {
-    // Resolve the vault root once at construction time.
-    // Use normalize + resolve as a fallback if realpathSync fails
-    // (e.g. vault root doesn't exist yet during tests).
-    try {
-      this.resolvedRoot = realpathSync(resolve(normalize(vaultRoot)))
-    } catch {
-      this.resolvedRoot = resolve(normalize(vaultRoot))
-    }
+    this.resolvedRoot = canonicalizePath(vaultRoot)
   }
 
   /**
@@ -74,14 +66,7 @@ export class PathGuard {
    * the target exists on disk.
    */
   private resolvePath(filePath: string): string {
-    const absolute = resolve(normalize(filePath))
-    try {
-      return realpathSync(absolute)
-    } catch {
-      // File may not exist yet (e.g. write operations).
-      // Fall back to the logical resolved path.
-      return absolute
-    }
+    return canonicalizePath(filePath)
   }
 
   private checkBoundary(resolved: string): void {

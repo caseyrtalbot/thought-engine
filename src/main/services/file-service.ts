@@ -13,7 +13,7 @@ import {
 } from '../utils/paths'
 import { shouldIgnore } from './gitignore-filter'
 import type { Ignore } from 'ignore'
-import type { VaultConfig, VaultState } from '../../shared/types'
+import type { FilesystemFileEntry, VaultConfig, VaultState } from '../../shared/types'
 import {
   SYSTEM_ARTIFACT_KINDS,
   defaultSystemArtifactFilename,
@@ -95,8 +95,8 @@ export class FileService {
     return this.listMarkdownFilesRecursive(dir, true)
   }
 
-  async listAllFilesRecursive(dir: string, ignoreFilter?: Ignore): Promise<string[]> {
-    const results: string[] = []
+  async listAllFilesRecursive(dir: string, ignoreFilter?: Ignore): Promise<FilesystemFileEntry[]> {
+    const results: FilesystemFileEntry[] = []
     const pendingDirs = [dir]
     const seenDirs = new Set<string>()
 
@@ -132,7 +132,10 @@ export class FileService {
         }
 
         if (entry.isFile()) {
-          results.push(fullPath)
+          results.push({
+            path: fullPath,
+            mtime: await this.getFileMtime(fullPath)
+          })
           continue
         }
 
@@ -151,7 +154,10 @@ export class FileService {
               pendingDirs.push(fullPath)
             }
           } else if (realStat.isFile()) {
-            results.push(fullPath)
+            results.push({
+              path: fullPath,
+              mtime: realStat.mtime.toISOString()
+            })
           }
         } catch {
           // Broken symlink, skip

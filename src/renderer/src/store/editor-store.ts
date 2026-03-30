@@ -10,7 +10,6 @@ export interface Tab {
 }
 
 interface EditorStore {
-  readonly activeNoteId: string | null
   readonly activeNotePath: string | null
   readonly mode: EditorMode
   readonly isDirty: boolean
@@ -25,7 +24,7 @@ interface EditorStore {
   readonly historyStack: readonly string[]
   readonly historyIndex: number
 
-  setActiveNote: (id: string | null, path: string | null) => void
+  setActiveNote: (path: string | null) => void
   setMode: (mode: EditorMode) => void
   setContent: (content: string) => void
   loadContent: (content: string) => void
@@ -33,7 +32,7 @@ interface EditorStore {
   markSaved: () => void
   setCursorPosition: (line: number, col: number) => void
 
-  openTab: (path: string, title?: string, noteId?: string | null) => void
+  openTab: (path: string, title?: string) => void
   closeTab: (path: string) => void
   switchTab: (path: string) => void
   goBack: () => void
@@ -105,7 +104,6 @@ function flushIfDirty(state: DirtyEditorState): void {
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
-  activeNoteId: null,
   activeNotePath: null,
   mode: 'rich',
   isDirty: false,
@@ -116,9 +114,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   historyStack: [],
   historyIndex: -1,
 
-  setActiveNote: (id, path) => {
+  setActiveNote: (path) => {
     if (!path) {
-      set({ activeNoteId: null, activeNotePath: null, isDirty: false })
+      set({ activeNotePath: null, isDirty: false })
       return
     }
 
@@ -131,7 +129,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const history = pushHistory(state.historyStack, state.historyIndex, path)
 
     set({
-      activeNoteId: id,
       activeNotePath: path,
       isDirty: false,
       openTabs: tabs,
@@ -147,7 +144,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   markSaved: () => set({ isDirty: false }),
   setCursorPosition: (line, col) => set({ cursorLine: line, cursorCol: col }),
 
-  openTab: (path, title, noteId) => {
+  openTab: (path, title) => {
     const state = get()
     flushIfDirty(state)
     const resolvedTitle = title ?? titleFromPath(path)
@@ -157,7 +154,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const history = pushHistory(state.historyStack, state.historyIndex, path)
 
     set({
-      activeNoteId: noteId ?? path,
       activeNotePath: path,
       isDirty: false,
       openTabs: tabs,
@@ -179,7 +175,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
       set({
         openTabs: tabs,
-        activeNoteId: nextTab?.path ?? null,
         activeNotePath: nextTab?.path ?? null,
         isDirty: false
       })
@@ -195,7 +190,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const history = pushHistory(state.historyStack, state.historyIndex, path)
 
     set({
-      activeNoteId: path,
       activeNotePath: path,
       isDirty: false,
       historyStack: history.stack,
@@ -212,7 +206,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
     set({
       historyIndex: newIndex,
-      activeNoteId: path,
       activeNotePath: path,
       isDirty: false
     })
@@ -227,7 +220,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
     set({
       historyIndex: newIndex,
-      activeNoteId: path,
       activeNotePath: path,
       isDirty: false
     })

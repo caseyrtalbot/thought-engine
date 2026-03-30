@@ -7,7 +7,7 @@
  * allows inside-vault paths for each handler pattern.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, writeFileSync, rmSync, realpathSync } from 'node:fs'
+import { mkdirSync, writeFileSync, symlinkSync, rmSync, realpathSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { PathGuard } from '../../services/path-guard'
@@ -143,6 +143,54 @@ describe('fs:* IPC PathGuard enforcement', () => {
       const dest = join(vaultRoot, 'notes', 'copy.md')
       expect(() => guardPath(guard, src, 'fs:copy-file')).not.toThrow()
       expect(() => guardPath(guard, dest, 'fs:copy-file')).not.toThrow()
+    })
+  })
+
+  describe('nonexistent children under symlinked parents', () => {
+    it('fs:write-file rejects paths that escape through a symlinked parent directory', () => {
+      const outsideDir = join(tmpdir(), `fs-guard-outside-write-${Date.now()}`)
+      const linkPath = join(vaultRoot, 'notes', 'escape-write')
+      mkdirSync(outsideDir, { recursive: true })
+
+      try {
+        symlinkSync(realpathSync(outsideDir), linkPath)
+      } catch {
+        rmSync(outsideDir, { recursive: true, force: true })
+        return
+      }
+
+      expect(() => guardPath(guard, join(linkPath, 'new.md'), 'fs:write-file')).toThrow(
+        PathGuardError
+      )
+
+      unlinkSync(linkPath)
+      rmSync(outsideDir, { recursive: true, force: true })
+    })
+
+    it('fs:mkdir rejects paths that escape through a symlinked parent directory', () => {
+      const outsideDir = join(tmpdir(), `fs-guard-outside-mkdir-${Date.now()}`)
+      const linkPath = join(vaultRoot, 'notes', 'escape-mkdir')
+      mkdirSync(outsideDir, { recursive: true })
+
+      try {
+        symlinkSync(realpathSync(outsideDir), linkPath)
+      } catch {
+        rmSync(outsideDir, { recursive: true, force: true })
+        return
+      }
+
+      expect(() => guardPath(guard, join(linkPath, 'new-folder'), 'fs:mkdir')).toThrow(
+        PathGuardError
+      )
+
+      unlinkSync(linkPath)
+      rmSync(outsideDir, { recursive: true, force: true })
+    })
+
+    it('allows creating a new child beneath a real in-vault directory', () => {
+      expect(() =>
+        guardPath(guard, join(vaultRoot, 'notes', 'new-folder', 'note.md'), 'fs:write-file')
+      ).not.toThrow()
     })
   })
 })

@@ -166,6 +166,14 @@ describe('TerminalApp component', () => {
     it('listens for blur events via terminalApi.onBlur', () => {
       expect(src).toContain('window.terminalApi.onBlur')
     })
+
+    it('unsubscribes focus events via terminalApi.offFocus', () => {
+      expect(src).toContain('window.terminalApi.offFocus')
+    })
+
+    it('unsubscribes blur events via terminalApi.offBlur', () => {
+      expect(src).toContain('window.terminalApi.offBlur')
+    })
   })
 
   describe('data and exit listeners', () => {
@@ -247,6 +255,11 @@ describe('terminal-api.d.ts type declarations', () => {
   it('declares onFocus and onBlur methods', () => {
     expect(dts).toContain('onFocus:')
     expect(dts).toContain('onBlur:')
+  })
+
+  it('declares offFocus and offBlur methods', () => {
+    expect(dts).toContain('offFocus:')
+    expect(dts).toContain('offBlur:')
   })
 
   it('declares sendToHost method', () => {

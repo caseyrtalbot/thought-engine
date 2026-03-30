@@ -29,12 +29,13 @@ export function buildVaultDeps(files: readonly FileEntry[]): VaultQueryDeps & {
 
   const searchEngine = new SearchEngine()
   for (const artifact of vaultIndex.getArtifacts()) {
+    const sourcePath = vaultIndex.getPathForArtifact(artifact.id)
     searchEngine.upsert({
       id: artifact.id,
       title: artifact.title,
       tags: [...artifact.tags],
       body: artifact.body,
-      path: artifact.id
+      path: sourcePath ?? artifact.id
     })
   }
 

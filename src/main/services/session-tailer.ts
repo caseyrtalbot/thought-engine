@@ -25,14 +25,22 @@ interface TailedSession {
 }
 
 export class SessionTailer {
-  private readonly mainWindow: BrowserWindow
+  private readonly resolveMainWindow: () => BrowserWindow | null
   private dirWatcher: FSWatcher | null = null
   private readonly sessions = new Map<string, TailedSession>()
   private checkInterval: ReturnType<typeof setInterval> | null = null
   private claudeDir = ''
 
-  constructor(mainWindow: BrowserWindow) {
-    this.mainWindow = mainWindow
+  constructor(mainWindowOrGetter: BrowserWindow | (() => BrowserWindow | null)) {
+    this.resolveMainWindow =
+      typeof mainWindowOrGetter === 'function' ? mainWindowOrGetter : () => mainWindowOrGetter
+  }
+
+  private send(event: 'session:detected' | 'session:milestone', data: object): void {
+    const window = this.resolveMainWindow()
+    if (window) {
+      typedSend(window, event, data as never)
+    }
   }
 
   async start(projectPath: string): Promise<void> {
@@ -175,7 +183,7 @@ export class SessionTailer {
     })
 
     // Emit session detected event
-    typedSend(this.mainWindow, 'session:detected', {
+    this.send('session:detected', {
       active: true,
       sessionId
     })
@@ -190,7 +198,7 @@ export class SessionTailer {
       files: [],
       events: []
     }
-    typedSend(this.mainWindow, 'session:milestone', milestone)
+    this.send('session:milestone', milestone)
   }
 
   private async stopTailingSession(filePath: string): Promise<void> {
@@ -201,7 +209,7 @@ export class SessionTailer {
     await session.watcher.close()
     this.sessions.delete(sessionId)
 
-    typedSend(this.mainWindow, 'session:detected', {
+    this.send('session:detected', {
       active: false,
       sessionId
     })
@@ -233,7 +241,7 @@ export class SessionTailer {
         if (allEvents.length > 0) {
           const milestones = groupEventsIntoMilestones(allEvents, sessionId)
           for (const milestone of milestones) {
-            typedSend(this.mainWindow, 'session:milestone', milestone)
+            this.send('session:milestone', milestone)
           }
         }
       } finally {

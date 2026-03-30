@@ -92,9 +92,9 @@ export function SystemArtifactCard({ node }: SystemArtifactCardProps) {
 
   const handleOpenInEditor = useCallback(() => {
     if (filePath) {
-      openArtifactInEditor(filePath, undefined, node.content || filePath)
+      openArtifactInEditor(filePath)
     }
-  }, [filePath, node.content])
+  }, [filePath])
 
   const handleRestore = useCallback(() => {
     if (meta.snapshotPath && vaultPath) {

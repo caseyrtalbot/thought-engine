@@ -674,7 +674,7 @@ export function WorkbenchPanel() {
         <SessionThreadPanel
           state={threadState}
           onFileClick={(filePath) => {
-            openArtifactInEditor(filePath, undefined, filePath)
+            openArtifactInEditor(filePath)
           }}
         />
       )}

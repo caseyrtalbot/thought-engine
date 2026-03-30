@@ -1,17 +1,20 @@
-import type { BrowserWindow } from 'electron'
 import { ProjectWatcher } from '../services/project-watcher'
 import { ProjectSessionParser } from '../services/project-session-parser'
 import { SessionTailer } from '../services/session-tailer'
 import { typedHandle, typedSend } from '../typed-ipc'
+import { getMainWindow } from '../window-registry'
 
 const watcher = new ProjectWatcher()
 const parser = new ProjectSessionParser()
 let tailer: SessionTailer | null = null
 
-export function registerProjectIpc(mainWindow: BrowserWindow): void {
+export function registerProjectIpc(): void {
   typedHandle('workbench:watch-start', async (args) => {
     await watcher.start(args.projectPath, (event) => {
-      typedSend(mainWindow, 'workbench:file-changed', event)
+      const window = getMainWindow()
+      if (window) {
+        typedSend(window, 'workbench:file-changed', event)
+      }
     })
   })
 
@@ -23,7 +26,7 @@ export function registerProjectIpc(mainWindow: BrowserWindow): void {
     return parser.parse(args.projectPath)
   })
 
-  tailer = new SessionTailer(mainWindow)
+  tailer = new SessionTailer(() => getMainWindow())
 
   typedHandle('session:tail-start', async (args) => {
     await tailer!.start(args.projectPath)

@@ -57,6 +57,8 @@ export function TerminalApp() {
   // Store listener references so we can unsubscribe on cleanup
   const dataListenerRef = useRef<((data: { sessionId: string; data: string }) => void) | null>(null)
   const exitListenerRef = useRef<((data: { sessionId: string; code: number }) => void) | null>(null)
+  const focusListenerRef = useRef<(() => void) | null>(null)
+  const blurListenerRef = useRef<(() => void) | null>(null)
 
   /**
    * Flush coalesced data buffer to the terminal in a single write.
@@ -198,13 +200,17 @@ export function TerminalApp() {
 
     // ── Focus protocol (guest side) ─────────────────────────────────────
 
-    window.terminalApi.onFocus(() => {
+    const handleFocus = () => {
       termRef.current?.focus()
-    })
+    }
+    focusListenerRef.current = handleFocus
+    window.terminalApi.onFocus(handleFocus)
 
-    window.terminalApi.onBlur(() => {
+    const handleBlur = () => {
       termRef.current?.blur()
-    })
+    }
+    blurListenerRef.current = handleBlur
+    window.terminalApi.onBlur(handleBlur)
 
     // ── Resize handling ─────────────────────────────────────────────────
 
@@ -328,6 +334,14 @@ export function TerminalApp() {
       if (exitListenerRef.current) {
         window.terminalApi.offExit(exitListenerRef.current)
         exitListenerRef.current = null
+      }
+      if (focusListenerRef.current) {
+        window.terminalApi.offFocus(focusListenerRef.current)
+        focusListenerRef.current = null
+      }
+      if (blurListenerRef.current) {
+        window.terminalApi.offBlur(blurListenerRef.current)
+        blurListenerRef.current = null
       }
 
       // Clear data buffer / flush timer

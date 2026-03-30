@@ -1,3 +1,12 @@
+export type TreeSortMode = 'modified' | 'name' | 'type'
+
+export interface TreeFileEntry {
+  readonly path: string
+  readonly modified: string
+}
+
+type TreeFileInput = string | TreeFileEntry
+
 export interface FlatTreeNode {
   name: string
   path: string
@@ -7,107 +16,182 @@ export interface FlatTreeNode {
   itemCount: number
 }
 
-interface TreeEntry {
-  name: string
-  path: string
-  parentPath: string
-  depth: number
+export interface IndexedTreeNode extends FlatTreeNode {
+  readonly modified: string
+  readonly sortType: string
 }
 
-export function buildFileTree(filePaths: string[], vaultRoot: string): FlatTreeNode[] {
-  if (filePaths.length === 0) {
-    return []
+export interface FileTreeIndex {
+  readonly root: string
+  readonly nodesByPath: ReadonlyMap<string, IndexedTreeNode>
+  readonly childPathsByParent: ReadonlyMap<string, readonly string[]>
+}
+
+interface BuildFileTreeOptions {
+  readonly sortMode?: TreeSortMode
+  readonly getSortType?: (path: string) => string
+}
+
+function normalizeRoot(vaultRoot: string): string {
+  return vaultRoot.endsWith('/') ? vaultRoot.slice(0, -1) : vaultRoot
+}
+
+function defaultSortType(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase()
+  return ext && ext !== path ? ext : 'file'
+}
+
+function ensureChild(
+  childPathsByParent: Map<string, string[]>,
+  parentPath: string,
+  path: string
+): void {
+  const children = childPathsByParent.get(parentPath)
+  if (children) {
+    if (!children.includes(path)) children.push(path)
+    return
+  }
+  childPathsByParent.set(parentPath, [path])
+}
+
+function compareNodes(a: IndexedTreeNode, b: IndexedTreeNode, sortMode: TreeSortMode): number {
+  if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+
+  if (a.isDirectory && b.isDirectory) {
+    return a.name.localeCompare(b.name)
   }
 
-  // Normalize vault root: strip trailing slash for consistent prefix stripping
-  const root = vaultRoot.endsWith('/') ? vaultRoot.slice(0, -1) : vaultRoot
+  if (sortMode === 'modified') {
+    return b.modified.localeCompare(a.modified) || a.name.localeCompare(b.name)
+  }
 
-  // Collect phase: register all directories and files
-  const dirs = new Map<string, TreeEntry>()
-  const files: TreeEntry[] = []
+  if (sortMode === 'type') {
+    return a.sortType.localeCompare(b.sortType) || a.name.localeCompare(b.name)
+  }
 
-  for (const filePath of filePaths) {
-    // Strip vault root prefix to get relative path segments
-    const relative = filePath.startsWith(root + '/') ? filePath.slice(root.length + 1) : filePath
-    const segments = relative.split('/')
+  return a.name.localeCompare(b.name)
+}
 
-    // Register intermediate directories
+function normalizeFileEntry(fileEntry: TreeFileInput): TreeFileEntry {
+  return typeof fileEntry === 'string' ? { path: fileEntry, modified: '' } : fileEntry
+}
+
+export function buildFileTreeIndex(
+  fileEntries: readonly TreeFileInput[],
+  vaultRoot: string,
+  getSortType: (path: string) => string = defaultSortType
+): FileTreeIndex {
+  const root = normalizeRoot(vaultRoot)
+  const childPathsByParent = new Map<string, string[]>()
+  const nodesByPath = new Map<string, IndexedTreeNode>()
+
+  for (const rawFileEntry of fileEntries) {
+    const fileEntry = normalizeFileEntry(rawFileEntry)
+    const relative = fileEntry.path.startsWith(root + '/')
+      ? fileEntry.path.slice(root.length + 1)
+      : fileEntry.path
+    const segments = relative.split('/').filter(Boolean)
+    if (segments.length === 0) continue
+
+    let parentPath = root
+
     for (let i = 0; i < segments.length - 1; i++) {
-      const segment = segments[i]
-      const dirPath = root + '/' + segments.slice(0, i + 1).join('/')
-      const parentPath = i === 0 ? root : root + '/' + segments.slice(0, i).join('/')
-
-      if (!dirs.has(dirPath)) {
-        dirs.set(dirPath, {
-          name: segment,
+      const name = segments[i]
+      const dirPath = `${parentPath}/${name}`
+      if (!nodesByPath.has(dirPath)) {
+        nodesByPath.set(dirPath, {
+          name,
           path: dirPath,
           parentPath,
-          depth: i
+          isDirectory: true,
+          depth: i,
+          itemCount: 0,
+          modified: '',
+          sortType: 'directory'
         })
       }
+      ensureChild(childPathsByParent, parentPath, dirPath)
+      parentPath = dirPath
     }
 
-    // Register file
-    const fileName = segments[segments.length - 1]
-    const depth = segments.length - 1
-    const fileParentPath =
-      segments.length === 1 ? root : root + '/' + segments.slice(0, -1).join('/')
+    const name = segments[segments.length - 1]
+    const filePath = fileEntry.path
+    const existing = nodesByPath.get(filePath)
 
-    files.push({
-      name: fileName,
+    nodesByPath.set(filePath, {
+      name,
       path: filePath,
-      parentPath: fileParentPath,
-      depth
+      parentPath,
+      isDirectory: false,
+      depth: segments.length - 1,
+      itemCount: 0,
+      modified: fileEntry.modified,
+      sortType: getSortType(filePath)
+    })
+
+    if (!existing) {
+      ensureChild(childPathsByParent, parentPath, filePath)
+      const parentNode = nodesByPath.get(parentPath)
+      if (parentNode) {
+        nodesByPath.set(parentPath, { ...parentNode, itemCount: parentNode.itemCount + 1 })
+      }
+    }
+  }
+
+  for (const children of childPathsByParent.values()) {
+    children.sort((left, right) => {
+      const leftNode = nodesByPath.get(left)
+      const rightNode = nodesByPath.get(right)
+      if (!leftNode || !rightNode) return 0
+      return compareNodes(leftNode, rightNode, 'name')
     })
   }
 
-  // Count phase: count direct file children per directory path
-  const itemCounts = new Map<string, number>()
-  for (const file of files) {
-    const count = itemCounts.get(file.parentPath) ?? 0
-    itemCounts.set(file.parentPath, count + 1)
+  return { root, childPathsByParent, nodesByPath }
+}
+
+export function buildFileTree(
+  fileEntries: readonly TreeFileInput[],
+  vaultRoot: string,
+  options: BuildFileTreeOptions = {}
+): FlatTreeNode[] {
+  if (fileEntries.length === 0) {
+    return []
   }
 
-  // Emit phase: depth-first, dirs before files, sorted alphabetically within groups
+  const index = buildFileTreeIndex(fileEntries, vaultRoot, options.getSortType)
+  const sortMode = options.sortMode ?? 'name'
   const result: FlatTreeNode[] = []
+  const nodesByPath = index.nodesByPath
 
   function emitChildren(parentPath: string): void {
-    // Collect child dirs at this parent
-    const childDirs = [...dirs.values()]
-      .filter((d) => d.parentPath === parentPath)
-      .sort((a, b) => a.name.localeCompare(b.name))
+    const childPaths = [...(index.childPathsByParent.get(parentPath) ?? [])]
+    childPaths.sort((left, right) => {
+      const leftNode = nodesByPath.get(left)
+      const rightNode = nodesByPath.get(right)
+      if (!leftNode || !rightNode) return 0
+      return compareNodes(leftNode, rightNode, sortMode)
+    })
 
-    // Collect child files at this parent
-    const childFiles = files
-      .filter((f) => f.parentPath === parentPath)
-      .sort((a, b) => a.name.localeCompare(b.name))
+    for (const childPath of childPaths) {
+      const node = nodesByPath.get(childPath)
+      if (!node) continue
 
-    // Emit dirs first (each followed by recursive children), then files
-    for (const dir of childDirs) {
       result.push({
-        name: dir.name,
-        path: dir.path,
-        parentPath: dir.parentPath,
-        isDirectory: true,
-        depth: dir.depth,
-        itemCount: itemCounts.get(dir.path) ?? 0
+        name: node.name,
+        path: node.path,
+        parentPath: node.parentPath,
+        isDirectory: node.isDirectory,
+        depth: node.depth,
+        itemCount: node.itemCount
       })
-      emitChildren(dir.path)
-    }
 
-    for (const file of childFiles) {
-      result.push({
-        name: file.name,
-        path: file.path,
-        parentPath: file.parentPath,
-        isDirectory: false,
-        depth: file.depth,
-        itemCount: 0
-      })
+      if (node.isDirectory) {
+        emitChildren(node.path)
+      }
     }
   }
 
-  emitChildren(root)
-
+  emitChildren(index.root)
   return result
 }

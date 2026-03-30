@@ -153,7 +153,7 @@ function GhostCard({
       }
 
       await window.api.fs.writeFile(filePath, content)
-      setActiveNote(ghost.id, filePath)
+      setActiveNote(filePath)
     } finally {
       setCreating(false)
     }

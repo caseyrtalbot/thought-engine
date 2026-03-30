@@ -85,12 +85,8 @@ function upsertSystemFile(
   return updated
 }
 
-export function openArtifactInEditor(
-  path: string,
-  title?: string,
-  artifactId?: string | null
-): void {
-  useEditorStore.getState().openTab(path, title, artifactId)
+export function openArtifactInEditor(path: string, title?: string): void {
+  useEditorStore.getState().openTab(path, title)
   useViewStore.getState().setContentView('editor')
   useTabStore.getState().activateTab('editor')
 }
@@ -164,6 +160,6 @@ export async function createAndOpenSystemArtifact(options: {
     options.content
   )
   const synced = await syncSystemArtifactFromDisk(path)
-  openArtifactInEditor(path, synced.title, synced.artifactId)
+  openArtifactInEditor(path, synced.title)
   return synced
 }

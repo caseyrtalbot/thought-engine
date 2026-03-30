@@ -20,7 +20,9 @@ interface TerminalApi {
   onExit: (cb: (data: { sessionId: string; code: number }) => void) => void
   offExit: (cb: (data: { sessionId: string; code: number }) => void) => void
   onFocus: (cb: () => void) => void
+  offFocus: (cb: () => void) => void
   onBlur: (cb: () => void) => void
+  offBlur: (cb: () => void) => void
   sendToHost: (channel: string, ...args: unknown[]) => void
 }
 

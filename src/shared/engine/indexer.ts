@@ -1,12 +1,11 @@
 import type { Artifact, KnowledgeGraph } from '@shared/types'
-import type { ParseError } from './types'
 import { parseArtifact } from './parser'
 import { buildGraph } from './graph-builder'
 
 export class VaultIndex {
   private artifacts = new Map<string, Artifact>()
   private fileToId = new Map<string, string>()
-  private errors: ParseError[] = []
+  private artifactPathById = new Map<string, string>()
   private graphCache: KnowledgeGraph | null = null
 
   addFile(filename: string, content: string): void {
@@ -22,8 +21,7 @@ export class VaultIndex {
       const artifact = id !== result.value.id ? { ...result.value, id } : result.value
       this.artifacts.set(id, artifact)
       this.fileToId.set(filename, id)
-    } else {
-      this.errors.push({ filename, error: result.error })
+      this.artifactPathById.set(id, filename)
     }
   }
 
@@ -38,6 +36,7 @@ export class VaultIndex {
     if (id) {
       this.artifacts.delete(id)
       this.fileToId.delete(filename)
+      this.artifactPathById.delete(id)
     }
   }
 
@@ -56,16 +55,6 @@ export class VaultIndex {
     return this.graphCache
   }
 
-  search(query: string): Artifact[] {
-    const lower = query.toLowerCase()
-    return this.getArtifacts().filter(
-      (a) =>
-        a.title.toLowerCase().includes(lower) ||
-        a.tags.some((t) => t.toLowerCase().includes(lower)) ||
-        a.body.toLowerCase().includes(lower)
-    )
-  }
-
   getBacklinks(targetId: string): Artifact[] {
     const graph = this.getGraph()
     const sourceIds = new Set<string>()
@@ -80,11 +69,11 @@ export class VaultIndex {
     return this.getArtifacts().filter((a) => sourceIds.has(a.id))
   }
 
-  getErrors(): ParseError[] {
-    return [...this.errors]
-  }
-
   getIdForFile(filename: string): string | undefined {
     return this.fileToId.get(filename)
+  }
+
+  getPathForArtifact(id: string): string | undefined {
+    return this.artifactPathById.get(id)
   }
 }

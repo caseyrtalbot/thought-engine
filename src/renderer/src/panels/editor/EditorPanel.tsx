@@ -31,13 +31,15 @@ interface EditorPanelProps {
 }
 
 export function EditorPanel({ onNavigate }: EditorPanelProps) {
-  const activeNoteId = useEditorStore((s) => s.activeNoteId)
   const activeNotePath = useEditorStore((s) => s.activeNotePath)
   const mode = useEditorStore((s) => s.mode)
   const content = useEditorStore((s) => s.content)
   const setContent = useEditorStore((s) => s.setContent)
   const loadContent = useEditorStore((s) => s.loadContent)
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition)
+
+  const fileToId = useVaultStore((s) => s.fileToId)
+  const activeNoteId = activeNotePath ? (fileToId[activeNotePath] ?? null) : null
 
   // DocumentManager: all file I/O goes through main process
   const doc = useDocument(activeNotePath)

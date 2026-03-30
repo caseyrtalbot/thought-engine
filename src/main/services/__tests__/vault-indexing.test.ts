@@ -69,6 +69,17 @@ describe('buildVaultDeps', () => {
     expect(hits[0].title).toBe('Hello')
   })
 
+  it('stores the source file path on search hits', () => {
+    const files = [
+      { path: 'notes/hello.md', content: HELLO_MD },
+      { path: 'notes/world.md', content: WORLD_MD }
+    ]
+    const deps = buildVaultDeps(files)
+
+    const hit = deps.searchEngine.search('greeting')[0]
+    expect(hit?.path).toBe('notes/hello.md')
+  })
+
   it('builds a graph with edges from frontmatter connections', () => {
     const files = [
       { path: 'notes/hello.md', content: HELLO_MD },
@@ -141,6 +152,13 @@ describe('initVaultIndex', () => {
 
     expect(deps.vaultIndex.getArtifacts().length).toBeGreaterThanOrEqual(2)
     expect(deps.searchEngine.search('greeting').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('preserves absolute source paths when indexing from disk', async () => {
+    const deps = await initVaultIndex(vaultRoot)
+
+    const hit = deps.searchEngine.search('greeting')[0]
+    expect(hit?.path).toBe(join(vaultRoot, 'notes', 'hello.md'))
   })
 
   it('discovers nested .md files', async () => {

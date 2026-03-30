@@ -116,6 +116,11 @@ export interface KnowledgeGraph {
   edges: GraphEdge[]
 }
 
+export interface FilesystemFileEntry {
+  path: string
+  mtime: string | null
+}
+
 export interface VaultConfig {
   version: number
   fonts: { display: string; body: string; mono: string }

@@ -56,7 +56,7 @@ export class ShellService {
     }
 
     // Ephemeral fallback
-    return this.createEphemeral(id, cwd, shell)
+    return this.createEphemeral(id, cwd, cols, rows, shell)
   }
 
   // -----------------------------------------------------------------------
@@ -145,13 +145,19 @@ export class ShellService {
   // Private: ephemeral node-pty
   // -----------------------------------------------------------------------
 
-  private createEphemeral(id: SessionId, cwd: string, shell?: string): SessionId {
+  private createEphemeral(
+    id: SessionId,
+    cwd: string,
+    cols?: number,
+    rows?: number,
+    shell?: string
+  ): SessionId {
     const defaultShell = shell || process.env.SHELL || '/bin/zsh'
 
     const pty = spawn(defaultShell, [], {
       name: 'xterm-256color',
-      cols: 80,
-      rows: 24,
+      cols: cols ?? 80,
+      rows: rows ?? 24,
       cwd,
       env: {
         ...(process.env as Record<string, string>),

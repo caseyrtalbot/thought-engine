@@ -109,6 +109,41 @@ describe('McpLifecycle', () => {
       const hits = JSON.parse(text)
       expect(hits.length).toBeGreaterThanOrEqual(1)
       expect(hits[0].title).toBe('Hello')
+      expect(hits[0].path).toBe('notes/hello.md')
+
+      await client.close()
+      await server.close()
+    })
+
+    it('search.query paths can be fed back into vault.read_file', async () => {
+      const deps = buildVaultDeps([
+        { path: join(vaultRoot, 'notes', 'hello.md'), content: HELLO_MD },
+        { path: join(vaultRoot, 'notes', 'world.md'), content: WORLD_MD }
+      ])
+      const lifecycle = new McpLifecycle()
+      const server = lifecycle.createForVault(vaultRoot, deps)
+
+      const client = new Client({ name: 'test-client', version: '1.0.0' })
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+      await server.connect(serverTransport)
+      await client.connect(clientTransport)
+
+      const searchResult = await client.callTool({
+        name: 'search.query',
+        arguments: { query: 'greeting' }
+      })
+
+      const searchText = (searchResult.content as Array<{ type: string; text: string }>)[0].text
+      const hits = JSON.parse(searchText) as Array<{ path: string }>
+      expect(hits[0]?.path).toBe(join(vaultRoot, 'notes', 'hello.md'))
+
+      const readResult = await client.callTool({
+        name: 'vault.read_file',
+        arguments: { path: hits[0].path }
+      })
+
+      const readText = (readResult.content as Array<{ type: string; text: string }>)[0].text
+      expect(readText).toContain('A greeting note.')
 
       await client.close()
       await server.close()

@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, session, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, session } from 'electron'
 import { execSync } from 'child_process'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -16,7 +16,9 @@ import { McpLifecycle } from './services/mcp-lifecycle'
 import { TmuxMonitor } from './services/tmux-monitor'
 import { AgentSpawner } from './services/agent-spawner'
 import { initVaultIndex } from './services/vault-indexing'
-import { typedHandle, typedSend } from './typed-ipc'
+import { typedHandle } from './typed-ipc'
+import { getMainWindow, setMainWindow } from './window-registry'
+import { QuitCoordinator } from './services/quit-coordinator'
 
 const PROD_CSP = [
   "default-src 'self'",
@@ -54,11 +56,11 @@ if (!process.env.LANG) {
   process.env.LANG = 'en_US.UTF-8'
 }
 
-let mainWindow: BrowserWindow | null = null
 const mcpLifecycle = new McpLifecycle()
+const quitCoordinator = new QuitCoordinator()
 
 function createWindow(): BrowserWindow {
-  mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false,
@@ -81,11 +83,19 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow!.show()
+  setMainWindow(window)
+
+  window.on('ready-to-show', () => {
+    window.show()
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  window.on('closed', () => {
+    if (getMainWindow() === window) {
+      setMainWindow(null)
+    }
+  })
+
+  window.webContents.setWindowOpenHandler((details) => {
     try {
       const url = new URL(details.url)
       if (url.protocol === 'https:' || url.protocol === 'http:') {
@@ -98,24 +108,25 @@ function createWindow(): BrowserWindow {
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  return mainWindow
+  return window
 }
 
 function registerWindowIpc(): void {
   typedHandle('window:minimize', () => {
-    mainWindow?.minimize()
+    getMainWindow()?.minimize()
   })
   typedHandle('window:maximize', () => {
-    if (mainWindow?.isMaximized()) mainWindow.unmaximize()
-    else mainWindow?.maximize()
+    const window = getMainWindow()
+    if (window?.isMaximized()) window.unmaximize()
+    else window?.maximize()
   })
   typedHandle('window:close', () => {
-    mainWindow?.close()
+    getMainWindow()?.close()
   })
 }
 
@@ -140,6 +151,7 @@ app.whenReady().then(() => {
   registerConfigIpc()
   registerWindowIpc()
   registerFilesystemIpc()
+  quitCoordinator.registerIpc()
 
   // Wire MCP server creation and agent monitoring to vault initialization.
   // Reads all .md files, builds VaultIndex + SearchEngine, then creates MCP
@@ -155,14 +167,14 @@ app.whenReady().then(() => {
     setAgentServices(monitor, spawner)
   })
 
-  const window = createWindow()
-  registerWatcherIpc(window)
+  createWindow()
+  registerWatcherIpc()
   registerShellIpc()
 
-  registerDocumentIpc(window)
-  registerProjectIpc(window)
+  registerDocumentIpc()
+  registerProjectIpc()
   registerMcpIpc(mcpLifecycle)
-  registerAgentIpc(window) // Register once at startup, services update via setAgentServices
+  registerAgentIpc() // Register once at startup, services update via setAgentServices
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -172,10 +184,6 @@ app.whenReady().then(() => {
 // Coordinated quit: block quit → signal renderer to flush vault state → flush documents → quit
 let quitCleanupDone = false
 
-typedHandle('app:quit-ready', () => {
-  // Renderer has finished flushing vault state; no-op handler, resolved via ipcMain listener below
-})
-
 app.on('before-quit', (event) => {
   if (quitCleanupDone) return // Cleanup already done, let quit proceed
 
@@ -183,19 +191,7 @@ app.on('before-quit', (event) => {
 
   const cleanup = async (): Promise<void> => {
     // Step 1: Signal renderer to flush vault state, wait up to 500ms
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      try {
-        await Promise.race([
-          new Promise<void>((resolve) => {
-            ipcMain.once('app:quit-ready', () => resolve())
-            typedSend(mainWindow!, 'app:will-quit', {})
-          }),
-          new Promise<void>((resolve) => setTimeout(resolve, 500))
-        ])
-      } catch {
-        // Timeout or error, proceed with quit anyway
-      }
-    }
+    await quitCoordinator.requestRendererFlush(() => getMainWindow(), 500)
 
     // Step 2: Flush all dirty documents
     await getDocumentManager().flushAll()

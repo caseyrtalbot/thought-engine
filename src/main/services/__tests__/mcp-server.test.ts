@@ -199,6 +199,30 @@ describe('MCP Server', () => {
     await server.close()
   })
 
+  it('search.query returns openable source paths for vault.read_file', async () => {
+    const { client, server } = await createConnectedPair(vaultRoot)
+
+    const searchResult = await client.callTool({
+      name: 'search.query',
+      arguments: { query: 'greeting' }
+    })
+
+    const searchText = (searchResult.content as Array<{ type: string; text: string }>)[0].text
+    const hits = JSON.parse(searchText) as Array<{ path: string; title: string }>
+    expect(hits[0]?.path).toBe(join(vaultRoot, 'notes', 'hello.md'))
+
+    const readResult = await client.callTool({
+      name: 'vault.read_file',
+      arguments: { path: hits[0].path }
+    })
+
+    const readText = (readResult.content as Array<{ type: string; text: string }>)[0].text
+    expect(readText).toContain('# Hello World')
+
+    await client.close()
+    await server.close()
+  })
+
   it('graph.get_neighbors returns nodes and edges', async () => {
     const { client, server } = await createConnectedPair(vaultRoot)
 

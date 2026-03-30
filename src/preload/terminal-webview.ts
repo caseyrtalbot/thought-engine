@@ -19,8 +19,14 @@ ipcRenderer.on('terminal:exit', (_event, data: ExitPayload) => {
 })
 
 const terminalApi = {
-  create: (args: { cwd: string; shell?: string; label?: string; vaultPath?: string }) =>
-    ipcRenderer.invoke('terminal:create', args),
+  create: (args: {
+    cwd: string
+    cols?: number
+    rows?: number
+    shell?: string
+    label?: string
+    vaultPath?: string
+  }) => ipcRenderer.invoke('terminal:create', args),
 
   write: (args: { sessionId: string; data: string }) => ipcRenderer.invoke('terminal:write', args),
 
@@ -52,8 +58,16 @@ const terminalApi = {
     ipcRenderer.on('focus', cb)
   },
 
+  offFocus: (cb: () => void) => {
+    ipcRenderer.off('focus', cb)
+  },
+
   onBlur: (cb: () => void) => {
     ipcRenderer.on('blur', cb)
+  },
+
+  offBlur: (cb: () => void) => {
+    ipcRenderer.off('blur', cb)
   },
 
   sendToHost: (channel: string, ...args: unknown[]) => ipcRenderer.sendToHost(channel, ...args)

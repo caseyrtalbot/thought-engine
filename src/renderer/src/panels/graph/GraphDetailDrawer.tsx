@@ -108,14 +108,14 @@ export function GraphDetailDrawer() {
 
   const handleOpenInEditor = () => {
     if (!artifact || !filePath) return
-    useEditorStore.getState().setActiveNote(artifact.id, filePath)
+    useEditorStore.getState().setActiveNote(filePath)
     useViewStore.getState().setContentView('editor')
   }
 
   const handleNavigateBacklink = (id: string) => {
     const path = artifactPathById[id]
     if (path) {
-      useEditorStore.getState().setActiveNote(id, path)
+      useEditorStore.getState().setActiveNote(path)
       useViewStore.getState().setContentView('editor')
     }
   }
@@ -277,7 +277,7 @@ function GhostDrawerContent({
       if (exists) return
 
       await window.api.fs.writeFile(filePath, content)
-      useEditorStore.getState().setActiveNote(ghostId, filePath)
+      useEditorStore.getState().setActiveNote(filePath)
       useViewStore.getState().setContentView('editor')
     } finally {
       setCreating(false)

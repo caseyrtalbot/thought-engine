@@ -1,7 +1,7 @@
-import type { BrowserWindow } from 'electron'
 import { DocumentManager } from '../services/document-manager'
 import { FileService } from '../services/file-service'
 import { typedHandle, typedSend } from '../typed-ipc'
+import { getMainWindow } from '../window-registry'
 
 const fileService = new FileService()
 const documentManager = new DocumentManager(fileService)
@@ -10,10 +10,13 @@ export function getDocumentManager(): DocumentManager {
   return documentManager
 }
 
-export function registerDocumentIpc(mainWindow: BrowserWindow): void {
+export function registerDocumentIpc(): void {
   // Wire document events to IPC broadcasts
   documentManager.onEvent((event) => {
-    typedSend(mainWindow, `doc:${event.type}` as 'doc:external-change', event as never)
+    const window = getMainWindow()
+    if (window) {
+      typedSend(window, `doc:${event.type}` as 'doc:external-change', event as never)
+    }
   })
 
   typedHandle('doc:open', async (args) => {

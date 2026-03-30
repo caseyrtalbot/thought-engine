@@ -129,12 +129,7 @@ export class DocumentManager {
   async handleExternalChange(path: string): Promise<void> {
     // Self-write suppression: if we just wrote this file, ignore the watcher event
     if (this._pendingWrites.has(path)) {
-      this._pendingWrites.delete(path)
-      const timer = this._pendingWriteTimers.get(path)
-      if (timer) {
-        clearTimeout(timer)
-        this._pendingWriteTimers.delete(path)
-      }
+      this.clearPendingWrite(path)
       return
     }
 
@@ -183,9 +178,12 @@ export class DocumentManager {
 
   private scheduleAutosave(doc: Document): void {
     this.clearAutosave(doc)
-    doc.saveTimeout = setTimeout(async () => {
+    doc.saveTimeout = setTimeout(() => {
       doc.saveTimeout = null
-      await this.saveToDisk(doc)
+      void this.saveToDisk(doc).catch((err) => {
+        this.clearPendingWrite(doc.path)
+        console.error(`[DocumentManager] Autosave failed for ${doc.path}:`, err)
+      })
     }, AUTOSAVE_DELAY_MS)
   }
 
@@ -200,6 +198,7 @@ export class DocumentManager {
     if (!this.isDirty(doc)) return
 
     // Mark as pending write before starting (self-write suppression)
+    this.clearPendingWrite(doc.path)
     this._pendingWrites.add(doc.path)
 
     // Safety timeout: clear pending write flag even if watcher never fires
@@ -209,7 +208,12 @@ export class DocumentManager {
     }, PENDING_WRITE_TIMEOUT_MS)
     this._pendingWriteTimers.set(doc.path, timeoutId)
 
-    await this.fs.writeFile(doc.path, doc.content)
+    try {
+      await this.fs.writeFile(doc.path, doc.content)
+    } catch (err) {
+      this.clearPendingWrite(doc.path)
+      throw err
+    }
 
     const newMtime = await this.fs.getFileMtime(doc.path)
     doc.mtime = newMtime
@@ -217,5 +221,14 @@ export class DocumentManager {
     doc.lastSavedVersion = doc.version
 
     this._eventCallback?.({ type: 'saved', path: doc.path })
+  }
+
+  private clearPendingWrite(path: string): void {
+    this._pendingWrites.delete(path)
+    const timer = this._pendingWriteTimers.get(path)
+    if (timer) {
+      clearTimeout(timer)
+      this._pendingWriteTimers.delete(path)
+    }
   }
 }

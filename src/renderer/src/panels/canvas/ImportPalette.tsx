@@ -37,7 +37,8 @@ export function ImportPalette({
   const graph = useVaultStore((s) => s.graph)
   const fileToId = useVaultStore((s) => s.fileToId)
   const artifacts = useVaultStore((s) => s.artifacts)
-  const activeNoteId = useEditorStore((s) => s.activeNoteId)
+  const activeNotePath = useEditorStore((s) => s.activeNotePath)
+  const activeNoteId = activeNotePath ? (fileToId[activeNotePath] ?? null) : null
 
   useEffect(() => {
     if (open) {
@@ -61,10 +62,10 @@ export function ImportPalette({
   }, [open, onClose])
 
   const activeTitle = useMemo(() => {
-    if (!activeNoteId) return null
+    if (!activeNotePath) return null
     const artifact = artifacts.find((a) => a.id === activeNoteId)
-    return artifact?.title ?? activeNoteId.split('/').pop()?.replace('.md', '') ?? 'Note'
-  }, [activeNoteId, artifacts])
+    return artifact?.title ?? activeNotePath.split('/').pop()?.replace('.md', '') ?? 'Note'
+  }, [activeNoteId, activeNotePath, artifacts])
 
   const neighborhoodCounts = useMemo(() => {
     if (!neighborhoodExpanded || !activeNoteId) return []

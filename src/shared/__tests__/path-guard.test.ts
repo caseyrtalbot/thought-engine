@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, writeFileSync, symlinkSync, rmSync, realpathSync } from 'node:fs'
+import { mkdirSync, writeFileSync, symlinkSync, rmSync, realpathSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { PathGuard } from '../../main/services/path-guard'
@@ -151,6 +151,24 @@ describe('PathGuard', () => {
     rmSync(outsideFile, { force: true })
   })
 
+  it('rejects a nonexistent child under a symlinked directory that points outside the vault', () => {
+    const outsideDir = join(tmpdir(), `pathguard-outside-dir-${Date.now()}`)
+    const linkPath = join(vaultRoot, 'notes', 'escape-dir')
+    mkdirSync(outsideDir, { recursive: true })
+
+    try {
+      symlinkSync(realpathSync(outsideDir), linkPath)
+    } catch {
+      rmSync(outsideDir, { recursive: true, force: true })
+      return
+    }
+
+    expect(() => guard.assertWithinVault(join(linkPath, 'new-note.md'))).toThrow(PathGuardError)
+
+    unlinkSync(linkPath)
+    rmSync(outsideDir, { recursive: true, force: true })
+  })
+
   it('accepts symlinks pointing within the vault', () => {
     const targetPath = join(vaultRoot, 'notes', 'hello.md')
     const linkPath = join(vaultRoot, 'link-to-hello.md')
@@ -165,6 +183,11 @@ describe('PathGuard', () => {
     expect(result).toBe(realpathSync(targetPath))
 
     rmSync(linkPath, { force: true })
+  })
+
+  it('accepts a nonexistent child under a real directory inside the vault', () => {
+    const result = guard.assertWithinVault(join(vaultRoot, 'notes', 'new-note.md'))
+    expect(result).toBe(join(vaultRoot, 'notes', 'new-note.md'))
   })
 
   // --- Unicode normalization ---

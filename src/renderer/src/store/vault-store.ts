@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import type { Artifact, VaultConfig, VaultState, KnowledgeGraph } from '@shared/types'
+import type {
+  Artifact,
+  FilesystemFileEntry,
+  VaultConfig,
+  VaultState,
+  KnowledgeGraph
+} from '@shared/types'
 import type { ParseError, WorkerResult } from '@engine/types'
 
 interface VaultFile {
@@ -10,15 +16,15 @@ interface VaultFile {
   readonly source: 'vault' | 'system'
 }
 
-function toVaultFile(filePath: string, source: 'vault' | 'system'): VaultFile {
-  const filename = filePath.split('/').pop() ?? filePath
+function toVaultFile(entry: FilesystemFileEntry, source: 'vault' | 'system'): VaultFile {
+  const filename = entry.path.split('/').pop() ?? entry.path
   const dotIdx = filename.lastIndexOf('.')
   const title = dotIdx > 0 ? filename.slice(0, dotIdx) : filename
   return {
-    path: filePath,
+    path: entry.path,
     filename,
     title,
-    modified: new Date().toISOString().split('T')[0],
+    modified: entry.mtime ?? '',
     source
   }
 }
@@ -74,14 +80,16 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   loadVault: async (vaultPath: string) => {
     set({ isLoading: true })
     try {
-      const [config, state, filePaths, systemPaths] = await Promise.all([
+      const [config, state, fileEntries, systemPaths] = await Promise.all([
         window.api.vault.readConfig(vaultPath),
         window.api.vault.readState(vaultPath),
         window.api.fs.listAllFiles(vaultPath),
         window.api.vault.listSystemArtifacts(vaultPath)
       ])
-      const files = filePaths.map((filePath: string) => toVaultFile(filePath, 'vault'))
-      const systemFiles = systemPaths.map((filePath: string) => toVaultFile(filePath, 'system'))
+      const files = fileEntries.map((entry) => toVaultFile(entry, 'vault'))
+      const systemFiles = systemPaths.map((filePath: string) =>
+        toVaultFile({ path: filePath, mtime: '' }, 'system')
+      )
       set({ vaultPath, config, state, files, systemFiles, isLoading: false })
     } catch (err) {
       console.error('Failed to load vault:', err)

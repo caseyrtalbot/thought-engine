@@ -44,7 +44,10 @@ export class AuditLogger {
 
   private async ensureDir(): Promise<void> {
     if (!this.dirEnsurePromise) {
-      this.dirEnsurePromise = mkdir(this.logDir, { recursive: true })
+      this.dirEnsurePromise = mkdir(this.logDir, { recursive: true }).catch((err) => {
+        this.dirEnsurePromise = null
+        throw err
+      })
     }
     await this.dirEnsurePromise
   }

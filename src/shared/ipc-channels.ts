@@ -1,4 +1,4 @@
-import type { SessionId, VaultConfig, VaultState } from './types'
+import type { FilesystemFileEntry, SessionId, VaultConfig, VaultState } from './types'
 import type {
   WorkbenchSessionEvent,
   WorkbenchFileChangedEvent,
@@ -22,7 +22,7 @@ export interface IpcChannels {
   'fs:create-folder': { request: { defaultPath: string }; response: string | null }
   'fs:mkdir': { request: { path: string }; response: void }
   'fs:read-binary': { request: { path: string }; response: string }
-  'fs:list-all-files': { request: { dir: string }; response: string[] }
+  'fs:list-all-files': { request: { dir: string }; response: FilesystemFileEntry[] }
   'fs:file-mtime': { request: { path: string }; response: string | null }
 
   // --- Vault ---

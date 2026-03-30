@@ -1,7 +1,7 @@
-import type { BrowserWindow } from 'electron'
 import type { TmuxMonitor } from '../services/tmux-monitor'
 import type { AgentSpawner } from '../services/agent-spawner'
 import { typedHandle, typedSend } from '../typed-ipc'
+import { getMainWindow } from '../window-registry'
 
 /**
  * Mutable refs for agent services. Updated when vaults are opened/switched
@@ -9,15 +9,12 @@ import { typedHandle, typedSend } from '../typed-ipc'
  */
 let activeMonitor: TmuxMonitor | null = null
 let activeSpawner: AgentSpawner | null = null
-let activeWindow: BrowserWindow | null = null
 
 /**
  * Register agent IPC handlers ONCE at app startup.
  * Handlers reference the mutable refs so they always use the current services.
  */
-export function registerAgentIpc(window: BrowserWindow): void {
-  activeWindow = window
-
+export function registerAgentIpc(): void {
   typedHandle('agent:get-states', async () => {
     if (!activeMonitor) return []
     return activeMonitor.getAgentStates()
@@ -41,10 +38,11 @@ export function setAgentServices(monitor: TmuxMonitor | null, spawner: AgentSpaw
   activeMonitor = monitor
   activeSpawner = spawner
 
-  if (monitor && activeWindow) {
+  if (monitor) {
     monitor.start((states) => {
-      if (activeWindow && !activeWindow.isDestroyed()) {
-        typedSend(activeWindow, 'agent:states-changed', { states })
+      const window = getMainWindow()
+      if (window) {
+        typedSend(window, 'agent:states-changed', { states })
       }
     })
   }

@@ -49,7 +49,6 @@ import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
 import { useCanvasStore } from './store/canvas-store'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
-// CanvasFloatingSidebar removed — sidebar is now docked
 import { getCanvasNodeTitle } from './panels/canvas/card-title'
 
 const LazyCanvasView = lazy(() =>
@@ -68,13 +67,9 @@ const LazyGhostPanel = lazy(() =>
   import('./panels/ghosts/GhostPanel').then((module) => ({ default: module.GhostPanel }))
 )
 
-async function openArtifactInEditorOnDemand(
-  path: string,
-  title?: string,
-  artifactId?: string | null
-): Promise<void> {
+async function openArtifactInEditorOnDemand(path: string, title?: string): Promise<void> {
   const { openArtifactInEditor } = await import('./system-artifacts/system-artifact-runtime')
-  openArtifactInEditor(path, title, artifactId ?? null)
+  openArtifactInEditor(path, title)
 }
 
 async function placeSystemArtifactOnWorkbench(
@@ -145,7 +140,7 @@ function ContentArea() {
       // Resolve artifact ID to file path via the vault's fileToId reverse lookup
       const fileToId = useVaultStore.getState().fileToId
       const path = Object.entries(fileToId).find(([, v]) => v === id)?.[0] ?? null
-      setActiveNote(id, path)
+      setActiveNote(path)
     },
     [setActiveNote]
   )
@@ -233,10 +228,33 @@ function ConnectedSidebar({
 
   const vaultName = vaultPath?.split('/').pop() ?? 'Machina'
 
+  const artifactTypes = useMemo(() => {
+    const artifactById = new Map(artifacts.map((a) => [a.id, a]))
+    const map = new Map<string, ArtifactType>()
+    for (const [filePath, artifactId] of Object.entries(fileToId)) {
+      const artifact = artifactById.get(artifactId)
+      if (artifact) {
+        map.set(filePath, artifact.type)
+      }
+    }
+    return map
+  }, [artifacts, fileToId])
+
   const allTreeNodes = useMemo(() => {
-    const paths = files.map((f) => f.path)
-    return buildFileTree(paths, vaultPath ?? '')
-  }, [files, vaultPath])
+    return buildFileTree(
+      files.map((file) => ({ path: file.path, modified: file.modified })),
+      vaultPath ?? '',
+      {
+        sortMode,
+        getSortType: (path) => {
+          const artifactType = artifactTypes.get(path)
+          if (artifactType) return artifactType
+          const ext = path.split('.').pop()?.toLowerCase()
+          return ext && ext !== path ? ext : 'file'
+        }
+      }
+    )
+  }, [artifactTypes, files, sortMode, vaultPath])
   const allTreeNodeByPath = useMemo(
     () => new Map(allTreeNodes.map((node) => [node.path, node])),
     [allTreeNodes]
@@ -267,18 +285,6 @@ function ConnectedSidebar({
     }
     return allTreeNodes.filter((n) => matchingFiles.has(n.path) || requiredDirs.has(n.path))
   }, [allTreeNodeByPath, allTreeNodes, searchQuery])
-
-  const artifactTypes = useMemo(() => {
-    const artifactById = new Map(artifacts.map((a) => [a.id, a]))
-    const map = new Map<string, ArtifactType>()
-    for (const [filePath, artifactId] of Object.entries(fileToId)) {
-      const artifact = artifactById.get(artifactId)
-      if (artifact) {
-        map.set(filePath, artifact.type)
-      }
-    }
-    return map
-  }, [artifacts, fileToId])
 
   const onCanvasPaths = useCanvasFilePaths()
   const canvasConnectionCounts = useCanvasConnectionCounts(onCanvasPaths)
@@ -314,12 +320,9 @@ function ConnectedSidebar({
     )
   }, [artifactPathById, artifacts, searchQuery])
 
-  const openEditorPath = useCallback(
-    async (path: string, title?: string) => {
-      await openArtifactInEditorOnDemand(path, title, fileToId[path] ?? null)
-    },
-    [fileToId]
-  )
+  const openEditorPath = useCallback(async (path: string, title?: string) => {
+    await openArtifactInEditorOnDemand(path, title)
+  }, [])
 
   const handleFileSelect = useCallback(
     (path: string) => {
@@ -489,7 +492,7 @@ function ConnectedSidebar({
       onFileDoubleClick={handleFileDoubleClick}
       onSystemArtifactSelect={(item) => {
         void placeSystemArtifactOnWorkbench(item, vaultPath)
-        void openArtifactInEditorOnDemand(item.path, item.title, item.id)
+        void openArtifactInEditorOnDemand(item.path, item.title)
       }}
       onToggleDirectory={handleToggleDirectory}
       onNewFile={handleNewFile}
@@ -951,7 +954,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       if (item.id.startsWith('note:')) {
         const path = item.id.slice(5)
         const file = paletteFiles.find((entry) => entry.path === path)
-        await openArtifactInEditorOnDemand(path, file?.title, fileToId[path] ?? null)
+        await openArtifactInEditorOnDemand(path, file?.title)
         return
       }
 
@@ -1036,7 +1039,6 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       }
     },
     [
-      fileToId,
       paletteFiles,
       setContentView,
       handleNewNote,
@@ -1162,7 +1164,7 @@ export default function App() {
     })
   }, [])
 
-  const { loadFiles, updateFile, removeFile } = useVaultWorker(onWorkerResult)
+  const { loadFiles, appendFiles, updateFile, removeFile } = useVaultWorker(onWorkerResult)
 
   const orchestrateLoad = useCallback(
     async (path: string) => {
@@ -1177,8 +1179,7 @@ export default function App() {
             useViewStore.getState().setContentView(view)
           }
         }
-        if (state.lastOpenNote)
-          useEditorStore.getState().setActiveNote(state.lastOpenNote, state.lastOpenNote)
+        if (state.lastOpenNote) useEditorStore.getState().setActiveNote(state.lastOpenNote)
       }
       rehydrateUiState()
       rehydrateUiStore()
@@ -1203,22 +1204,19 @@ export default function App() {
       const chunks = chunkArray(mdPaths)
 
       // First chunk: load synchronously so the UI has content to show.
-      const accumulated = await readChunk(chunks[0] ?? [], reader, limit)
-      loadFiles(accumulated)
+      const initialBatch = await readChunk(chunks[0] ?? [], reader, limit)
+      loadFiles(initialBatch)
       perfMeasure('vault-load', 'vault-load-start')
 
       // Remaining chunks: load in background, yielding between each so the
       // event loop can process user interactions and paint frames.
-      // Each call to loadFiles sends all accumulated files because the worker
-      // clears its state on every 'load' message.
       for (let i = 1; i < chunks.length; i++) {
         await yieldToEventLoop(16) // ~1 frame of breathing room
         const batch = await readChunk(chunks[i], reader, limit)
-        accumulated.push(...batch)
-        loadFiles(accumulated)
+        appendFiles(batch)
       }
     },
-    [loadVault, loadFiles]
+    [appendFiles, loadVault, loadFiles]
   )
 
   useEffect(() => {
@@ -1257,30 +1255,46 @@ export default function App() {
       // Process all events in one pass using a Map to avoid state accumulation race
       const currentFiles = useVaultStore.getState().files
       const fileMap = new Map(currentFiles.map((f) => [f.path, f]))
+      const touchedPaths = [
+        ...new Set(
+          data.events.filter((entry) => entry.event !== 'unlink').map((entry) => entry.path)
+        )
+      ]
+      const mtimes = new Map(
+        await Promise.all(
+          touchedPaths.map(
+            async (path) => [path, (await window.api.fs.fileMtime(path)) ?? ''] as const
+          )
+        )
+      )
       const mdToUpdate: string[] = []
       const mdToRemove: string[] = []
 
       for (const { path, event } of data.events) {
         const isMd = path.endsWith('.md')
+        const modified = mtimes.get(path) ?? ''
 
         if (event === 'unlink') {
           fileMap.delete(path)
           if (isMd) mdToRemove.push(path)
         } else if (event === 'add') {
-          if (!fileMap.has(path)) {
-            const filename = path.split('/').pop() ?? path
-            const dotIdx = filename.lastIndexOf('.')
-            const title = dotIdx > 0 ? filename.slice(0, dotIdx) : filename
-            fileMap.set(path, {
-              path,
-              filename,
-              title,
-              modified: new Date().toISOString().split('T')[0],
-              source: 'vault'
-            })
-          }
+          const existing = fileMap.get(path)
+          const filename = path.split('/').pop() ?? path
+          const dotIdx = filename.lastIndexOf('.')
+          const title = existing?.title ?? (dotIdx > 0 ? filename.slice(0, dotIdx) : filename)
+          fileMap.set(path, {
+            path,
+            filename,
+            title,
+            modified,
+            source: existing?.source ?? 'vault'
+          })
           if (isMd) mdToUpdate.push(path)
         } else {
+          const existing = fileMap.get(path)
+          if (existing) {
+            fileMap.set(path, { ...existing, modified })
+          }
           if (isMd) mdToUpdate.push(path)
         }
       }

@@ -1,14 +1,14 @@
-import type { BrowserWindow } from 'electron'
 import { VaultWatcher } from '../services/vault-watcher'
 import { FileService } from '../services/file-service'
 import { teConfigPath } from '../utils/paths'
 import { typedHandle, typedSend } from '../typed-ipc'
 import { getDocumentManager } from './documents'
+import { getMainWindow } from '../window-registry'
 
 const watcher = new VaultWatcher()
 const fileService = new FileService()
 
-export function registerWatcherIpc(mainWindow: BrowserWindow): void {
+export function registerWatcherIpc(): void {
   typedHandle('vault:watch-start', async (args) => {
     let customPatterns: string[] = []
     try {
@@ -22,7 +22,10 @@ export function registerWatcherIpc(mainWindow: BrowserWindow): void {
     await watcher.start(
       args.vaultPath,
       (events) => {
-        typedSend(mainWindow, 'vault:files-changed-batch', { events })
+        const window = getMainWindow()
+        if (window) {
+          typedSend(window, 'vault:files-changed-batch', { events })
+        }
 
         // Route change events to DocumentManager for open files
         const docManager = getDocumentManager()
