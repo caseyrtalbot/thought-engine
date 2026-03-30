@@ -562,33 +562,23 @@ export function CanvasView(): React.ReactElement {
 
         {/* Hint: files need enrichment */}
         {rawFileCount > 0 && (
-          <div className="absolute inset-0 flex items-end justify-center z-10 pointer-events-none pb-14">
-            <div
-              className="text-center px-4 py-2 rounded-full"
-              style={{
-                backgroundColor: 'rgba(10, 10, 14, 0.92)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(92, 184, 196, 0.18)',
-                boxShadow: '0 12px 28px rgba(0, 0, 0, 0.28)'
-              }}
+          <div
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none text-center"
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          >
+            <span
+              className="uppercase tracking-[0.14em]"
+              style={{ color: 'var(--color-accent-default)', opacity: 0.72 }}
             >
-              <span
-                className="text-[10px] uppercase tracking-[0.16em]"
-                style={{ color: 'rgba(92, 184, 196, 0.82)' }}
-              >
-                Enrichment
-              </span>
-              <span
-                className="text-xs mx-2"
-                style={{ color: 'var(--color-text-muted)', opacity: 0.25 }}
-              >
-                |
-              </span>
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} still need metadata. Run
-                {' /connect-vault'}
-              </span>
-            </div>
+              Enrichment
+            </span>
+            <span className="mx-2" style={{ color: 'var(--color-text-muted)', opacity: 0.2 }}>
+              |
+            </span>
+            <span style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}>
+              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} still need metadata. Run
+              {' /connect-vault'}
+            </span>
           </div>
         )}
 

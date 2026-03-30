@@ -69,10 +69,7 @@ export function CanvasToolbar({
   const zoomPercent = Math.round(viewport.zoom * 100)
 
   return (
-    <div
-      className="canvas-toolrail absolute top-3 left-3 z-30"
-      style={{ backgroundColor: 'var(--canvas-hud-bg)' }}
-    >
+    <div className="canvas-toolrail absolute top-3 left-3 z-30">
       <button
         onClick={onAddCard}
         className="canvas-toolbtn"

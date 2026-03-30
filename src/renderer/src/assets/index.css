@@ -278,7 +278,7 @@ body {
   --chrome-panel-inset: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
   --chrome-gridline: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
   --chrome-gridline-strong: color-mix(in srgb, var(--color-accent-default) 12%, transparent);
-  --canvas-hud-bg: color-mix(in srgb, var(--color-bg-base) 92%, transparent);
+  --canvas-hud-bg: color-mix(in srgb, var(--color-bg-base) 72%, transparent);
   --chrome-rail-bg: rgba(18, 18, 20, 0.55);
   --env-card-blur: 12px;
   --env-card-title-font-size: 12px;
@@ -1240,15 +1240,18 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  width: 50px;
-  min-width: 50px;
-  padding: 8px 7px;
+  gap: 6px;
+  width: 46px;
+  min-width: 46px;
+  padding: 6px 5px;
   border: 1px solid var(--chrome-panel-border);
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--canvas-hud-bg);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
   overflow: visible;
+  font-family: var(--font-mono);
 }
 
 
@@ -1264,10 +1267,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   background: transparent;
   color: var(--color-text-secondary);
   transition:
@@ -1529,9 +1534,11 @@ body {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--chrome-panel-border);
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--canvas-hud-bg);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
 }
 
 .canvas-minimap__label {
@@ -1549,15 +1556,11 @@ body {
 
 .canvas-zoom-indicator {
   border: 1px solid var(--chrome-panel-border);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--canvas-hud-bg);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
-}
-
-.terminal-dock-shell {
-  border: 1px solid var(--chrome-panel-border);
-  background: var(--canvas-hud-bg);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
 }
 
 .terminal-pill {

@@ -178,71 +178,43 @@ export function TerminalDock({
 
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 184,
+    bottom: 32,
+    left: '50%',
+    transform: 'translateX(-50%)',
     zIndex: 25,
     pointerEvents: 'none',
     display: 'flex',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    maxWidth: 'calc(100% - 200px)'
   }
 
   if (collapsed) {
-    const errorCount = statuses.filter((s) => s.status === 'error').length
-
     return (
       <div style={wrapperStyle}>
         <div
           data-testid="terminal-dock-collapsed"
-          className="terminal-dock-shell te-card-enter"
+          className="te-card-enter"
           style={{
-            position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            gap: spacing.unit * 2,
-            padding: '4px 10px',
-            borderRadius: floatingPanel.borderRadius,
+            gap: 6,
             pointerEvents: 'auto',
             cursor: 'pointer'
           }}
           onClick={() => handleToggle(false)}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            {statuses.map((s) => (
-              <div key={s.nodeId} data-testid="status-dot" style={dotStyle(s.status)} />
-            ))}
-          </div>
+          {statuses.map((s) => (
+            <div key={s.nodeId} data-testid="status-dot" style={dotStyle(s.status)} />
+          ))}
           <span
             style={{
               fontFamily: typography.fontFamily.mono,
-              fontSize: 12,
+              fontSize: 11,
               color: colors.text.muted
             }}
           >
-            {statuses.length} terminals
+            {statuses.length} terminal{statuses.length !== 1 ? 's' : ''}
           </span>
-          {errorCount > 0 && (
-            <div
-              data-testid="error-badge"
-              style={{
-                position: 'absolute',
-                top: -4,
-                right: -4,
-                width: 14,
-                height: 14,
-                borderRadius: '50%',
-                backgroundColor: '#ef4444',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: typography.fontFamily.mono,
-                fontSize: 9,
-                color: 'white'
-              }}
-            >
-              {errorCount}
-            </div>
-          )}
         </div>
       </div>
     )
@@ -252,14 +224,11 @@ export function TerminalDock({
     <div style={wrapperStyle}>
       <div
         data-testid="terminal-dock-bar"
-        className="terminal-dock-shell te-card-enter te-dock-scroll-hidden"
+        className="te-card-enter te-dock-scroll-hidden"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: spacing.unit,
-          height: spacing.unit * 9,
-          padding: '0 8px',
-          borderRadius: floatingPanel.borderRadius,
           pointerEvents: 'auto',
           width: 'fit-content',
           maxWidth: '100%',
@@ -267,14 +236,15 @@ export function TerminalDock({
         }}
       >
         <button
+          type="button"
           data-testid="dock-toggle"
           onClick={() => handleToggle(true)}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             background: 'none',
             border: 'none',
             color: colors.text.muted,
@@ -284,7 +254,7 @@ export function TerminalDock({
           }}
           title="Collapse dock"
         >
-          <CaretDown size={12} />
+          <CaretDown size={10} />
         </button>
         {statuses.map((s) => {
           const node = terminalNodes.find((n) => n.id === s.nodeId)
