@@ -12,9 +12,17 @@ interface TerminalCardProps {
   readonly node: CanvasNode
 }
 
+type TerminalWebviewElement = HTMLElement & {
+  focus: () => void
+  send: (channel: string) => void
+}
+
 export function TerminalCard({ node }: TerminalCardProps) {
   const sessionIdRef = useRef<SessionId | null>(node.content ? toSessionId(node.content) : null)
   const actionInFlight = useRef(false)
+  const webviewReadyRef = useRef(false)
+  const shouldFocusRef = useRef(false)
+  const [sessionParam, setSessionParam] = useState(node.content)
   const [sessionDead, setSessionDead] = useState(false)
   const [webviewKey, setWebviewKey] = useState(0)
   const webviewRef = useRef<HTMLElement | null>(null)
@@ -24,11 +32,13 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
   const removeNode = useCanvasStore((s) => s.removeNode)
   const updateContent = useCanvasStore((s) => s.updateNodeContent)
+  const setFocusedTerminal = useCanvasStore((s) => s.setFocusedTerminal)
   const isFocused = useCanvasStore((s) => s.focusedCardId === node.id)
   const isLocked = useCanvasStore((s) => s.lockedCardId === node.id)
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const initialCwd = typeof node.metadata?.initialCwd === 'string' ? node.metadata.initialCwd : null
   const homePath = window.api.getHomePath?.() ?? ''
+  shouldFocusRef.current = isFocused || isLocked
 
   const displayTitle = useMemo(() => {
     if (node.metadata?.initialCommand === 'claude') return 'Claude Live'
@@ -47,7 +57,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
   const webviewSrc = useMemo(() => {
     const params = new URLSearchParams()
-    if (node.content) params.set('sessionId', node.content)
+    if (sessionParam) params.set('sessionId', sessionParam)
     if (node.metadata?.initialCwd) {
       params.set('cwd', String(node.metadata.initialCwd))
     }
@@ -74,13 +84,20 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
     const qs = params.toString()
     return qs ? `${base}?${qs}` : base
-  }, [node.id, node.content, node.metadata?.initialCwd, node.metadata?.initialCommand, vaultPath])
+  }, [node.id, node.metadata?.initialCwd, node.metadata?.initialCommand, sessionParam, vaultPath])
+
+  useEffect(() => {
+    sessionIdRef.current = node.content ? toSessionId(node.content) : null
+    setSessionParam(node.content)
+  }, [node.content])
 
   // ── Webview event listeners ─────────────────────────────────────────────
 
   useEffect(() => {
     const wv = webviewRef.current
     if (!wv) return
+    const webview = wv as TerminalWebviewElement
+    webviewReadyRef.current = false
 
     const handleIpcMessage = (event: Event): void => {
       const ipcEvent = event as Event & {
@@ -90,51 +107,104 @@ export function TerminalCard({ node }: TerminalCardProps) {
       if (ipcEvent.channel === 'session-created') {
         const newSessionId = String(ipcEvent.args[0])
         sessionIdRef.current = toSessionId(newSessionId)
+        setSessionParam(newSessionId)
         updateContent(node.id, newSessionId)
       }
     }
 
+    const handleDomReady = (): void => {
+      webviewReadyRef.current = true
+      if (shouldFocusRef.current) {
+        webview.focus()
+      }
+      try {
+        webview.send(shouldFocusRef.current ? 'focus' : 'blur')
+      } catch {
+        /* webview still warming up */
+      }
+    }
+
     const handleCrash = (): void => {
+      webviewReadyRef.current = false
       setSessionDead(true)
     }
 
+    wv.addEventListener('dom-ready', handleDomReady)
     wv.addEventListener('ipc-message', handleIpcMessage)
     wv.addEventListener('crashed', handleCrash)
     wv.addEventListener('did-fail-load', handleCrash)
 
     return () => {
+      webviewReadyRef.current = false
+      wv.removeEventListener('dom-ready', handleDomReady)
       wv.removeEventListener('ipc-message', handleIpcMessage)
       wv.removeEventListener('crashed', handleCrash)
       wv.removeEventListener('did-fail-load', handleCrash)
     }
-  }, [node.id, updateContent])
+  }, [node.id, updateContent, webviewKey])
 
   // ── Focus protocol ──────────────────────────────────────────────────────
 
   useEffect(() => {
     const wv = webviewRef.current
     if (!wv) return
-    // Electron webview exposes .focus() and .send() but TypeScript doesn't
-    // know about them on a plain HTMLElement.
-    const webview = wv as HTMLElement & {
-      focus: () => void
-      send: (channel: string) => void
-    }
+    const webview = wv as TerminalWebviewElement
+
     if (isFocused || isLocked) {
       webview.focus()
-      try {
-        webview.send('focus')
-      } catch {
-        /* webview not ready */
+    }
+
+    if (!webviewReadyRef.current) return
+
+    try {
+      webview.send(isFocused || isLocked ? 'focus' : 'blur')
+    } catch {
+      webviewReadyRef.current = false
+    }
+  }, [isFocused, isLocked, webviewKey])
+
+  useEffect(() => {
+    const handleResizeEnd = (event: Event) => {
+      const resizeEvent = event as CustomEvent<{ nodeId?: string }>
+      if (resizeEvent.detail?.nodeId !== node.id) return
+
+      const wv = webviewRef.current
+      if (!wv) return
+      const webview = wv as TerminalWebviewElement
+
+      if (isFocused || isLocked) {
+        webview.focus()
       }
-    } else {
+
+      if (!webviewReadyRef.current) return
+
       try {
-        webview.send('blur')
+        webview.send('refresh')
+        webview.send(isFocused || isLocked ? 'focus' : 'blur')
       } catch {
-        /* webview not ready */
+        webviewReadyRef.current = false
       }
     }
-  }, [isFocused, isLocked])
+
+    window.addEventListener('canvas:node-resize-end', handleResizeEnd as EventListener)
+    return () => {
+      window.removeEventListener('canvas:node-resize-end', handleResizeEnd as EventListener)
+    }
+  }, [isFocused, isLocked, node.id, webviewKey])
+
+  useEffect(() => {
+    if (isFocused || isLocked) {
+      setFocusedTerminal(node.id)
+    } else if (useCanvasStore.getState().focusedTerminalId === node.id) {
+      setFocusedTerminal(null)
+    }
+
+    return () => {
+      if (useCanvasStore.getState().focusedTerminalId === node.id) {
+        setFocusedTerminal(null)
+      }
+    }
+  }, [isFocused, isLocked, node.id, setFocusedTerminal])
 
   // ── Close handler ───────────────────────────────────────────────────────
 
@@ -145,9 +215,12 @@ export function TerminalCard({ node }: TerminalCardProps) {
     if (sid) {
       window.api.terminal.kill(sid)
     }
+    if (useCanvasStore.getState().focusedTerminalId === node.id) {
+      setFocusedTerminal(null)
+    }
     removeNode(node.id)
     actionInFlight.current = false
-  }, [node.id, removeNode])
+  }, [node.id, removeNode, setFocusedTerminal])
 
   // ── Restart handler ─────────────────────────────────────────────────────
 
@@ -160,12 +233,15 @@ export function TerminalCard({ node }: TerminalCardProps) {
         await window.api.terminal.kill(sid)
       }
       sessionIdRef.current = null
+      webviewReadyRef.current = false
+      setSessionParam('')
+      updateContent(node.id, '')
       setSessionDead(false)
       setWebviewKey((k) => k + 1)
     } finally {
       actionInFlight.current = false
     }
-  }, [])
+  }, [node.id, updateContent])
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -204,7 +280,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
             height: '100%',
             pointerEvents: isFocused || isLocked ? 'auto' : 'none'
           }}
-          webpreferences="contextIsolation=yes"
+          webpreferences="contextIsolation=yes, sandbox=yes"
         />
         /* eslint-enable react/no-unknown-property */
       )}

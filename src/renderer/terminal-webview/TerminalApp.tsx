@@ -3,7 +3,6 @@ import { useRef, useEffect, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { CanvasAddon } from '@xterm/addon-canvas'
 import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 
@@ -23,6 +22,17 @@ function readUrlParams(): {
     cwd: params.get('cwd'),
     initialCommand: params.get('initialCommand'),
     systemPrompt: params.get('systemPrompt')
+  }
+}
+
+function estimateTermSize(container: HTMLDivElement | null): { cols: number; rows: number } {
+  const width = container?.clientWidth ?? document.documentElement.clientWidth
+  const height = container?.clientHeight ?? document.documentElement.clientHeight
+  const charWidth = 7.22
+  const cellHeight = 17
+  return {
+    cols: Math.max(80, Math.floor(width / charWidth)),
+    rows: Math.max(24, Math.floor(height / cellHeight))
   }
 }
 
@@ -48,17 +58,20 @@ export function TerminalApp() {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
-  const canvasRef = useRef<CanvasAddon | null>(null)
   const searchRef = useRef<SearchAddon | null>(null)
   const sessionIdRef = useRef<string | null>(null)
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const dataBufferRef = useRef<string[]>([])
+  const initialCommandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const firstDataRef = useRef(true)
+  const reconnectRef = useRef(false)
 
   // Store listener references so we can unsubscribe on cleanup
   const dataListenerRef = useRef<((data: { sessionId: string; data: string }) => void) | null>(null)
   const exitListenerRef = useRef<((data: { sessionId: string; code: number }) => void) | null>(null)
   const focusListenerRef = useRef<(() => void) | null>(null)
   const blurListenerRef = useRef<(() => void) | null>(null)
+  const refreshListenerRef = useRef<(() => void) | null>(null)
 
   /**
    * Flush coalesced data buffer to the terminal in a single write.
@@ -71,7 +84,16 @@ export function TerminalApp() {
     flushTimerRef.current = undefined
     if (chunk && termRef.current) {
       try {
-        termRef.current.write(chunk)
+        const term = termRef.current
+        if (firstDataRef.current) {
+          firstDataRef.current = false
+          if (reconnectRef.current) {
+            term.write('\x1b[2J\x1b[H')
+          } else {
+            term.reset()
+          }
+        }
+        term.write(chunk)
       } catch {
         // xterm viewport not yet initialized (dimensions undefined).
         // Re-queue: it will flush on the next cycle once layout completes.
@@ -84,13 +106,18 @@ export function TerminalApp() {
   useEffect(() => {
     const { sessionId: urlSessionId, cwd, initialCommand, systemPrompt } = readUrlParams()
     let cancelled = false
+    firstDataRef.current = true
+    reconnectRef.current = Boolean(urlSessionId)
 
     // ── xterm.js setup ──────────────────────────────────────────────────
 
+    const estimatedSize = estimateTermSize(containerRef.current)
     const term = new Terminal({
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
       fontSize: 13,
       lineHeight: 1.2,
+      cols: estimatedSize.cols,
+      rows: estimatedSize.rows,
       scrollback: 10000,
       cursorBlink: true,
       cursorStyle: 'bar',
@@ -147,23 +174,43 @@ export function TerminalApp() {
 
     if (containerRef.current) {
       term.open(containerRef.current)
-
-      // Canvas 2D renderer — avoids WebGL shared-image lifetime races
-      // in Electron webview OOPIF contexts (pink atlas artifacts).
-      // WebGL is kept for the panel terminal (main BrowserWindow).
-      try {
-        const canvas = new CanvasAddon()
-        term.loadAddon(canvas)
-        canvasRef.current = canvas
-      } catch {
-        // Canvas addon unavailable — DOM renderer remains active
-      }
-
       fitAddon.fit()
 
       // Show cursor immediately so the terminal looks alive on creation
       term.focus()
     }
+
+    if (document.hasFocus()) {
+      term.focus()
+    }
+
+    const handleWindowFocus = () => {
+      termRef.current?.focus()
+    }
+    window.addEventListener('focus', handleWindowFocus)
+
+    let resizeObserver: ResizeObserver | null = null
+    let resizeRaf = 0
+
+    const scheduleFitAndRefresh = () => {
+      cancelAnimationFrame(resizeRaf)
+      resizeRaf = requestAnimationFrame(() => {
+        if (cancelled || !fitRef.current || !termRef.current) return
+        try {
+          fitRef.current.fit()
+          if (termRef.current.rows > 0) {
+            termRef.current.refresh(0, termRef.current.rows - 1)
+          }
+        } catch {
+          return
+        }
+      })
+    }
+
+    const handleWindowResize = () => {
+      scheduleFitAndRefresh()
+    }
+    window.addEventListener('resize', handleWindowResize)
 
     // ── User keystrokes -> PTY ──────────────────────────────────────────
 
@@ -174,6 +221,13 @@ export function TerminalApp() {
       }
     })
 
+    term.onResize(({ cols, rows }) => {
+      const sid = sessionIdRef.current
+      if (sid) {
+        window.terminalApi.resize({ sessionId: sid, cols, rows })
+      }
+    })
+
     // ── Data coalescing listener ────────────────────────────────────────
 
     const handleData = (payload: { sessionId: string; data: string }) => {
@@ -181,7 +235,7 @@ export function TerminalApp() {
       // this webview's session arrives at this webContents. Filtering here
       // would drop data that arrives before sessionIdRef.current is set
       // (the PTY emits its prompt before the create IPC roundtrip resolves).
-      dataBufferRef.current = [...dataBufferRef.current, payload.data]
+      dataBufferRef.current.push(payload.data)
       if (flushTimerRef.current === undefined) {
         flushTimerRef.current = setTimeout(flushData, 5)
       }
@@ -212,37 +266,20 @@ export function TerminalApp() {
     blurListenerRef.current = handleBlur
     window.terminalApi.onBlur(handleBlur)
 
-    // ── Resize handling ─────────────────────────────────────────────────
+    const handleRefresh = () => {
+      scheduleFitAndRefresh()
+    }
+    refreshListenerRef.current = handleRefresh
+    window.terminalApi.onRefresh(handleRefresh)
 
-    let resizeObserver: ResizeObserver | null = null
-    let resizeRaf = 0
-    let lastCols = 0
-    let lastRows = 0
+    // ── Resize handling ─────────────────────────────────────────────────
 
     if (containerRef.current) {
       resizeObserver = new ResizeObserver((entries) => {
         const { width, height } = entries[0].contentRect
         if (width <= 0 || height <= 0) return
 
-        cancelAnimationFrame(resizeRaf)
-        resizeRaf = requestAnimationFrame(() => {
-          if (cancelled || !fitRef.current || !termRef.current) return
-          try {
-            fitRef.current.fit()
-          } catch {
-            return
-          }
-          // Only send resize IPC if dimensions actually changed
-          const { cols: newCols, rows: newRows } = termRef.current
-          if (newCols === lastCols && newRows === lastRows) return
-          lastCols = newCols
-          lastRows = newRows
-
-          const sid = sessionIdRef.current
-          if (sid) {
-            window.terminalApi.resize({ sessionId: sid, cols: newCols, rows: newRows })
-          }
-        })
+        scheduleFitAndRefresh()
       })
       resizeObserver.observe(containerRef.current)
     }
@@ -252,8 +289,9 @@ export function TerminalApp() {
     async function connectSession() {
       if (cancelled) return
 
-      const cols = termRef.current?.cols || 80
-      const rows = termRef.current?.rows || 24
+      const fallbackSize = estimateTermSize(containerRef.current)
+      const cols = termRef.current?.cols || fallbackSize.cols
+      const rows = termRef.current?.rows || fallbackSize.rows
 
       // Reconnect path: try to reattach to a surviving session
       if (urlSessionId) {
@@ -286,7 +324,7 @@ export function TerminalApp() {
 
       // Send initial command after a brief delay to let the shell initialize
       if (initialCommand) {
-        setTimeout(() => {
+        initialCommandTimerRef.current = setTimeout(() => {
           if (cancelled || !sessionIdRef.current) return
 
           if (systemPrompt) {
@@ -310,7 +348,7 @@ export function TerminalApp() {
         if (cancelled) return
         if (fitRef.current) {
           try {
-            fitRef.current.fit()
+            scheduleFitAndRefresh()
           } catch {
             // Container might still be zero-sized
           }
@@ -343,25 +381,27 @@ export function TerminalApp() {
         window.terminalApi.offBlur(blurListenerRef.current)
         blurListenerRef.current = null
       }
+      if (refreshListenerRef.current) {
+        window.terminalApi.offRefresh(refreshListenerRef.current)
+        refreshListenerRef.current = null
+      }
 
       // Clear data buffer / flush timer
       if (flushTimerRef.current !== undefined) {
         clearTimeout(flushTimerRef.current)
         flushTimerRef.current = undefined
       }
+      if (initialCommandTimerRef.current !== undefined) {
+        clearTimeout(initialCommandTimerRef.current)
+        initialCommandTimerRef.current = undefined
+      }
       dataBufferRef.current = []
 
       // Disconnect resize observer
       cancelAnimationFrame(resizeRaf)
       resizeObserver?.disconnect()
-
-      // Dispose addons and terminal
-      try {
-        canvasRef.current?.dispose()
-      } catch {
-        // Already disposed
-      }
-      canvasRef.current = null
+      window.removeEventListener('focus', handleWindowFocus)
+      window.removeEventListener('resize', handleWindowResize)
 
       try {
         searchRef.current = null

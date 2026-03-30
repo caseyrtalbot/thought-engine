@@ -70,6 +70,14 @@ const terminalApi = {
     ipcRenderer.off('blur', cb)
   },
 
+  onRefresh: (cb: () => void) => {
+    ipcRenderer.on('refresh', cb)
+  },
+
+  offRefresh: (cb: () => void) => {
+    ipcRenderer.off('refresh', cb)
+  },
+
   sendToHost: (channel: string, ...args: unknown[]) => ipcRenderer.sendToHost(channel, ...args)
 }
 

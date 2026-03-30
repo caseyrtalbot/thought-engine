@@ -117,6 +117,13 @@ export function useNodeResize(nodeId: string, nodeType: CanvasNodeType) {
         h: node.size.height
       }
 
+      const webviews = Array.from(document.querySelectorAll('webview')) as HTMLElement[]
+      const previousPointerEvents = new Map<HTMLElement, string>()
+      for (const webview of webviews) {
+        previousPointerEvents.set(webview, webview.style.pointerEvents)
+        webview.style.pointerEvents = 'none'
+      }
+
       const min = getMinSize(nodeType)
 
       const onMove = (me: PointerEvent) => {
@@ -133,6 +140,14 @@ export function useNodeResize(nodeId: string, nodeType: CanvasNodeType) {
         resizeStart.current = null
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
+        for (const webview of webviews) {
+          webview.style.pointerEvents = previousPointerEvents.get(webview) ?? ''
+        }
+        window.dispatchEvent(
+          new CustomEvent('canvas:node-resize-end', {
+            detail: { nodeId }
+          })
+        )
       }
 
       window.addEventListener('pointermove', onMove)

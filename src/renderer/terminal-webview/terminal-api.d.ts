@@ -23,6 +23,8 @@ interface TerminalApi {
   offFocus: (cb: () => void) => void
   onBlur: (cb: () => void) => void
   offBlur: (cb: () => void) => void
+  onRefresh: (cb: () => void) => void
+  offRefresh: (cb: () => void) => void
   sendToHost: (channel: string, ...args: unknown[]) => void
 }
 

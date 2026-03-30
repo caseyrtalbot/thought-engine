@@ -167,6 +167,24 @@ describe('terminal-webview preload', () => {
     })
   })
 
+  describe('refresh subscriptions', () => {
+    it('registers refresh listeners through ipcRenderer.on', () => {
+      const onRefresh = vi.fn()
+
+      captured.exposeCallback.onRefresh(onRefresh)
+
+      expect(mockOn).toHaveBeenCalledWith('refresh', onRefresh)
+    })
+
+    it('removes refresh listeners through ipcRenderer.off', () => {
+      const onRefresh = vi.fn()
+
+      captured.exposeCallback.offRefresh(onRefresh)
+
+      expect(mockOff).toHaveBeenCalledWith('refresh', onRefresh)
+    })
+  })
+
   describe('sendToHost', () => {
     it('delegates to ipcRenderer.sendToHost', () => {
       captured.exposeCallback.sendToHost('some-channel', 'arg1', 42)

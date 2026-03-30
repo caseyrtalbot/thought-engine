@@ -181,6 +181,7 @@ export function CardShell({
   const [convertMenuOpen, setConvertMenuOpen] = useState(false)
 
   const isActive = node.metadata?.isActive === true
+  const isTerminalCard = node.type === 'terminal'
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -227,7 +228,7 @@ export function CardShell({
         top: node.position.y,
         width: node.size.width,
         height: node.size.height,
-        backgroundColor: canvasTokens.card,
+        backgroundColor: isTerminalCard ? '#080808' : canvasTokens.card,
         borderRadius: 8,
         border: `1px solid ${colors.border.default}`,
         boxShadow: isLocked
@@ -238,9 +239,9 @@ export function CardShell({
               ? `0 0 0 1px #4a9eff, 0 2px 8px rgba(0, 0, 0, 0.5)`
               : `0 2px 8px rgba(0, 0, 0, 0.5)`,
         overflow: 'hidden',
-        contain: 'layout style',
-        backdropFilter: `blur(${cardBlur}px) saturate(1.2)`,
-        WebkitBackdropFilter: `blur(${cardBlur}px) saturate(1.2)`,
+        contain: isTerminalCard ? undefined : 'layout style',
+        backdropFilter: isTerminalCard ? undefined : `blur(${cardBlur}px) saturate(1.2)`,
+        WebkitBackdropFilter: isTerminalCard ? undefined : `blur(${cardBlur}px) saturate(1.2)`,
         ...(isActive
           ? ({
               '--activity-color': 'rgba(167, 139, 250, 0.3)',
@@ -266,7 +267,7 @@ export function CardShell({
         className="flex items-center justify-between shrink-0 select-none"
         style={{
           padding: '7px 10px',
-          backgroundColor: canvasTokens.cardTitleBar,
+          backgroundColor: isTerminalCard ? '#080808' : canvasTokens.cardTitleBar,
           borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
           borderRadius: '7px 7px 0 0',
           cursor: 'grab'
@@ -415,7 +416,10 @@ export function CardShell({
       </div>
 
       {/* Content area — hidden scrollbars via .canvas-card-content */}
-      <div className="flex-1 canvas-card-content relative" style={{ minHeight: 0 }}>
+      <div
+        className={`flex-1 relative${isTerminalCard ? '' : ' canvas-card-content'}`}
+        style={{ minHeight: 0, overflow: isTerminalCard ? 'hidden' : undefined }}
+      >
         {children}
         {/* Pointer-events shield: blocks content interaction until card is focused.
             First click selects+focuses the card, second click interacts with content. */}

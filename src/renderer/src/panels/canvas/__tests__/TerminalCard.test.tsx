@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CanvasNode } from '@shared/canvas-types'
 
@@ -25,10 +25,16 @@ vi.mock('../CardShell', () => ({
 
 const mockRemoveNode = vi.fn()
 const mockUpdateContent = vi.fn()
-const mockSetFocusedTerminal = vi.fn()
+let mockFocusedTerminalId: string | null = null
+let mockFocusedCardId: string | null = null
+let mockLockedCardId: string | null = null
+const mockSetFocusedTerminal = vi.fn((id: string | null) => {
+  mockFocusedTerminalId = id
+})
 const mockGetState = vi.fn(() => ({
   nodes: [] as readonly CanvasNode[],
-  removeNode: mockRemoveNode
+  removeNode: mockRemoveNode,
+  focusedTerminalId: mockFocusedTerminalId
 }))
 
 vi.mock('../../../store/canvas-store', () => ({
@@ -38,7 +44,9 @@ vi.mock('../../../store/canvas-store', () => ({
         removeNode: mockRemoveNode,
         updateNodeContent: mockUpdateContent,
         setFocusedTerminal: mockSetFocusedTerminal,
-        lockedCardId: null
+        focusedCardId: mockFocusedCardId,
+        lockedCardId: mockLockedCardId,
+        focusedTerminalId: mockFocusedTerminalId
       }),
     {
       getState: mockGetState
@@ -108,12 +116,48 @@ function makeClaudeNode(overrides?: Partial<CanvasNode>): CanvasNode {
   }
 }
 
+function attachWebviewHarness(container: HTMLElement): {
+  webview: HTMLElement & { send: ReturnType<typeof vi.fn>; focus: ReturnType<typeof vi.fn> }
+  send: ReturnType<typeof vi.fn>
+  focus: ReturnType<typeof vi.fn>
+} {
+  const webview = container.querySelector('webview') as
+    | (HTMLElement & { send?: ReturnType<typeof vi.fn>; focus?: ReturnType<typeof vi.fn> })
+    | null
+  expect(webview).toBeTruthy()
+  const send = vi.fn()
+  const focus = vi.fn()
+  webview!.send = send
+  webview!.focus = focus
+  return {
+    webview: webview as HTMLElement & {
+      send: ReturnType<typeof vi.fn>
+      focus: ReturnType<typeof vi.fn>
+    },
+    send,
+    focus
+  }
+}
+
+function dispatchWebviewEvent(
+  webview: HTMLElement,
+  type: string,
+  extra?: Record<string, unknown>
+): void {
+  const event = new Event(type)
+  if (extra) Object.assign(event, extra)
+  webview.dispatchEvent(event)
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe('TerminalCard (webview host)', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+    mockFocusedTerminalId = null
+    mockFocusedCardId = null
+    mockLockedCardId = null
   })
 
   it('renders a webview element inside CardShell', async () => {
@@ -177,12 +221,10 @@ describe('TerminalCard (webview host)', () => {
     const { container } = render(<TerminalCard node={node} />)
 
     // Simulate crash by finding and triggering the crashed listener
-    const webview = container.querySelector('webview')
-    expect(webview).toBeTruthy()
+    const { webview } = attachWebviewHarness(container)
 
     // Fire the 'crashed' event
-    const crashEvent = new Event('crashed')
-    webview!.dispatchEvent(crashEvent)
+    dispatchWebviewEvent(webview, 'crashed')
 
     // After crash, overlay should appear
     const restartBtn = await screen.findByText('Restart')
@@ -227,5 +269,81 @@ describe('TerminalCard (webview host)', () => {
     const webview = container.querySelector('webview')
     const src = webview?.getAttribute('src') ?? ''
     expect(src).toContain('cwd=%2Ftest%2Fvault%2Fsubfolder')
+  })
+
+  it('replays focus to the webview on dom-ready after the card is already focused', async () => {
+    mockFocusedCardId = 'term-1'
+
+    const { TerminalCard } = await import('../TerminalCard')
+    const node = makeTerminalNode()
+    const { container } = render(<TerminalCard node={node} />)
+    const { webview, send, focus } = attachWebviewHarness(container)
+
+    expect(send).not.toHaveBeenCalled()
+
+    dispatchWebviewEvent(webview, 'dom-ready')
+
+    expect(focus).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith('focus')
+    expect(mockSetFocusedTerminal).toHaveBeenCalledWith('term-1')
+  })
+
+  it('sends a refresh message to the webview when resize completes', async () => {
+    mockFocusedCardId = 'term-1'
+
+    const { TerminalCard } = await import('../TerminalCard')
+    const node = makeTerminalNode()
+    const { container } = render(<TerminalCard node={node} />)
+    const { webview, send, focus } = attachWebviewHarness(container)
+
+    dispatchWebviewEvent(webview, 'dom-ready')
+    send.mockClear()
+    focus.mockClear()
+
+    await act(async () => {
+      window.dispatchEvent(
+        new CustomEvent('canvas:node-resize-end', {
+          detail: { nodeId: 'term-1' }
+        })
+      )
+    })
+
+    expect(focus).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenNthCalledWith(1, 'refresh')
+    expect(send).toHaveBeenNthCalledWith(2, 'focus')
+  })
+
+  it('rebinds webview listeners after restart and persists the replacement session id', async () => {
+    const { TerminalCard } = await import('../TerminalCard')
+    const node = makeTerminalNode({ content: 'session-old' })
+    const { container } = render(<TerminalCard node={node} />)
+    const { webview } = attachWebviewHarness(container)
+
+    await act(async () => {
+      dispatchWebviewEvent(webview, 'crashed')
+    })
+    const restartBtn = await screen.findByText('Restart')
+    await act(async () => {
+      restartBtn.click()
+      await Promise.resolve()
+    })
+
+    expect(mockKill).toHaveBeenCalledWith('session-old')
+    expect(mockUpdateContent).toHaveBeenCalledWith('term-1', '')
+
+    await waitFor(() => {
+      expect(container.querySelector('webview')).toBeTruthy()
+    })
+    const restarted = container.querySelector('webview') as HTMLElement | null
+    expect(restarted?.getAttribute('src') ?? '').not.toContain('sessionId=session-old')
+
+    await act(async () => {
+      dispatchWebviewEvent(restarted!, 'ipc-message', {
+        channel: 'session-created',
+        args: ['session-new']
+      })
+    })
+
+    expect(mockUpdateContent).toHaveBeenCalledWith('term-1', 'session-new')
   })
 })

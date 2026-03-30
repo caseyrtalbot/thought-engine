@@ -45,10 +45,6 @@ describe('TerminalApp component', () => {
       expect(src).toContain("from '@xterm/addon-web-links'")
     })
 
-    it('imports CanvasAddon', () => {
-      expect(src).toContain("from '@xterm/addon-canvas'")
-    })
-
     it('imports SearchAddon', () => {
       expect(src).toContain("from '@xterm/addon-search'")
     })
@@ -85,10 +81,13 @@ describe('TerminalApp component', () => {
     })
   })
 
-  describe('Canvas 2D renderer', () => {
-    it('creates CanvasAddon inside a try block', () => {
-      expect(src).toContain('new CanvasAddon()')
-      expect(src).toMatch(/try\s*\{[\s\S]*?new CanvasAddon\(\)[\s\S]*?\}\s*catch/)
+  describe('renderer addon choice', () => {
+    it('uses xterm default renderer fallback in the canvas webview', () => {
+      expect(src).not.toContain('new CanvasAddon()')
+    })
+
+    it('does not force WebGL in the canvas webview', () => {
+      expect(src).not.toContain('new WebglAddon()')
     })
   })
 
@@ -114,6 +113,18 @@ describe('TerminalApp component', () => {
 
     it('joins buffer contents before writing', () => {
       expect(src).toMatch(/\.join\(['"]/)
+    })
+
+    it('clears the terminal state on first data for new sessions', () => {
+      expect(src).toContain('term.reset()')
+    })
+
+    it('clears the viewport on first data for reconnect sessions', () => {
+      expect(src).toContain('\\x1b[2J\\x1b[H')
+    })
+
+    it('does not force the viewport to the bottom after every write', () => {
+      expect(src).not.toContain('scrollToBottom()')
     })
   })
 
@@ -156,6 +167,19 @@ describe('TerminalApp component', () => {
     it('calls terminalApi.resize with session dimensions', () => {
       expect(src).toContain('window.terminalApi.resize')
     })
+
+    it('relies on term.onResize for PTY resize propagation', () => {
+      expect(src).toContain('term.onResize')
+    })
+
+    it('refreshes the full viewport after fitting', () => {
+      expect(src).toContain('termRef.current.refresh(0, termRef.current.rows - 1)')
+    })
+
+    it('listens for host refresh messages', () => {
+      expect(src).toContain('window.terminalApi.onRefresh')
+      expect(src).toContain('window.terminalApi.offRefresh')
+    })
   })
 
   describe('focus protocol', () => {
@@ -189,10 +213,6 @@ describe('TerminalApp component', () => {
   describe('cleanup', () => {
     it('disposes the terminal', () => {
       expect(src).toContain('term.dispose()')
-    })
-
-    it('disposes the Canvas addon', () => {
-      expect(src).toMatch(/canvas.*\.dispose\(\)/)
     })
 
     it('clears the flush timer', () => {
@@ -260,6 +280,11 @@ describe('terminal-api.d.ts type declarations', () => {
   it('declares offFocus and offBlur methods', () => {
     expect(dts).toContain('offFocus:')
     expect(dts).toContain('offBlur:')
+  })
+
+  it('declares onRefresh and offRefresh methods', () => {
+    expect(dts).toContain('onRefresh:')
+    expect(dts).toContain('offRefresh:')
   })
 
   it('declares sendToHost method', () => {
