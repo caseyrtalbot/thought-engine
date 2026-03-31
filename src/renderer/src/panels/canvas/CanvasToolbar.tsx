@@ -206,6 +206,28 @@ export function CanvasToolbar({
               zIndex: 50
             }}
           >
+            <button
+              className="sidebar-popover-item"
+              style={{ color: colors.text.primary }}
+              onClick={() => {
+                const vp = useCanvasStore.getState().viewport
+                const el = document.querySelector('[data-canvas-surface]')
+                const w = el?.clientWidth ?? 1920
+                const h = el?.clientHeight ?? 1080
+                const centerX = (-vp.x + w / 2) / vp.zoom
+                const centerY = (-vp.y + h / 2) / vp.zoom
+                const { artifacts, graph, fileToId } = useVaultStore.getState()
+                const fileToIdMap = new Map(Object.entries(fileToId))
+                const artMap = new Map(artifacts.map((a) => [a.id, { id: a.id, tags: a.tags }]))
+                useCanvasStore
+                  .getState()
+                  .applySemanticLayout({ x: centerX, y: centerY }, fileToIdMap, artMap, graph.edges)
+                setTileMenuOpen(false)
+              }}
+            >
+              Organize by topic
+            </button>
+            <div className="sidebar-popover-divider mx-3 my-1" />
             {TILE_PATTERNS.map((p) => (
               <button
                 key={p.id}
@@ -213,7 +235,6 @@ export function CanvasToolbar({
                 style={{ color: colors.text.secondary }}
                 onClick={() => {
                   const vp = useCanvasStore.getState().viewport
-                  // Compute viewport center in canvas coordinates
                   const el = document.querySelector('[data-canvas-surface]')
                   const w = el?.clientWidth ?? 1920
                   const h = el?.clientHeight ?? 1080

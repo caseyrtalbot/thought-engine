@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import type { CanvasNode, CanvasEdge, CanvasViewport, CanvasFile } from '@shared/canvas-types'
 import { getDefaultMetadata } from '@shared/canvas-types'
 import { spatialSort, nextCard, prevCard } from '../panels/canvas/canvas-spatial-nav'
-import { computeTileLayout, type TilePattern } from '../panels/canvas/canvas-tiling'
+import {
+  computeTileLayout,
+  computeSemanticLayout,
+  type TilePattern,
+  type ClusterLabel
+} from '../panels/canvas/canvas-tiling'
 
 interface CanvasStore {
   // Document state
@@ -36,6 +41,9 @@ interface CanvasStore {
 
   // Split editor: docked code panel on the right side of the canvas
   readonly splitFilePath: string | null
+
+  // Cluster labels from semantic organize
+  readonly clusterLabels: readonly ClusterLabel[]
 
   // Bridge: registered by CanvasView for accurate viewport centering
   readonly centerOnNode: ((nodeId: string) => void) | null
@@ -99,6 +107,14 @@ interface CanvasStore {
   // Tiling
   applyTileLayout: (pattern: TilePattern, viewportCenter: { x: number; y: number }) => void
 
+  // Semantic organize
+  applySemanticLayout: (
+    viewportCenter: { x: number; y: number },
+    fileToId: ReadonlyMap<string, string>,
+    artifacts: ReadonlyMap<string, { id: string; tags: readonly string[] }>,
+    graphEdges: readonly { source: string; target: string }[]
+  ) => void
+
   // Bridge registration
   setCenterOnNode: (handler: ((nodeId: string) => void) | null) => void
 
@@ -123,6 +139,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   focusedTerminalId: null,
   cardContextMenu: null,
   splitFilePath: null,
+  clusterLabels: [],
   centerOnNode: null,
 
   loadCanvas: (filePath, data) =>
@@ -178,6 +195,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   moveNode: (id, position) =>
     set((s) => ({
       nodes: s.nodes.map((n) => (n.id === id ? { ...n, position } : n)),
+      clusterLabels: [],
       isDirty: true
     })),
 
@@ -306,6 +324,27 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
         const pos = positions.get(n.id)
         return pos ? { ...n, position: pos } : n
       }),
+      isDirty: true
+    }))
+  },
+
+  applySemanticLayout: (viewportCenter, fileToId, artifacts, graphEdges) => {
+    const { nodes, selectedNodeIds } = get()
+    const targetNodes =
+      selectedNodeIds.size > 0 ? nodes.filter((n) => selectedNodeIds.has(n.id)) : nodes
+    if (targetNodes.length === 0) return
+    const cards = targetNodes.map((n) => ({
+      id: n.id,
+      size: n.size,
+      filePath: (n.metadata?.filePath as string | undefined) ?? n.content
+    }))
+    const result = computeSemanticLayout(viewportCenter, cards, fileToId, artifacts, graphEdges)
+    set((s) => ({
+      nodes: s.nodes.map((n) => {
+        const pos = result.positions.get(n.id)
+        return pos ? { ...n, position: pos } : n
+      }),
+      clusterLabels: result.labels,
       isDirty: true
     }))
   },

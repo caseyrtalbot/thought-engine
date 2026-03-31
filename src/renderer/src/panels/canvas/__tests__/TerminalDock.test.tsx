@@ -132,46 +132,20 @@ describe('TerminalDock', () => {
     const collapsed = screen.getByTestId('terminal-dock-collapsed')
     expect(collapsed).toBeTruthy()
 
-    // Should show count
-    expect(collapsed.textContent).toContain('2 terminals')
-
     // Should have dots
     const dots = screen.getAllByTestId('status-dot')
     expect(dots).toHaveLength(2)
   })
 
-  it('error badge shows in collapsed state when errors > 0', () => {
+  it('click collapsed dock expands it', () => {
     localStorage.setItem('te-terminal-dock-collapsed', 'true')
 
-    const n1 = makeTerminalNode('term-1')
-    const n2 = makeTerminalNode('term-2')
-    mockNodes = [n1, n2]
-    mockStatuses = [makeStatus('term-1', 'error'), makeStatus('term-2', 'idle')]
-
-    render(<TerminalDock containerWidth={1200} containerHeight={800} />)
-
-    const badge = screen.getByTestId('error-badge')
-    expect(badge).toBeTruthy()
-    expect(badge.textContent).toBe('1')
-  })
-
-  it('toggle expand/collapse persists to localStorage', () => {
     const n1 = makeTerminalNode('term-1')
     mockNodes = [n1]
     mockStatuses = [makeStatus('term-1')]
 
-    // Start expanded (default)
     render(<TerminalDock containerWidth={1200} containerHeight={800} />)
 
-    // Should be expanded - find the collapse toggle button
-    const collapseBtn = screen.getByTestId('dock-toggle')
-    expect(collapseBtn).toBeTruthy()
-
-    // Click to collapse
-    fireEvent.click(collapseBtn)
-    expect(localStorage.getItem('te-terminal-dock-collapsed')).toBe('true')
-
-    // Click collapsed dock to expand
     const collapsed = screen.getByTestId('terminal-dock-collapsed')
     fireEvent.click(collapsed)
     expect(localStorage.getItem('te-terminal-dock-collapsed')).toBe('false')

@@ -325,8 +325,28 @@ function ConnectedSidebar({
 
   const handleFileSelect = useCallback(
     (path: string) => {
+      // If the file is on the canvas, pan to it (switch to canvas tab if needed)
+      const canvasNodes = useCanvasStore.getState().nodes
+      const canvasNode = canvasNodes.find(
+        (n) => n.metadata?.filePath === path || n.content === path
+      )
+      if (canvasNode) {
+        const view = useViewStore.getState().contentView
+        if (view !== 'canvas') {
+          useViewStore.getState().setContentView('canvas')
+        }
+        setTimeout(
+          () => {
+            useCanvasStore.getState().centerOnNode?.(canvasNode.id)
+            useCanvasStore.getState().setSelection(new Set([canvasNode.id]))
+            useCanvasStore.getState().setFocusedCard(canvasNode.id)
+          },
+          view !== 'canvas' ? 100 : 0
+        )
+        return
+      }
+
       // When on a canvas view, single-clicks should not navigate away.
-      // The user must double-click to open in editor (double-click also fires this).
       const view = useViewStore.getState().contentView
       if (view === 'canvas' || view === 'workbench') return
 

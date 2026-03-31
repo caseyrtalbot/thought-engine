@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
+import { useVaultStore } from '../../store/vault-store'
 import { useNodeDrag, useNodeResize } from './use-canvas-drag'
 import { colors, canvasTokens, typography } from '../../design/tokens'
 import { useEnv } from '../../design/Theme'
@@ -191,6 +192,17 @@ export function CardShell({
   const isActive = node.metadata?.isActive === true
   const isTerminalCard = node.type === 'terminal'
 
+  // Edge count for note cards
+  const edges = useVaultStore((s) => s.graph.edges)
+  const fileToId = useVaultStore((s) => s.fileToId)
+  const edgeCount = useMemo(() => {
+    if (node.type !== 'note') return 0
+    const fp = filePath ?? node.content
+    const artifactId = fp ? fileToId[fp] : undefined
+    if (!artifactId) return 0
+    return edges.filter((e) => e.source === artifactId || e.target === artifactId).length
+  }, [node.type, node.content, filePath, fileToId, edges])
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -333,6 +345,19 @@ export function CardShell({
             {title}
           </span>
           {titleExtra}
+          {edgeCount > 0 && (
+            <span
+              style={{
+                fontFamily: typography.fontFamily.mono,
+                fontSize: 10,
+                color: colors.text.muted,
+                opacity: 0.7,
+                flexShrink: 0
+              }}
+            >
+              {edgeCount}
+            </span>
+          )}
         </span>
         {node.metadata?.scope === 'project' && (
           <span

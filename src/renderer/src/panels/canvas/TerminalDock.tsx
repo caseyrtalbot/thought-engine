@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useTerminalStatus, type TerminalStatus } from './useTerminalStatus'
-import { CaretDown } from '@phosphor-icons/react'
 import {
   colors,
   floatingPanel,

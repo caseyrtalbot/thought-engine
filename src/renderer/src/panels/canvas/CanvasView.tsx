@@ -25,6 +25,7 @@ import { ZoomIndicator } from './ZoomIndicator'
 import { EdgeDots } from './EdgeDots'
 import { ImportPalette } from './ImportPalette'
 import { TerminalDock } from './TerminalDock'
+import { ClusterLabels } from './ClusterLabels'
 import { inferLanguage, type DragFileData } from './file-drop-utils'
 import { useViewportCulling } from './use-canvas-culling'
 import { getLodLevel } from './use-canvas-lod'
@@ -467,15 +468,25 @@ export function CanvasView(): React.ReactElement {
             useCanvasStore.getState().openSplit(focusedNode.content)
           }
         }
-      } else if (e.key === 'l') {
-        // CMD+L: apply default tile layout (grid-2x2) to viewport center
+      } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault()
         const vp = useCanvasStore.getState().viewport
         const w = containerRef.current?.clientWidth ?? 1920
         const h = containerRef.current?.clientHeight ?? 1080
         const centerX = (-vp.x + w / 2) / vp.zoom
         const centerY = (-vp.y + h / 2) / vp.zoom
-        useCanvasStore.getState().applyTileLayout('grid-2x2', { x: centerX, y: centerY })
+        if (e.shiftKey) {
+          // CMD+Shift+L: semantic organize by topic
+          const { artifacts, graph, fileToId } = useVaultStore.getState()
+          const fileToIdMap = new Map(Object.entries(fileToId))
+          const artMap = new Map(artifacts.map((a) => [a.id, { id: a.id, tags: a.tags }]))
+          useCanvasStore
+            .getState()
+            .applySemanticLayout({ x: centerX, y: centerY }, fileToIdMap, artMap, graph.edges)
+        } else {
+          // CMD+L: grid-2x2 tile layout
+          useCanvasStore.getState().applyTileLayout('grid-2x2', { x: centerX, y: centerY })
+        }
       }
     }
     window.addEventListener('keydown', handler)
@@ -560,6 +571,8 @@ export function CanvasView(): React.ReactElement {
 
         <EdgeDots containerWidth={containerSize.width} containerHeight={containerSize.height} />
 
+        <ClusterLabels viewport={viewport} />
+
         <CanvasMinimap
           containerWidth={containerSize.width}
           containerHeight={containerSize.height}
@@ -616,10 +629,10 @@ export function CanvasView(): React.ReactElement {
                         })
                       }
                     })
-                    // Auto-zoom to fit source card + new connections
-                    const focusNodes = [menuNode, ...newNodes]
+                    // Fit viewport to all cards including new connections
+                    const allNodes = [...useCanvasStore.getState().nodes]
                     const vp = computeImportViewport(
-                      focusNodes,
+                      allNodes,
                       containerSize.width,
                       containerSize.height
                     )

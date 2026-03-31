@@ -242,8 +242,8 @@ export function computeImportViewport(
   const cy = minY + (maxY - minY) / 2
 
   return {
-    x: containerWidth / 2 / zoom - cx,
-    y: containerHeight / 2 / zoom - cy,
+    x: containerWidth / 2 - cx * zoom,
+    y: containerHeight / 2 - cy * zoom,
     zoom
   }
 }

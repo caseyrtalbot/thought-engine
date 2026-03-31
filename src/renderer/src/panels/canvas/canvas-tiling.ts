@@ -282,6 +282,218 @@ function layoutOverflowRow(
 // Main entry point
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Semantic layout — topic-based clustering using vault graph data
+// ---------------------------------------------------------------------------
+
+const CLUSTER_GAP = 120
+const INTRA_GAP = 24
+
+export interface ClusterLabel {
+  readonly label: string
+  readonly position: { readonly x: number; readonly y: number }
+}
+
+export interface SemanticLayoutResult {
+  readonly positions: ReadonlyMap<string, { readonly x: number; readonly y: number }>
+  readonly labels: readonly ClusterLabel[]
+}
+
+interface SemanticCard extends TileCard {
+  readonly filePath?: string
+}
+
+interface ArtifactInfo {
+  readonly id: string
+  readonly tags: readonly string[]
+}
+
+interface GraphEdge {
+  readonly source: string
+  readonly target: string
+}
+
+/**
+ * Arrange canvas cards into tag-based clusters with graph-aware ordering.
+ * Cards are grouped by their primary (top-level) tag, clusters are arranged
+ * in a grid, and within each cluster cards with the most intra-cluster edges
+ * sit toward the center.
+ */
+export function computeSemanticLayout(
+  origin: { readonly x: number; readonly y: number },
+  cards: readonly SemanticCard[],
+  fileToId: ReadonlyMap<string, string>,
+  artifacts: ReadonlyMap<string, ArtifactInfo>,
+  edges: readonly GraphEdge[]
+): SemanticLayoutResult {
+  if (cards.length === 0) return { positions: new Map(), labels: [] }
+
+  // 1. Assign each card to a cluster by primary top-level tag
+  const clusterMap = new Map<string, SemanticCard[]>()
+
+  for (const card of cards) {
+    const fp = card.filePath ?? card.id
+    const artId = fileToId.get(fp)
+    const art = artId ? artifacts.get(artId) : undefined
+    const primaryTag = art?.tags?.[0]
+    const clusterKey = primaryTag ? primaryTag.split('/')[0] : 'Untagged'
+
+    const bucket = clusterMap.get(clusterKey)
+    if (bucket) {
+      bucket.push(card)
+    } else {
+      clusterMap.set(clusterKey, [card])
+    }
+  }
+
+  // 2. Sort clusters alphabetically, with "Untagged" last
+  const clusterKeys = [...clusterMap.keys()].sort((a, b) => {
+    if (a === 'Untagged') return 1
+    if (b === 'Untagged') return -1
+    return a.localeCompare(b)
+  })
+
+  // 3. For each cluster, sort cards by intra-cluster edge count (descending)
+  const sortedClusters = clusterKeys.map((key) => {
+    const clusterCards = clusterMap.get(key)!
+    const clusterArtIds = new Set<string>()
+    const cardToArtId = new Map<string, string>()
+
+    for (const card of clusterCards) {
+      const fp = card.filePath ?? card.id
+      const artId = fileToId.get(fp)
+      if (artId) {
+        clusterArtIds.add(artId)
+        cardToArtId.set(card.id, artId)
+      }
+    }
+
+    // Count intra-cluster edges per card
+    const edgeCounts = new Map<string, number>()
+    for (const card of clusterCards) {
+      const artId = cardToArtId.get(card.id)
+      if (!artId) continue
+      let count = 0
+      for (const edge of edges) {
+        if (edge.source === artId && clusterArtIds.has(edge.target)) count++
+        if (edge.target === artId && clusterArtIds.has(edge.source)) count++
+      }
+      edgeCounts.set(card.id, count)
+    }
+
+    // Sort: most connected first (center of cluster)
+    const sorted = [...clusterCards].sort(
+      (a, b) => (edgeCounts.get(b.id) ?? 0) - (edgeCounts.get(a.id) ?? 0)
+    )
+
+    return { key, cards: sorted }
+  })
+
+  // 4. Compute each cluster's local sub-grid layout
+  const clusterLayouts: {
+    key: string
+    positions: Map<string, { x: number; y: number }>
+    width: number
+    height: number
+  }[] = []
+
+  for (const { key, cards: clusterCards } of sortedClusters) {
+    const cols = clusterCards.length <= 2 ? 1 : clusterCards.length <= 6 ? 2 : 3
+    const rows = Math.ceil(clusterCards.length / cols)
+
+    // Compute column widths and row heights from actual card sizes
+    const colWidths: number[] = Array(cols).fill(0)
+    const rowHeights: number[] = Array(rows).fill(0)
+
+    for (let i = 0; i < clusterCards.length; i++) {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      colWidths[col] = Math.max(colWidths[col], clusterCards[i].size.width)
+      rowHeights[row] = Math.max(rowHeights[row], clusterCards[i].size.height)
+    }
+
+    const totalWidth = colWidths.reduce((sum, w) => sum + w, 0) + (cols - 1) * INTRA_GAP
+    const totalHeight = rowHeights.reduce((sum, h) => sum + h, 0) + (rows - 1) * INTRA_GAP
+
+    // Position cards within local coords (0,0 is top-left of cluster)
+    const positions = new Map<string, { x: number; y: number }>()
+    for (let i = 0; i < clusterCards.length; i++) {
+      const col = i % cols
+      const row = Math.floor(i / cols)
+
+      let x = 0
+      for (let c = 0; c < col; c++) x += colWidths[c] + INTRA_GAP
+      let y = 0
+      for (let r = 0; r < row; r++) y += rowHeights[r] + INTRA_GAP
+
+      positions.set(clusterCards[i].id, { x, y })
+    }
+
+    clusterLayouts.push({ key, positions, width: totalWidth, height: totalHeight })
+  }
+
+  // 5. Arrange clusters in a meta-grid, centered on origin
+  const metaCols = Math.ceil(Math.sqrt(clusterLayouts.length))
+  const metaRows = Math.ceil(clusterLayouts.length / metaCols)
+
+  // Compute meta-grid column widths and row heights
+  const metaColWidths: number[] = Array(metaCols).fill(0)
+  const metaRowHeights: number[] = Array(metaRows).fill(0)
+  // Add label height offset (20px above each cluster)
+  const LABEL_HEIGHT = 20
+
+  for (let i = 0; i < clusterLayouts.length; i++) {
+    const col = i % metaCols
+    const row = Math.floor(i / metaCols)
+    metaColWidths[col] = Math.max(metaColWidths[col], clusterLayouts[i].width)
+    metaRowHeights[row] = Math.max(metaRowHeights[row], clusterLayouts[i].height + LABEL_HEIGHT)
+  }
+
+  const metaTotalWidth = metaColWidths.reduce((sum, w) => sum + w, 0) + (metaCols - 1) * CLUSTER_GAP
+  const metaTotalHeight =
+    metaRowHeights.reduce((sum, h) => sum + h, 0) + (metaRows - 1) * CLUSTER_GAP
+
+  const metaStartX = origin.x - metaTotalWidth / 2
+  const metaStartY = origin.y - metaTotalHeight / 2
+
+  // 6. Compute final positions and labels
+  const allPositions = new Map<string, { x: number; y: number }>()
+  const labels: ClusterLabel[] = []
+
+  for (let i = 0; i < clusterLayouts.length; i++) {
+    const col = i % metaCols
+    const row = Math.floor(i / metaCols)
+    const layout = clusterLayouts[i]
+
+    let clusterX = metaStartX
+    for (let c = 0; c < col; c++) clusterX += metaColWidths[c] + CLUSTER_GAP
+    let clusterY = metaStartY
+    for (let r = 0; r < row; r++) clusterY += metaRowHeights[r] + CLUSTER_GAP
+
+    // Label sits above the cluster
+    labels.push({
+      label: layout.key,
+      position: { x: clusterX, y: clusterY }
+    })
+
+    // Cards start below the label
+    const cardsStartY = clusterY + LABEL_HEIGHT
+
+    for (const [cardId, localPos] of layout.positions) {
+      allPositions.set(cardId, {
+        x: clusterX + localPos.x,
+        y: cardsStartY + localPos.y
+      })
+    }
+  }
+
+  return { positions: allPositions, labels }
+}
+
+// ---------------------------------------------------------------------------
+// Geometric tile layout — existing system
+// ---------------------------------------------------------------------------
+
 export function computeTileLayout(
   pattern: TilePattern,
   origin: { readonly x: number; readonly y: number },

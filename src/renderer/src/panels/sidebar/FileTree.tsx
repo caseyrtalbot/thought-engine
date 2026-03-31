@@ -529,7 +529,7 @@ function FileRow({
           {ext && <span className="file-name-text__ext">{ext}</span>}
         </span>
       )}
-      {canvasConnectionCount >= 2 ? (
+      {canvasConnectionCount >= 1 ? (
         <span
           className="ml-auto flex-shrink-0"
           style={{
