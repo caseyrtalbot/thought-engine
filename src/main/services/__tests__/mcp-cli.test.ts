@@ -97,12 +97,14 @@ describe('MCP CLI server (standalone)', () => {
     // Should have indexed both files
     expect(deps.vaultIndex.getArtifacts().length).toBe(2)
 
-    // Should only expose read tools (no gate = no write tools)
+    // Should only expose read tools (no gate = no write tools) + read-only new tools
     const tools = await client.listTools()
     const toolNames = tools.tools.map((t) => t.name).sort()
     expect(toolNames).toEqual([
+      'canvas.get_snapshot',
       'graph.get_ghosts',
       'graph.get_neighbors',
+      'project.map_folder',
       'search.query',
       'vault.read_file'
     ])

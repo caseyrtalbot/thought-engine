@@ -5,7 +5,7 @@ import { EDGE_KIND_COLORS } from '../../src/renderer/src/design/tokens'
 import {
   getEdgeStrokeDasharray,
   getEdgeStrokeWidth
-} from '../../src/renderer/src/panels/canvas/EdgeLayer'
+} from '../../src/renderer/src/panels/canvas/edge-styling'
 
 describe('edge styling helpers', () => {
   describe('getEdgeStrokeDasharray', () => {
@@ -65,29 +65,39 @@ describe('edge zoom reveal logic', () => {
     const hiddenImportsEdge = { ...edge, kind: 'imports' as const, hidden: true }
 
     // At zoom 0.9 (> 0.8), imports edge should be zoom-revealed
-    const zoomRevealed = 0.9 > 0.8 && hiddenImportsEdge.kind === 'imports'
+    const zoom = 0.9
+    const threshold = 0.8
+    const zoomRevealed = zoom > threshold && hiddenImportsEdge.kind === 'imports'
     expect(zoomRevealed).toBe(true)
   })
 
   it('hidden imports edge is NOT revealed when zoom <= 0.8', () => {
-    const zoomRevealed = 0.8 > 0.8 && true
+    const zoom = 0.8
+    const threshold = 0.8
+    const zoomRevealed = zoom > threshold && true
     expect(zoomRevealed).toBe(false)
   })
 
   it('hidden references edge is revealed when zoom > 0.8', () => {
-    const zoomRevealed = 0.9 > 0.8 && true
+    const zoom = 0.9
+    const threshold = 0.8
+    const zoomRevealed = zoom > threshold && true
     expect(zoomRevealed).toBe(true)
   })
 
   it('hidden connection edge is NOT revealed by zoom', () => {
+    const zoom = 0.9
+    const threshold = 0.8
     const kind = 'connection'
-    const zoomRevealed = 0.9 > 0.8 && (kind === 'imports' || kind === 'references')
+    const zoomRevealed = zoom > threshold && (kind === 'imports' || kind === 'references')
     expect(zoomRevealed).toBe(false)
   })
 
   it('hidden contains edge is NOT revealed by zoom', () => {
+    const zoom = 0.9
+    const threshold = 0.8
     const kind = 'contains'
-    const zoomRevealed = 0.9 > 0.8 && (kind === 'imports' || kind === 'references')
+    const zoomRevealed = zoom > threshold && (kind === 'imports' || kind === 'references')
     expect(zoomRevealed).toBe(false)
   })
 })

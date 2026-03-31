@@ -116,7 +116,7 @@ describe('MCP Server', () => {
     rmSync(vaultRoot, { recursive: true, force: true })
   })
 
-  it('lists 6 registered tools when gate is provided', async () => {
+  it('lists 9 registered tools when gate is provided', async () => {
     const gate = new AlwaysApproveGate()
     const { client, server } = await createConnectedPair(vaultRoot, gate)
 
@@ -124,8 +124,11 @@ describe('MCP Server', () => {
     const toolNames = tools.map((t) => t.name).sort()
 
     expect(toolNames).toEqual([
+      'canvas.apply_plan',
+      'canvas.get_snapshot',
       'graph.get_ghosts',
       'graph.get_neighbors',
+      'project.map_folder',
       'search.query',
       'vault.create_file',
       'vault.read_file',
