@@ -388,9 +388,7 @@ export function Sidebar({
   return (
     <div className="workspace-sidebar-shell">
       <div className="sidebar-top-stack flex-shrink-0">
-        <div className="pb-1">
-          <SearchBar onSearch={onSearch} />
-        </div>
+        <SearchBar onSearch={onSearch} />
         <ActionBar
           sortMode={sortMode}
           vaultName={vaultName}

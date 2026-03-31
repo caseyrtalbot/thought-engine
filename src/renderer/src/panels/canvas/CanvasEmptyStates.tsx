@@ -93,108 +93,56 @@ export function CanvasWelcomeCard() {
 }
 
 export function EmptyCanvasHint({ rawFileCount }: { readonly rawFileCount: number }) {
+  const plexSans = '"IBM Plex Sans", var(--font-body, system-ui, sans-serif)'
+  const plexMono = '"IBM Plex Mono", var(--font-mono, monospace)'
+
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
       <div
         style={{
-          width: 420,
-          maxWidth: 'calc(100% - 32px)',
-          padding: '20px 22px',
-          borderRadius: 18,
-          backgroundColor: 'rgba(12, 12, 16, 0.82)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 22px 48px rgba(0, 0, 0, 0.3)'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          maxWidth: 320
         }}
       >
-        <div
-          style={{
-            fontSize: 10,
-            fontFamily: typography.fontFamily.mono,
-            color: colors.text.muted,
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            marginBottom: 10
-          }}
-        >
-          Vault Canvas
-        </div>
         <h2
           style={{
             margin: 0,
-            fontSize: 18,
-            fontWeight: 500,
-            fontFamily: typography.fontFamily.display,
-            color: colors.text.primary,
-            lineHeight: 1.35,
-            marginBottom: 8
-          }}
-        >
-          Canvas is empty.
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontFamily: typography.fontFamily.body,
+            fontSize: 16,
+            fontWeight: 400,
+            fontFamily: plexSans,
             color: colors.text.secondary,
-            lineHeight: 1.6,
-            marginBottom: 14
+            lineHeight: 1.5,
+            letterSpacing: '0.01em'
           }}
         >
-          Drag notes in from the Files sidebar, or press Cmd+G to place a note without leaving the
-          canvas.
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8
-          }}
-        >
+          Drag notes from the sidebar, or{' '}
           <span
             style={{
-              fontSize: 11,
-              fontFamily: typography.fontFamily.mono,
-              color: colors.text.secondary,
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 999,
-              padding: '6px 10px'
+              fontFamily: plexMono,
+              fontSize: 13,
+              color: colors.text.muted,
+              letterSpacing: '0.04em'
             }}
           >
-            Drag from Files
+            Cmd+G
           </span>
-          <span
+        </h2>
+        {rawFileCount > 0 && (
+          <p
             style={{
-              fontSize: 11,
-              fontFamily: typography.fontFamily.mono,
-              color: colors.text.secondary,
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 999,
-              padding: '6px 10px'
+              margin: '12px 0 0',
+              fontSize: 12,
+              fontFamily: plexMono,
+              color: colors.text.muted,
+              letterSpacing: '0.02em'
             }}
           >
-            Cmd+G import
-          </span>
-          {rawFileCount > 0 && (
-            <span
-              style={{
-                fontSize: 11,
-                fontFamily: typography.fontFamily.mono,
-                color: colors.text.primary,
-                backgroundColor: 'rgba(92, 184, 196, 0.1)',
-                border: '1px solid rgba(92, 184, 196, 0.2)',
-                borderRadius: 999,
-                padding: '6px 10px'
-              }}
-            >
-              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} ready for /connect-vault
-            </span>
-          )}
-        </div>
+            {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} ready for /connect-vault
+          </p>
+        )}
       </div>
     </div>
   )

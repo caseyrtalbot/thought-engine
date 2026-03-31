@@ -94,10 +94,17 @@ function applyEnvCssVars(resolved: ResolvedThemeId, env: EnvironmentSettings): v
 
   root.style.setProperty('--canvas-card-title-bg', `rgba(0, 0, 0, ${env.cardHeaderDarkness / 100})`)
 
-  const l = env.panelLightness
-  root.style.setProperty('--color-bg-base', `hsl(0, 0%, ${l}%)`)
-  root.style.setProperty('--color-bg-surface', `hsl(0, 0%, ${Math.min(l + 7, 100)}%)`)
-  root.style.setProperty('--color-bg-elevated', `hsl(0, 0%, ${Math.min(l + 13, 100)}%)`)
+  const { r, g, b } = base.canvasSurface
+  const railOp = env.activityBarOpacity / 100
+  root.style.setProperty('--color-bg-base', `rgba(${r}, ${g}, ${b}, ${railOp})`)
+  root.style.setProperty(
+    '--color-bg-surface',
+    `rgba(${r}, ${g}, ${b}, ${Math.min(railOp + 0.07, 1)})`
+  )
+  root.style.setProperty(
+    '--color-bg-elevated',
+    `rgba(${r}, ${g}, ${b}, ${Math.min(railOp + 0.13, 1)})`
+  )
 
   root.style.setProperty('--color-border-default', structural.border.default)
   root.style.setProperty('--border-subtle', structural.border.subtle)

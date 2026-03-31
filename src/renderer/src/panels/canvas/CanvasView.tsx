@@ -560,28 +560,6 @@ export function CanvasView(): React.ReactElement {
 
         <EdgeDots containerWidth={containerSize.width} containerHeight={containerSize.height} />
 
-        {/* Hint: files need enrichment */}
-        {rawFileCount > 0 && (
-          <div
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none text-center"
-            style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}
-          >
-            <span
-              className="uppercase tracking-[0.14em]"
-              style={{ color: 'var(--color-accent-default)', opacity: 0.72 }}
-            >
-              Enrichment
-            </span>
-            <span className="mx-2" style={{ color: 'var(--color-text-muted)', opacity: 0.2 }}>
-              |
-            </span>
-            <span style={{ color: 'var(--color-text-secondary)', opacity: 0.6 }}>
-              {rawFileCount} file{rawFileCount !== 1 ? 's' : ''} still need metadata. Run
-              {' /connect-vault'}
-            </span>
-          </div>
-        )}
-
         <CanvasMinimap
           containerWidth={containerSize.width}
           containerHeight={containerSize.height}

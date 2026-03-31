@@ -263,17 +263,7 @@ function EnvironmentTab() {
       </SettingRow>
 
       <SectionHeading>Panels</SectionHeading>
-      <SettingRow label="Panel Lightness">
-        <SliderInput
-          value={env.panelLightness}
-          min={0}
-          max={100}
-          step={1}
-          unit="%"
-          onChange={(v) => setEnv('panelLightness', v)}
-        />
-      </SettingRow>
-      <SettingRow label="Rail Opacity">
+      <SettingRow label="Chrome Opacity">
         <SliderInput
           value={env.activityBarOpacity}
           min={20}
