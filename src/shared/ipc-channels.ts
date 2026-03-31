@@ -24,6 +24,10 @@ export interface IpcChannels {
   'fs:read-binary': { request: { path: string }; response: string }
   'fs:list-all-files': { request: { dir: string }; response: FilesystemFileEntry[] }
   'fs:file-mtime': { request: { path: string }; response: string | null }
+  'fs:read-files-batch': {
+    request: { paths: readonly string[] }
+    response: Array<{ path: string; content: string | null; error?: string }>
+  }
 
   // --- Vault ---
   'vault:read-config': { request: { vaultPath: string }; response: VaultConfig }

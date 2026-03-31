@@ -131,6 +131,43 @@ export function registerFilesystemIpc(): void {
     return fileService.listAllFilesRecursive(args.dir, ignoreFilter)
   })
 
+  typedHandle('fs:read-files-batch', async (args) => {
+    const MAX_BATCH_SIZE = 50
+    if (args.paths.length > MAX_BATCH_SIZE) {
+      throw new Error(
+        `fs:read-files-batch: batch size ${args.paths.length} exceeds max ${MAX_BATCH_SIZE}`
+      )
+    }
+
+    const pLimit = (await import('p-limit')).default
+    const limit = pLimit(8)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15_000)
+
+    try {
+      const results = await Promise.all(
+        args.paths.map((filePath) =>
+          limit(async () => {
+            if (controller.signal.aborted) {
+              return { path: filePath, content: null, error: 'timeout' }
+            }
+            try {
+              const resolved = guardPath(filePath, 'fs:read-files-batch')
+              const { readFile } = await import('node:fs/promises')
+              const content = await readFile(resolved, 'utf-8')
+              return { path: filePath, content }
+            } catch (err) {
+              return { path: filePath, content: null, error: String(err) }
+            }
+          })
+        )
+      )
+      return results
+    } finally {
+      clearTimeout(timeout)
+    }
+  })
+
   // --- App-level (no vault guard) ---
 
   typedHandle('app:path-exists', async (args) => {

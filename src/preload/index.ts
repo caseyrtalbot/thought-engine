@@ -39,7 +39,8 @@ const api = {
     mkdir: (path: string) => typedInvoke('fs:mkdir', { path }),
     readBinary: (path: string) => typedInvoke('fs:read-binary', { path }),
     listAllFiles: (dir: string) => typedInvoke('fs:list-all-files', { dir }),
-    fileMtime: (path: string) => typedInvoke('fs:file-mtime', { path })
+    fileMtime: (path: string) => typedInvoke('fs:file-mtime', { path }),
+    readFilesBatch: (paths: readonly string[]) => typedInvoke('fs:read-files-batch', { paths })
   },
   vault: {
     init: (vaultPath: string) => typedInvoke('vault:init', { vaultPath }),
