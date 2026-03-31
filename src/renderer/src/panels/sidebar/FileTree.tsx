@@ -429,7 +429,7 @@ function FileRow({
   node,
   isActive,
   artifactType: _artifactType,
-  isOnCanvas: _isOnCanvas,
+  isOnCanvas,
   canvasConnectionCount,
   onFileSelect,
   onFileDoubleClick,
@@ -494,8 +494,25 @@ function FileRow({
           e.currentTarget.style.borderLeftColor = treeGuideColor(isActive ? 'active' : 'rest')
       }}
     >
-      <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: isActive ? 1 : 0.5 }}>
+      <span
+        className="mr-1.5 flex items-center shrink-0 relative"
+        style={{ opacity: isActive ? 1 : isOnCanvas ? 0.8 : 0.5 }}
+      >
         <FileIcon filename={node.name} />
+        {isOnCanvas && (
+          <span
+            style={{
+              position: 'absolute',
+              top: -1,
+              right: -2,
+              width: 4,
+              height: 4,
+              borderRadius: '50%',
+              backgroundColor: colors.accent.default,
+              opacity: 0.7
+            }}
+          />
+        )}
       </span>
       {isRenaming ? (
         <RenameInput

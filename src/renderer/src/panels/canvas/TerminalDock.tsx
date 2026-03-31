@@ -178,14 +178,14 @@ export function TerminalDock({
 
   const wrapperStyle: React.CSSProperties = {
     position: 'absolute',
-    bottom: 32,
-    left: '50%',
-    transform: 'translateX(-50%)',
+    top: 12,
+    right: 12,
     zIndex: 25,
     pointerEvents: 'none',
     display: 'flex',
-    justifyContent: 'center',
-    maxWidth: 'calc(100% - 200px)'
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 6
   }
 
   if (collapsed) {
@@ -196,6 +196,7 @@ export function TerminalDock({
           className="te-card-enter"
           style={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             gap: 6,
             pointerEvents: 'auto',
@@ -206,15 +207,6 @@ export function TerminalDock({
           {statuses.map((s) => (
             <div key={s.nodeId} data-testid="status-dot" style={dotStyle(s.status)} />
           ))}
-          <span
-            style={{
-              fontFamily: typography.fontFamily.mono,
-              fontSize: 11,
-              color: colors.text.muted
-            }}
-          >
-            {statuses.length} terminal{statuses.length !== 1 ? 's' : ''}
-          </span>
         </div>
       </div>
     )
@@ -224,38 +216,15 @@ export function TerminalDock({
     <div style={wrapperStyle}>
       <div
         data-testid="terminal-dock-bar"
-        className="te-card-enter te-dock-scroll-hidden"
+        className="te-card-enter"
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: spacing.unit,
-          pointerEvents: 'auto',
-          width: 'fit-content',
-          maxWidth: '100%',
-          overflowX: 'auto'
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 4,
+          pointerEvents: 'auto'
         }}
       >
-        <button
-          type="button"
-          data-testid="dock-toggle"
-          onClick={() => handleToggle(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 18,
-            height: 18,
-            background: 'none',
-            border: 'none',
-            color: colors.text.muted,
-            cursor: 'pointer',
-            padding: 0,
-            flexShrink: 0
-          }}
-          title="Collapse dock"
-        >
-          <CaretDown size={10} />
-        </button>
         {statuses.map((s) => {
           const node = terminalNodes.find((n) => n.id === s.nodeId)
           if (!node) return null
