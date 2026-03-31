@@ -370,7 +370,7 @@ function DirectoryRow({
     <div
       onClick={() => onToggleDirectory(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, true)}
-      className="tree-directory-row flex items-center py-[2px] cursor-pointer transition-colors"
+      className="tree-directory-row flex items-center py-[2px] transition-colors"
       style={{
         paddingLeft: node.depth === 0 ? 8 : undefined,
         paddingRight: 8,
@@ -478,7 +478,7 @@ function FileRow({
       onClick={() => onFileSelect(node.path)}
       onDoubleClick={() => (onFileDoubleClick ?? onFileSelect)(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, false)}
-      className="flex items-center py-[2px] cursor-pointer file-row-hover"
+      className="flex items-center py-[2px] file-row-hover"
       style={{
         paddingLeft: node.depth === 0 ? 24 : undefined,
         paddingRight: 8,
@@ -494,7 +494,7 @@ function FileRow({
           e.currentTarget.style.borderLeftColor = treeGuideColor(isActive ? 'active' : 'rest')
       }}
     >
-      <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: isActive ? 0.9 : 0.7 }}>
+      <span className="mr-1.5 flex items-center shrink-0" style={{ opacity: isActive ? 1 : 0.5 }}>
         <FileIcon filename={node.name} />
       </span>
       {isRenaming ? (
@@ -504,7 +504,10 @@ function FileRow({
           onCancel={onRenameCancel ?? (() => {})}
         />
       ) : (
-        <span className="truncate flex-1 file-name-text" style={{ color: colors.text.primary }}>
+        <span
+          className="truncate flex-1 file-name-text"
+          style={{ color: isActive ? colors.text.primary : colors.text.secondary }}
+        >
           {base}
           {ext && <span className="file-name-text__ext">{ext}</span>}
         </span>

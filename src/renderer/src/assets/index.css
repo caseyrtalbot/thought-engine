@@ -640,35 +640,15 @@ body {
 
 .file-row-hover {
   position: relative;
-  border: 1px solid transparent;
-  border-radius: 4px;
   margin: 1px 0;
-  transition:
-    background-color 150ms ease-out,
-    border-color 150ms ease-out;
+  transition: color 150ms ease-out;
 }
 
 .file-row-hover::before {
   display: none;
 }
 
-.file-row-hover[data-active='true'] {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-
-.file-row-hover[data-active='true'] .file-name-text {
-  font-weight: 600;
-  color: var(--color-text-primary) !important;
-}
-
-.file-row-hover:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
 .file-row-hover:hover .file-name-text {
-  font-weight: 600;
   color: var(--color-text-primary) !important;
 }
 
