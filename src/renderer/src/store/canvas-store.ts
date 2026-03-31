@@ -48,6 +48,10 @@ interface CanvasStore {
   // Bridge: registered by CanvasView for accurate viewport centering
   readonly centerOnNode: ((nodeId: string) => void) | null
 
+  // Folder-map: pending folder path to map onto canvas (set by sidebar/command palette)
+  readonly pendingFolderMap: string | null
+  setPendingFolderMap: (path: string | null) => void
+
   // Document lifecycle
   loadCanvas: (filePath: string, data: CanvasFile) => void
   closeCanvas: () => void
@@ -141,6 +145,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   splitFilePath: null,
   clusterLabels: [],
   centerOnNode: null,
+  pendingFolderMap: null,
+  setPendingFolderMap: (path) => set({ pendingFolderMap: path }),
 
   loadCanvas: (filePath, data) =>
     set({

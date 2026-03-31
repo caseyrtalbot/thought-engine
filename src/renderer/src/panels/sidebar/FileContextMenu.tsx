@@ -23,6 +23,7 @@ const FILE_ACTIONS: readonly ContextMenuAction[] = [
 
 const FOLDER_ACTIONS: readonly ContextMenuAction[] = [
   { id: 'new-file', label: 'New note in folder' },
+  { id: 'map-to-canvas', label: 'Map to Canvas', separator: true },
   { id: 'copy-path', label: 'Copy path', separator: true },
   { id: 'reveal-finder', label: 'Reveal in Finder', separator: true },
   { id: 'rename', label: 'Rename...' },

@@ -486,6 +486,11 @@ function ConnectedSidebar({
           useVaultStore.getState().setFiles(current.filter((f) => f.path !== action.path))
           break
         }
+        case 'map-to-canvas': {
+          useViewStore.getState().setContentView('canvas')
+          useCanvasStore.getState().setPendingFolderMap(action.path)
+          break
+        }
       }
     },
     [files]
@@ -594,6 +599,13 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     category: 'command',
     shortcut: '\u21E7\u2318G',
     description: 'Open or hide the graph panel.'
+  },
+  {
+    id: 'cmd:map-vault-root',
+    label: 'Map Vault Root',
+    category: 'command',
+    description: 'Analyze vault structure and visualize it on the canvas.',
+    keywords: ['folder', 'project', 'map', 'canvas']
   }
 ]
 
@@ -1067,6 +1079,12 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           break
         case 'cmd:workbench-toggle-thread':
           if (workbenchToggleThread) await workbenchToggleThread()
+          break
+        case 'cmd:map-vault-root':
+          if (vaultPath) {
+            setContentView('canvas')
+            useCanvasStore.getState().setPendingFolderMap(vaultPath)
+          }
           break
       }
     },
