@@ -3,8 +3,10 @@ import {
   extractImportSpecifiers,
   resolveImportPath,
   extractMarkdownRefs,
-  extractConfigPathRefs
+  extractConfigPathRefs,
+  buildProjectMapSnapshot
 } from '@shared/engine/project-map-analyzers'
+import type { ProjectMapOptions } from '@shared/engine/project-map-types'
 
 describe('extractImportSpecifiers', () => {
   it('extracts named import', () => {
@@ -188,5 +190,93 @@ describe('extractConfigPathRefs', () => {
 
   it('handles empty content', () => {
     expect(extractConfigPathRefs('')).toEqual([])
+  })
+})
+
+describe('buildProjectMapSnapshot', () => {
+  const ROOT = '/project'
+  const defaultOpts: ProjectMapOptions = { expandDepth: 2, maxNodes: 200 }
+
+  it('builds nodes for a simple folder', () => {
+    const files = [
+      { path: '/project/src/app.ts', content: '' },
+      { path: '/project/src/utils.ts', content: '' }
+    ]
+    const snapshot = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    expect(snapshot.nodes.length).toBe(4) // root + src + 2 files
+    expect(snapshot.nodes.filter((n) => n.isDirectory).length).toBe(2)
+  })
+
+  it('builds contains edges for parent-child', () => {
+    const snapshot = buildProjectMapSnapshot(
+      ROOT,
+      [{ path: '/project/src/app.ts', content: '' }],
+      defaultOpts
+    )
+    expect(snapshot.edges.filter((e) => e.kind === 'contains').length).toBe(2) // root->src, src->app
+  })
+
+  it('builds imports edges from import specifiers', () => {
+    const files = [
+      { path: '/project/src/app.ts', content: `import { foo } from './utils'` },
+      { path: '/project/src/utils.ts', content: '' }
+    ]
+    expect(
+      buildProjectMapSnapshot(ROOT, files, defaultOpts).edges.filter((e) => e.kind === 'imports')
+        .length
+    ).toBe(1)
+  })
+
+  it('builds references edges from markdown wikilinks', () => {
+    const files = [
+      { path: '/project/docs/index.md', content: `See [[guide]]` },
+      { path: '/project/docs/guide.md', content: '' }
+    ]
+    expect(
+      buildProjectMapSnapshot(ROOT, files, defaultOpts).edges.filter((e) => e.kind === 'references')
+        .length
+    ).toBe(1)
+  })
+
+  it('reports unresolved refs', () => {
+    const files = [{ path: '/project/src/app.ts', content: `import { foo } from './nonexistent'` }]
+    const snapshot = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    expect(snapshot.unresolvedRefs.length).toBe(1)
+    expect(snapshot.unresolvedRefs[0]).toContain('nonexistent')
+  })
+
+  it('generates deterministic IDs', () => {
+    const files = [{ path: '/project/src/app.ts', content: '' }]
+    const s1 = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    const s2 = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    expect(s1.nodes.map((n) => n.id)).toEqual(s2.nodes.map((n) => n.id))
+  })
+
+  it('respects maxNodes', () => {
+    const files = Array.from({ length: 50 }, (_, i) => ({
+      path: `/project/file${i}.ts`,
+      content: ''
+    }))
+    const snapshot = buildProjectMapSnapshot(ROOT, files, { expandDepth: 2, maxNodes: 10 })
+    expect(snapshot.nodes.length).toBeLessThanOrEqual(10)
+    expect(snapshot.truncated).toBe(true)
+    expect(snapshot.totalFileCount).toBe(50)
+  })
+
+  it('skips binary files and counts them', () => {
+    const files = [
+      { path: '/project/image.png', content: '' },
+      { path: '/project/app.ts', content: '' }
+    ]
+    const snapshot = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    expect(snapshot.nodes.filter((n) => !n.isDirectory).length).toBe(1)
+    expect(snapshot.skippedCount).toBe(1)
+  })
+
+  it('handles files with read errors', () => {
+    const files = [
+      { path: '/project/app.ts', content: null as unknown as string, error: 'read failed' }
+    ]
+    expect(buildProjectMapSnapshot(ROOT, files, defaultOpts).skippedCount).toBe(1)
   })
 })

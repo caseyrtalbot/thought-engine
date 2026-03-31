@@ -3,6 +3,16 @@
  * Zero dependencies beyond project-map-types. Worker-safe.
  */
 
+import type {
+  ProjectMapEdge,
+  ProjectMapNode,
+  ProjectMapOptions,
+  ProjectMapSnapshot
+} from './project-map-types'
+import type { CanvasNodeType } from '../canvas-types'
+import { stableNodeId, isBinaryPath } from './project-map-types'
+import * as path from 'path'
+
 // ─── Import Extraction ──────────────────────────────────────────────
 
 /**
@@ -41,8 +51,6 @@ export function extractImportSpecifiers(code: string): readonly string[] {
 }
 
 // ─── Path Resolution ──────────────────────────────────────────────
-
-import * as path from 'path'
 
 const EXTENSION_PRIORITY = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md'] as const
 const INDEX_PRIORITY = EXTENSION_PRIORITY.map((ext) => `index${ext}`)
@@ -129,4 +137,252 @@ export function extractConfigPathRefs(content: string): readonly string[] {
   }
 
   return refs
+}
+
+// ─── File Type Detection ─────────────────────────────────────────────
+
+const TS_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
+const MD_EXTENSIONS = new Set(['.md', '.mdx'])
+const CONFIG_EXTENSIONS = new Set(['.json', '.yaml', '.yml', '.toml'])
+
+function inferNodeType(filePath: string): CanvasNodeType {
+  const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase()
+  if (MD_EXTENSIONS.has(ext)) return 'note'
+  return 'project-file'
+}
+
+// ─── Wikilink Resolution ──────────────────────────────────────────────
+
+function resolveWikilink(
+  target: string,
+  allFilePaths: ReadonlySet<string>,
+  rootPath: string
+): string | null {
+  const normalized = target.toLowerCase()
+  for (const fp of allFilePaths) {
+    if (!fp.startsWith(rootPath)) continue
+    const stem = path.basename(fp, path.extname(fp)).toLowerCase()
+    if (stem === normalized) return fp
+  }
+  return null
+}
+
+// ─── Snapshot Builder ──────────────────────────────────────────────
+
+export interface FileInput {
+  readonly path: string
+  readonly content: string | null
+  readonly error?: string
+}
+
+/**
+ * Build a ProjectMapSnapshot from a root path and file contents.
+ * Pure function, no I/O. Extracts containment, imports, and references.
+ */
+export function buildProjectMapSnapshot(
+  rootPath: string,
+  files: readonly FileInput[],
+  options: ProjectMapOptions
+): ProjectMapSnapshot {
+  const allFilePaths = new Set(
+    files.filter((f) => f.content !== null && !f.error).map((f) => f.path)
+  )
+  const edges: ProjectMapEdge[] = []
+  const unresolvedRefs: string[] = []
+  let skippedCount = 0
+
+  // Track directories we've seen
+  const dirNodes = new Map<string, ProjectMapNode & { children: string[] }>()
+
+  function ensureDirNode(dirPath: string, depth: number): ProjectMapNode & { children: string[] } {
+    const existing = dirNodes.get(dirPath)
+    if (existing) return existing
+    const relativePath = dirPath === rootPath ? '' : path.relative(rootPath, dirPath)
+    const node: ProjectMapNode & { children: string[] } = {
+      id: stableNodeId(rootPath, relativePath || '.'),
+      relativePath: relativePath || '.',
+      name: path.basename(dirPath) || path.basename(rootPath),
+      isDirectory: true,
+      nodeType: 'project-folder' as CanvasNodeType,
+      depth,
+      lineCount: 0,
+      children: [],
+      childCount: 0
+    }
+    dirNodes.set(dirPath, node)
+    return node
+  }
+
+  // Build directory tree + file nodes
+  const fileNodes = new Map<string, ProjectMapNode>()
+
+  for (const file of files) {
+    if (file.content === null || file.error) {
+      skippedCount++
+      continue
+    }
+
+    if (isBinaryPath(file.path)) {
+      skippedCount++
+      continue
+    }
+
+    const relativePath = path.relative(rootPath, file.path)
+    const depth = relativePath.split(path.sep).length
+    const lineCount = file.content.split('\n').length
+
+    const node: ProjectMapNode = {
+      id: stableNodeId(rootPath, relativePath),
+      relativePath,
+      name: path.basename(file.path),
+      isDirectory: false,
+      nodeType: inferNodeType(file.path),
+      depth,
+      lineCount,
+      children: [],
+      childCount: 0
+    }
+    fileNodes.set(file.path, node)
+
+    // Ensure parent directories exist and link children
+    let parentPath = path.dirname(file.path)
+    let childPath = file.path
+    let parentDepth = depth - 1
+
+    while (parentPath.length >= rootPath.length) {
+      const parentNode = ensureDirNode(parentPath, parentDepth)
+      const childId =
+        childPath === file.path
+          ? node.id
+          : (dirNodes.get(childPath)?.id ?? fileNodes.get(childPath)?.id ?? '')
+
+      if (childId && !parentNode.children.includes(childId)) {
+        parentNode.children.push(childId)
+      }
+
+      if (parentPath === rootPath) break
+      childPath = parentPath
+      parentPath = path.dirname(parentPath)
+      parentDepth--
+    }
+  }
+
+  // Collect all nodes, respecting maxNodes
+  const allDirNodes = [...dirNodes.values()]
+  const allFileNodes = [...fileNodes.values()]
+  const totalFileCount = allFileNodes.length
+
+  // Sort by depth for breadth-first truncation
+  const sortedNodes = [...allDirNodes, ...allFileNodes].sort((a, b) => a.depth - b.depth)
+
+  const truncated = sortedNodes.length > options.maxNodes
+  const includedNodes = sortedNodes.slice(0, options.maxNodes)
+  const includedIds = new Set(includedNodes.map((n) => n.id))
+
+  // Freeze nodes as immutable ProjectMapNode (filter children to included set)
+  const frozenNodes: ProjectMapNode[] = includedNodes.map((n) => {
+    const dirEntry = dirNodes.get(
+      n.isDirectory
+        ? n.relativePath === '.'
+          ? rootPath
+          : path.resolve(rootPath, n.relativePath)
+        : ''
+    )
+    const mutableChildren = dirEntry ? dirEntry.children : []
+    return {
+      ...n,
+      childCount: n.isDirectory ? mutableChildren.length : 0,
+      children: n.isDirectory ? mutableChildren.filter((id) => includedIds.has(id)) : []
+    }
+  })
+
+  // Build containment edges
+  for (const dirNode of allDirNodes) {
+    if (!includedIds.has(dirNode.id)) continue
+    for (const childId of dirNode.children) {
+      if (includedIds.has(childId)) {
+        edges.push({ source: dirNode.id, target: childId, kind: 'contains' })
+      }
+    }
+  }
+
+  // Build import/reference edges
+  for (const file of files) {
+    if (file.content === null || file.error || isBinaryPath(file.path)) continue
+    const sourceNode = fileNodes.get(file.path)
+    if (!sourceNode || !includedIds.has(sourceNode.id)) continue
+
+    const ext = file.path.slice(file.path.lastIndexOf('.')).toLowerCase()
+
+    // TS/JS imports
+    if (TS_EXTENSIONS.has(ext)) {
+      const specifiers = extractImportSpecifiers(file.content)
+      for (const spec of specifiers) {
+        const resolved = resolveImportPath(spec, file.path, allFilePaths, rootPath)
+        if (resolved) {
+          const targetNode = fileNodes.get(resolved)
+          if (targetNode && includedIds.has(targetNode.id)) {
+            edges.push({ source: sourceNode.id, target: targetNode.id, kind: 'imports' })
+          }
+        } else {
+          unresolvedRefs.push(`${sourceNode.relativePath}: ${spec}`)
+        }
+      }
+    }
+
+    // Markdown refs
+    if (MD_EXTENSIONS.has(ext)) {
+      const refs = extractMarkdownRefs(file.content)
+      for (const ref of refs) {
+        // Try as relative path first
+        if (ref.startsWith('./') || ref.startsWith('../')) {
+          const resolved = resolveImportPath(ref, file.path, allFilePaths, rootPath)
+          if (resolved) {
+            const targetNode = fileNodes.get(resolved)
+            if (targetNode && includedIds.has(targetNode.id)) {
+              edges.push({ source: sourceNode.id, target: targetNode.id, kind: 'references' })
+            }
+          } else {
+            unresolvedRefs.push(`${sourceNode.relativePath}: ${ref}`)
+          }
+        } else {
+          // Wikilink -- resolve by filename stem
+          const resolved = resolveWikilink(ref, allFilePaths, rootPath)
+          if (resolved) {
+            const targetNode = fileNodes.get(resolved)
+            if (targetNode && includedIds.has(targetNode.id)) {
+              edges.push({ source: sourceNode.id, target: targetNode.id, kind: 'references' })
+            }
+          } else {
+            unresolvedRefs.push(`${sourceNode.relativePath}: [[${ref}]]`)
+          }
+        }
+      }
+    }
+
+    // Config path refs
+    if (CONFIG_EXTENSIONS.has(ext)) {
+      const refs = extractConfigPathRefs(file.content)
+      for (const ref of refs) {
+        const resolved = resolveImportPath(ref, file.path, allFilePaths, rootPath)
+        if (resolved) {
+          const targetNode = fileNodes.get(resolved)
+          if (targetNode && includedIds.has(targetNode.id)) {
+            edges.push({ source: sourceNode.id, target: targetNode.id, kind: 'references' })
+          }
+        }
+        // Config refs that don't resolve are silently ignored
+      }
+    }
+  }
+
+  return {
+    rootPath,
+    nodes: frozenNodes,
+    edges,
+    truncated,
+    totalFileCount,
+    skippedCount,
+    unresolvedRefs
+  }
 }
