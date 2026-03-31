@@ -18,7 +18,8 @@ const ALL_TYPES: CanvasNodeType[] = [
   'project-file',
   'system-artifact',
   'file-view',
-  'agent-session'
+  'agent-session',
+  'project-folder'
 ]
 
 describe('canvas-types registration completeness', () => {
@@ -69,5 +70,32 @@ describe('canvas-types registration completeness', () => {
       startedAt: 0,
       lastActivity: 0
     })
+  })
+
+  it('project-folder default metadata has expected shape', () => {
+    const meta = getDefaultMetadata('project-folder')
+    expect(meta).toMatchObject({
+      relativePath: '',
+      rootPath: '',
+      childCount: 0,
+      collapsed: false
+    })
+  })
+
+  it('project-folder has correct card type info', () => {
+    const info = CARD_TYPE_INFO['project-folder']
+    expect(info.label).toBe('Folder')
+    expect(info.icon).toBe('\u{1F4C1}')
+    expect(info.category).toBe('tools')
+  })
+
+  it('project-folder min size is 200x60', () => {
+    const size = getMinSize('project-folder')
+    expect(size).toEqual({ width: 200, height: 60 })
+  })
+
+  it('project-folder default size is 260x80', () => {
+    const size = getDefaultSize('project-folder')
+    expect(size).toEqual({ width: 260, height: 80 })
   })
 })
