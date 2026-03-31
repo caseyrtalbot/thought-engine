@@ -68,6 +68,8 @@ export function inferLanguage(path: string): string {
     case '.css':
     case '.scss':
       return 'css'
+    case '.md':
+      return 'markdown'
     default:
       return 'plaintext'
   }

@@ -7,6 +7,7 @@ export const LANGUAGES = [
   'json',
   'html',
   'css',
+  'markdown',
   'plaintext'
 ] as const
 
@@ -37,6 +38,10 @@ export async function loadLanguageExtension(lang: SupportedLanguage): Promise<Ex
     case 'css': {
       const { css } = await import('@codemirror/lang-css')
       return css()
+    }
+    case 'markdown': {
+      const { markdown } = await import('@codemirror/lang-markdown')
+      return markdown()
     }
     default:
       return null
