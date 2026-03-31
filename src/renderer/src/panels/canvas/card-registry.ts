@@ -19,5 +19,6 @@ export const LazyCards: Record<
   'project-file': lazy(() => import('../../panels/workbench/WorkbenchFileCard')),
   'system-artifact': lazy(() => import('../../panels/workbench/SystemArtifactCard')),
   'file-view': lazy(() => import('./FileViewCard')),
-  'agent-session': lazy(() => import('./AgentSessionCard'))
+  'agent-session': lazy(() => import('./AgentSessionCard')),
+  'project-folder': lazy(() => import('./ProjectFolderCard'))
 }
