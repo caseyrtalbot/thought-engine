@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { CanvasNode, CanvasEdge, CanvasViewport, CanvasFile } from '@shared/canvas-types'
 import { getDefaultMetadata } from '@shared/canvas-types'
+import { applyPlanOps } from '@shared/canvas-mutation-types'
+import type { CanvasMutationPlan } from '@shared/canvas-mutation-types'
 import type { OntologySnapshot, OntologyLayoutResult, GroupId } from '@shared/engine/ontology-types'
 import { spatialSort, nextCard, prevCard } from '../panels/canvas/canvas-spatial-nav'
 import {
@@ -78,6 +80,9 @@ interface CanvasStore {
 
   // Batch mutations
   addNodesAndEdges: (nodes: readonly CanvasNode[], edges: readonly CanvasEdge[]) => void
+
+  // Agent plan application (single atomic update for all ops)
+  applyAgentPlan: (plan: CanvasMutationPlan) => void
 
   // Edge mutations
   addEdge: (edge: CanvasEdge) => void
@@ -288,6 +293,12 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       edges: [...s.edges, ...edges],
       isDirty: true
     })),
+
+  applyAgentPlan: (plan) =>
+    set((s) => {
+      const result = applyPlanOps(s.nodes, s.edges, plan.ops)
+      return { nodes: result.nodes, edges: result.edges, isDirty: true }
+    }),
 
   addEdge: (edge) => set((s) => ({ edges: [...s.edges, edge], isDirty: true })),
 
