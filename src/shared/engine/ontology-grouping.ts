@@ -5,7 +5,14 @@ import type {
   InterGroupEdge,
   OntologyColorToken
 } from './ontology-types'
-import { groupId, revisionId, MAX_GROUP_DEPTH, ONTOLOGY_COLOR_TOKENS } from './ontology-types'
+import {
+  groupId,
+  revisionId,
+  MAX_GROUP_DEPTH,
+  ONTOLOGY_COLOR_TOKENS,
+  EDGE_WEIGHT_TABLE,
+  LINK_CLUSTER_MIN_SIZE
+} from './ontology-types'
 
 // --- Input types ---
 
@@ -356,6 +363,214 @@ function buildGroups(
   }
 }
 
+// --- Step 4: Link-based sub-grouping ---
+
+/**
+ * Get the effective weight for a graph edge kind from EDGE_WEIGHT_TABLE.
+ * Unknown kinds get weight 0 (ignored).
+ */
+function edgeWeight(kind: string): number {
+  return EDGE_WEIGHT_TABLE[kind] ?? 0
+}
+
+/**
+ * Build a weighted undirected adjacency map for a set of artifact IDs.
+ * Only includes edges where both endpoints are in the given set and weight >= 2.
+ */
+function buildWeightedAdjacency(
+  artifactIds: ReadonlySet<string>,
+  graphEdges: OntologyGroupingInput['graphEdges']
+): ReadonlyMap<string, ReadonlyMap<string, number>> {
+  const adj = new Map<string, Map<string, number>>()
+
+  for (const edge of graphEdges) {
+    if (!artifactIds.has(edge.source) || !artifactIds.has(edge.target)) continue
+    if (edge.source === edge.target) continue
+
+    const weight = edgeWeight(edge.kind)
+    if (weight < 2) continue
+
+    // Undirected: add both directions
+    const [a, b] =
+      edge.source < edge.target ? [edge.source, edge.target] : [edge.target, edge.source]
+
+    if (!adj.has(a)) adj.set(a, new Map())
+    if (!adj.has(b)) adj.set(b, new Map())
+
+    const aMap = adj.get(a)!
+    const bMap = adj.get(b)!
+
+    // Take max weight if multiple edge kinds connect the same pair
+    aMap.set(b, Math.max(aMap.get(b) ?? 0, weight))
+    bMap.set(a, Math.max(bMap.get(a) ?? 0, weight))
+  }
+
+  return adj
+}
+
+/**
+ * Find connected components in the weighted adjacency graph.
+ * Returns arrays of artifact IDs, each representing a component.
+ */
+function findConnectedComponents(
+  adj: ReadonlyMap<string, ReadonlyMap<string, number>>
+): readonly (readonly string[])[] {
+  const visited = new Set<string>()
+  const components: string[][] = []
+
+  for (const node of adj.keys()) {
+    if (visited.has(node)) continue
+
+    const component: string[] = []
+    const stack = [node]
+
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      if (visited.has(current)) continue
+      visited.add(current)
+      component.push(current)
+
+      const neighbors = adj.get(current)
+      if (neighbors) {
+        for (const neighbor of neighbors.keys()) {
+          if (!visited.has(neighbor)) {
+            stack.push(neighbor)
+          }
+        }
+      }
+    }
+
+    components.push(component)
+  }
+
+  return components
+}
+
+/**
+ * Choose a label for a link-based cluster.
+ * Fallback cascade: most-connected card's title + " cluster" -> "Linked cluster"
+ */
+function chooseLinkClusterLabel(
+  artifactIds: readonly string[],
+  adj: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  artifacts: OntologyGroupingInput['artifacts']
+): string {
+  // Find the most-connected artifact (by number of weighted neighbors)
+  let bestId = artifactIds[0]
+  let bestDegree = 0
+
+  for (const id of artifactIds) {
+    const neighbors = adj.get(id)
+    const degree = neighbors ? neighbors.size : 0
+    if (degree > bestDegree || (degree === bestDegree && id < bestId)) {
+      bestDegree = degree
+      bestId = id
+    }
+  }
+
+  const artifact = artifacts[bestId]
+  if (artifact && artifact.title) {
+    return `${artifact.title} cluster`
+  }
+
+  return 'Linked cluster'
+}
+
+/**
+ * Step 4: Within each root group, find clusters of heavily-linked cards
+ * that are not already in a child group. Create child groups for them.
+ */
+function applyLinkBasedSubGrouping(
+  groupBuilders: ReadonlyMap<string, MutableGroupBuilder>,
+  rootGroupKeys: readonly string[],
+  resolved: readonly ResolvedCard[],
+  input: OntologyGroupingInput
+): ReadonlyMap<string, MutableGroupBuilder> {
+  // Build cardId -> artifactId map
+  const cardToArtifact = new Map<string, string>()
+  for (const card of resolved) {
+    cardToArtifact.set(card.cardId, card.artifactId)
+  }
+
+  // Collect all card IDs that are already in child groups
+  const cardsInChildGroups = new Set<string>()
+  for (const [, builder] of groupBuilders) {
+    if (builder.parentGroupId !== null) {
+      for (const cardId of builder.cardIds) {
+        cardsInChildGroups.add(cardId)
+      }
+    }
+  }
+
+  // New groups to add
+  const newGroups = new Map<string, MutableGroupBuilder>()
+
+  for (const rootKey of rootGroupKeys) {
+    const rootBuilder = groupBuilders.get(rootKey)
+    if (!rootBuilder) continue
+
+    // Get cards directly in the root group (not in any child group)
+    // These are the candidates for link clustering
+    const candidateCardIds = rootBuilder.cardIds.filter((cid) => !cardsInChildGroups.has(cid))
+    if (candidateCardIds.length < LINK_CLUSTER_MIN_SIZE) continue
+
+    // Map candidate cards to artifact IDs
+    const candidateArtifactIds = new Set<string>()
+    const artifactToCard = new Map<string, string>()
+    for (const cardId of candidateCardIds) {
+      const artifactId = cardToArtifact.get(cardId)
+      if (artifactId) {
+        candidateArtifactIds.add(artifactId)
+        artifactToCard.set(artifactId, cardId)
+      }
+    }
+
+    // Build weighted adjacency for these candidates
+    const adj = buildWeightedAdjacency(candidateArtifactIds, input.graphEdges)
+
+    // Find connected components
+    const components = findConnectedComponents(adj)
+
+    // Create child groups for components meeting minimum size
+    for (const component of components) {
+      if (component.length < LINK_CLUSTER_MIN_SIZE) continue
+
+      const clusterCardIds = component
+        .map((artifactId) => artifactToCard.get(artifactId))
+        .filter((cid): cid is string => cid !== undefined)
+        .sort()
+
+      if (clusterCardIds.length < LINK_CLUSTER_MIN_SIZE) continue
+
+      const label = chooseLinkClusterLabel(component, adj, input.artifacts)
+      const sortedComponent = [...component].sort()
+      const id = groupId(`link:${sortedComponent.join(',')}`)
+
+      newGroups.set(id, {
+        id,
+        label,
+        parentGroupId: rootBuilder.id,
+        tagPaths: [],
+        cardIds: clusterCardIds
+      })
+
+      // Remove these cards from the root group
+      const clusterSet = new Set(clusterCardIds)
+      const remaining = rootBuilder.cardIds.filter((cid) => !clusterSet.has(cid))
+      rootBuilder.cardIds.length = 0
+      rootBuilder.cardIds.push(...remaining)
+    }
+  }
+
+  // Merge new groups into builders
+  const merged = new Map(groupBuilders)
+  for (const [key, group] of newGroups) {
+    merged.set(key, group)
+  }
+
+  return merged
+}
+
 // --- Step 5: Inter-group edges ---
 
 function computeInterGroupEdges(
@@ -462,7 +677,10 @@ export function computeOntologySnapshot(input: OntologyGroupingInput): OntologyS
   const assignments = assignPrimaryTags(resolved, canvasArtifactIds, input)
 
   // Step 3: Sub-grouping by nested tags
-  const { groupBuilders, rootGroupKeys } = buildGroups(assignments, resolved)
+  const { groupBuilders: tagGroupBuilders, rootGroupKeys } = buildGroups(assignments, resolved)
+
+  // Step 4: Link-based sub-grouping
+  const groupBuilders = applyLinkBasedSubGrouping(tagGroupBuilders, rootGroupKeys, resolved, input)
 
   // Build artifact -> root group id map for inter-group edges
   const artifactToRootGroupId = new Map<string, GroupId>()
@@ -501,16 +719,21 @@ export function computeOntologySnapshot(input: OntologyGroupingInput): OntologyS
 
     const colorToken = colorMap.get(builder.id) ?? parentColor ?? ONTOLOGY_COLOR_TOKENS[0]
 
+    const isLinkGroup = builder.id.startsWith('link:')
+    const provenance: OntologyGroupNode['provenance'] = isLinkGroup
+      ? { kind: 'link-analysis' as const, algorithm: 'weighted-components', confidence: 0.8 }
+      : {
+          kind: 'user-tag' as const,
+          tagPaths: builder.tagPaths.length > 0 ? builder.tagPaths : [builder.label]
+        }
+
     groupsById[builder.id] = {
       id: builder.id,
       label: builder.label,
       parentGroupId: builder.parentGroupId,
       colorToken,
       cardIds: builder.cardIds,
-      provenance: {
-        kind: 'user-tag' as const,
-        tagPaths: builder.tagPaths.length > 0 ? builder.tagPaths : [builder.label]
-      }
+      provenance
     }
   }
 

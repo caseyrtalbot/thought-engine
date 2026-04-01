@@ -276,6 +276,90 @@ describe('computeOntologySnapshot', () => {
     })
   })
 
+  describe('Step 4: link-based sub-grouping', () => {
+    it('creates child groups from heavily linked cards', () => {
+      // 5 cards in same tag group, 3 of them mutually linked
+      const cards = [makeCard('c1'), makeCard('c2'), makeCard('c3'), makeCard('c4'), makeCard('c5')]
+      const fileToId: Record<string, string> = {
+        '/vault/c1.md': 'a1',
+        '/vault/c2.md': 'a2',
+        '/vault/c3.md': 'a3',
+        '/vault/c4.md': 'a4',
+        '/vault/c5.md': 'a5'
+      }
+      const artifacts: Record<string, TestArtifact> = {
+        a1: makeArtifact('a1', ['systems']),
+        a2: makeArtifact('a2', ['systems']),
+        a3: makeArtifact('a3', ['systems']),
+        a4: makeArtifact('a4', ['systems']),
+        a5: makeArtifact('a5', ['systems'])
+      }
+      // a1, a2, a3 are heavily connected (connection = weight 3 each)
+      const graphEdges = [
+        { source: 'a1', target: 'a2', kind: 'connection' },
+        { source: 'a2', target: 'a3', kind: 'connection' },
+        { source: 'a1', target: 'a3', kind: 'connection' }
+      ]
+
+      const result = computeOntologySnapshot({ cards, fileToId, artifacts, graphEdges })
+
+      const childGroups = Object.values(result.groupsById).filter((g) => g.parentGroupId !== null)
+      expect(childGroups.length).toBeGreaterThanOrEqual(1)
+      // The cluster of a1,a2,a3 should be a child group
+      const clusterGroup = childGroups.find((g) => g.cardIds.length === 3)
+      expect(clusterGroup).toBeDefined()
+      expect(clusterGroup!.provenance.kind).toBe('link-analysis')
+    })
+
+    it('does not create child groups below LINK_CLUSTER_MIN_SIZE', () => {
+      const cards = [makeCard('c1'), makeCard('c2'), makeCard('c3')]
+      const fileToId: Record<string, string> = {
+        '/vault/c1.md': 'a1',
+        '/vault/c2.md': 'a2',
+        '/vault/c3.md': 'a3'
+      }
+      const artifacts: Record<string, TestArtifact> = {
+        a1: makeArtifact('a1', ['systems']),
+        a2: makeArtifact('a2', ['systems']),
+        a3: makeArtifact('a3', ['systems'])
+      }
+      // Only 2 cards linked — below LINK_CLUSTER_MIN_SIZE of 3
+      const graphEdges = [{ source: 'a1', target: 'a2', kind: 'connection' }]
+
+      const result = computeOntologySnapshot({ cards, fileToId, artifacts, graphEdges })
+
+      const childGroups = Object.values(result.groupsById).filter((g) => g.parentGroupId !== null)
+      expect(childGroups).toHaveLength(0)
+    })
+
+    it('uses edge weight table correctly', () => {
+      const cards = [makeCard('c1'), makeCard('c2'), makeCard('c3'), makeCard('c4')]
+      const fileToId: Record<string, string> = {
+        '/vault/c1.md': 'a1',
+        '/vault/c2.md': 'a2',
+        '/vault/c3.md': 'a3',
+        '/vault/c4.md': 'a4'
+      }
+      const artifacts: Record<string, TestArtifact> = {
+        a1: makeArtifact('a1', ['systems']),
+        a2: makeArtifact('a2', ['systems']),
+        a3: makeArtifact('a3', ['systems']),
+        a4: makeArtifact('a4', ['systems'])
+      }
+      // appears_in edges have weight 0 — should not form clusters
+      const graphEdges = [
+        { source: 'a1', target: 'a2', kind: 'appears_in' },
+        { source: 'a2', target: 'a3', kind: 'appears_in' },
+        { source: 'a3', target: 'a1', kind: 'appears_in' }
+      ]
+
+      const result = computeOntologySnapshot({ cards, fileToId, artifacts, graphEdges })
+
+      const childGroups = Object.values(result.groupsById).filter((g) => g.parentGroupId !== null)
+      expect(childGroups).toHaveLength(0)
+    })
+  })
+
   describe('edge cases', () => {
     it('empty input returns empty snapshot', () => {
       const result = computeOntologySnapshot({
