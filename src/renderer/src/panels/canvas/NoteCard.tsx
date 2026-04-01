@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
 import { logError } from '../../utils/error-logger'
-import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { CardShell } from './CardShell'
-import { getCanvasEditorExtensions } from './shared/tiptap-config'
+import { markdownToHtml } from './shared/markdown-html'
 import { CardBadge } from './shared/CardBadge'
 import { MetadataGrid } from './shared/MetadataGrid'
 import { frontmatterToEntries } from './shared/frontmatter-utils'
@@ -44,18 +43,7 @@ export function NoteCard({ node }: NoteCardProps) {
   // Display type badge from artifact type
   const badgeLabel = artifact?.type?.toUpperCase() ?? 'NOTE'
 
-  const extensions = useMemo(() => getCanvasEditorExtensions(), [])
-
-  const editor = useEditor({
-    extensions,
-    content: '',
-    editable: false,
-    editorProps: {
-      attributes: {
-        class: 'focus:outline-none'
-      }
-    }
-  })
+  const html = useMemo(() => (body ? markdownToHtml(body) : ''), [body])
 
   // Load file content
   useEffect(() => {
@@ -99,30 +87,14 @@ export function NoteCard({ node }: NoteCardProps) {
     }
   }, [filePath])
 
-  // Sync body into Tiptap editor for rich rendering.
-  // queueMicrotask defers setContent out of React's commit phase,
-  // avoiding ProseMirror's internal flushSync collision.
-  useEffect(() => {
-    if (!editor || !body || loading) return
-    queueMicrotask(() => {
-      if (editor.isDestroyed) return
-      const manager = editor.storage.markdown?.manager
-      if (manager) {
-        editor.commands.setContent(manager.parse(body))
-      } else {
-        editor.commands.setContent(body)
-      }
-    })
-  }, [editor, body, loading])
-
   // Auto-scroll past badge + metadata to reveal the title on first load
   const scrollRef = useRef<HTMLDivElement>(null)
   const hasAutoScrolled = useRef(false)
 
   useEffect(() => {
-    if (loading || !body || !editor || hasAutoScrolled.current) return
+    if (loading || !html || hasAutoScrolled.current) return
     hasAutoScrolled.current = true
-    // Double-rAF: first lets React/Tiptap commit, second ensures paint
+    // Double-rAF: first lets React commit, second ensures paint
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = scrollRef.current
@@ -135,7 +107,7 @@ export function NoteCard({ node }: NoteCardProps) {
         }
       })
     })
-  }, [loading, body, editor])
+  }, [loading, html])
 
   const openInEditor = useCallback(() => {
     useCanvasStore.getState().openSplit(filePath)
@@ -188,7 +160,12 @@ export function NoteCard({ node }: NoteCardProps) {
 
             {metadataEntries.length > 0 && <MetadataGrid entries={metadataEntries} />}
 
-            <div className="canvas-prose">{editor && <EditorContent editor={editor} />}</div>
+            <div className="canvas-prose">
+              <div
+                className="ProseMirror focus:outline-none"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            </div>
           </div>
         )}
       </div>
