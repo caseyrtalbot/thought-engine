@@ -373,10 +373,10 @@ function DirectoryRow({
         paddingLeft: node.depth === 0 ? 8 : undefined,
         paddingRight: 8,
         marginTop: node.depth === 0 ? 6 : undefined,
-        color: 'color-mix(in srgb, var(--color-text-secondary) 88%, transparent)',
+        color: 'var(--color-text-primary)',
         fontFamily: treeFontFamily,
-        fontWeight: 600,
-        fontSize: Math.max(treeFontSize - 1, 11),
+        fontWeight: 500,
+        fontSize: treeFontSize,
         letterSpacing: '0.02em',
         transition: 'color 120ms ease-out',
         ...indentBorderStyle(node.depth)
