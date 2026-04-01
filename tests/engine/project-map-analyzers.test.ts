@@ -256,6 +256,13 @@ describe('buildProjectMapSnapshot', () => {
     ).toBe(1)
   })
 
+  it('renders markdown files as note nodes so the original markdown can be shown', () => {
+    const files = [{ path: '/project/docs/guide.md', content: '# Guide\n\nBody text' }]
+    const snapshot = buildProjectMapSnapshot(ROOT, files, defaultOpts)
+    const guideNode = snapshot.nodes.find((node) => node.relativePath === 'docs/guide.md')
+    expect(guideNode?.nodeType).toBe('note')
+  })
+
   it('reports unresolved refs', () => {
     const files = [{ path: '/project/src/app.ts', content: `import { foo } from './nonexistent'` }]
     const snapshot = buildProjectMapSnapshot(ROOT, files, defaultOpts)

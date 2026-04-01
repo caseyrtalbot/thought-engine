@@ -149,9 +149,9 @@ const TS_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
 const MD_EXTENSIONS = new Set(['.md', '.mdx'])
 const CONFIG_EXTENSIONS = new Set(['.json', '.yaml', '.yml', '.toml'])
 
-function inferNodeType(_filePath: string): CanvasNodeType {
-  // All files in a folder map render as compact project-file cards,
-  // not full NoteCards. The card shows file name + metadata, not content.
+function inferNodeType(filePath: string): CanvasNodeType {
+  const ext = path.extname(filePath).toLowerCase()
+  if (MD_EXTENSIONS.has(ext)) return 'note'
   return 'project-file'
 }
 
