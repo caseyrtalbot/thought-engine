@@ -2,15 +2,14 @@
   "version": 1,
   "lastOpenNote": "/Users/caseytalbot/Projects/thought-engine/e2e/fixtures/test-vault/category-creation.md",
   "panelLayout": {
-    "sidebarWidth": 260,
-    "terminalWidth": 320
+    "sidebarWidth": 260
   },
   "contentView": "editor",
-  "terminalSessions": [],
   "fileTreeCollapseState": {},
   "selectedNodeId": null,
   "recentFiles": [],
   "ui": {
-    "backlinkCollapsed": {}
+    "backlinkCollapsed": {},
+    "dismissedGhosts": []
   }
 }

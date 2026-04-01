@@ -226,3 +226,13 @@ Three-layer material model: canvas void (darkest), cards (semi-transparent with 
 - **Files under 800 lines**, organized by feature/domain.
 - **IPC timeouts**: Wrap critical IPC calls with `withTimeout(call, ms, label)` to prevent renderer hangs.
 - **Buffer shim**: `main.tsx` shims `globalThis.Buffer` before gray-matter import. Renderer lacks Node globals; this polyfill is required for frontmatter parsing in the browser context.
+
+## Compact Instructions
+
+Always preserve:
+- IPC channel contracts and which process owns each responsibility (main vs renderer vs preload)
+- Active plan file paths, current step, and completion status
+- Architectural decisions about process boundaries and data flow
+- Verification evidence (test output, build results, type-check results)
+- Error corrections and root causes, especially IPC or Electron-specific issues
+- Design system token values and theme decisions
