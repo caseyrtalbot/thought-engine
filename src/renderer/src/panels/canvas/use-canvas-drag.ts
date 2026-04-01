@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { getMinSize, type CanvasNodeType } from '@shared/canvas-types'
+import { perfMark, perfMeasure } from '../../utils/perf-marks'
 
 /** Module-level interaction debounce to prevent timer stacking */
 let interactionTimer: ReturnType<typeof setTimeout> | null = null
@@ -35,6 +36,7 @@ export function useNodeDrag(nodeId: string) {
 
   const onDragStart = useCallback(
     (e: React.PointerEvent) => {
+      perfMark('drag-start')
       e.stopPropagation()
       const { nodes, selectedNodeIds, viewport } = useCanvasStore.getState()
       const node = nodes.find((n) => n.id === nodeId)
@@ -138,6 +140,7 @@ export function useNodeDrag(nodeId: string) {
         dragStart.current = null
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
+        perfMeasure('canvas-drag', 'drag-start')
       }
 
       window.addEventListener('pointermove', onMove)
@@ -154,6 +157,7 @@ export function useNodeResize(nodeId: string, nodeType: CanvasNodeType) {
 
   const onResizeStart = useCallback(
     (e: React.PointerEvent) => {
+      perfMark('resize-start')
       e.stopPropagation()
       const node = useCanvasStore.getState().nodes.find((n) => n.id === nodeId)
       if (!node) return
@@ -199,6 +203,7 @@ export function useNodeResize(nodeId: string, nodeType: CanvasNodeType) {
             detail: { nodeId }
           })
         )
+        perfMeasure('canvas-resize', 'resize-start')
       }
 
       window.addEventListener('pointermove', onMove)

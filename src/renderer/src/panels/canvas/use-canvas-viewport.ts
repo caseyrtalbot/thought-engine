@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
+import { perfMark, perfMeasure } from '../../utils/perf-marks'
 
 let vpInteractionTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -63,6 +64,7 @@ export function useCanvasViewport(
       }
 
       e.preventDefault()
+      perfMark('wheel-start')
       markViewportInteracting(true)
       const { viewport, setViewport } = useCanvasStore.getState()
       const container = containerRef.current
@@ -93,6 +95,7 @@ export function useCanvasViewport(
         })
       }
       markViewportInteracting(false)
+      perfMeasure('canvas-wheel', 'wheel-start')
     },
     [containerRef]
   )
@@ -106,6 +109,7 @@ export function useCanvasViewport(
     if (!shouldPan) return
 
     e.preventDefault()
+    perfMark('pan-start')
     isPanning.current = true
     markViewportInteracting(true)
     const { viewport } = useCanvasStore.getState()
@@ -127,6 +131,7 @@ export function useCanvasViewport(
       markViewportInteracting(false)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      perfMeasure('canvas-pan', 'pan-start')
     }
 
     window.addEventListener('pointermove', onMove)
