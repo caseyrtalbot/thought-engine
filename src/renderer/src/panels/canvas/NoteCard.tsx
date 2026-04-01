@@ -3,6 +3,7 @@ import { logError } from '../../utils/error-logger'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
+import { useStoreWithEqualityFn } from 'zustand/traditional'
 import { CardShell } from './CardShell'
 import { getCanvasEditorExtensions } from './shared/tiptap-config'
 import { CardBadge } from './shared/CardBadge'
@@ -20,13 +21,18 @@ export function NoteCard({ node }: NoteCardProps) {
   const [body, setBody] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const removeNode = useCanvasStore((s) => s.removeNode)
-  const artifacts = useVaultStore((s) => s.artifacts)
-  const fileToId = useVaultStore((s) => s.fileToId)
-
   // The node.content holds the vault file path
   const filePath = node.content
-  const artifactId = fileToId[filePath]
-  const artifact = artifacts.find((a) => a.id === artifactId)
+  const artifactId = useVaultStore((s) => s.fileToId[filePath])
+  const artifact = useStoreWithEqualityFn(
+    useVaultStore,
+    (s) => (artifactId ? s.artifactById[artifactId] : undefined),
+    (a, b) =>
+      a?.id === b?.id &&
+      a?.title === b?.title &&
+      a?.type === b?.type &&
+      a?.frontmatter === b?.frontmatter
+  )
   const title = artifact?.title ?? filePath.split('/').pop()?.replace('.md', '') ?? 'Note'
 
   // Build metadata entries from artifact frontmatter (single source of truth)

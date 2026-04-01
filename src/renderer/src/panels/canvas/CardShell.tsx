@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useNodeDrag, useNodeResize } from './use-canvas-drag'
@@ -195,15 +195,13 @@ export function CardShell({
   const isTerminalCard = node.type === 'terminal'
 
   // Edge count for note cards
-  const edges = useVaultStore((s) => s.graph.edges)
-  const fileToId = useVaultStore((s) => s.fileToId)
-  const edgeCount = useMemo(() => {
+  const edgeCount = useVaultStore((s) => {
     if (node.type !== 'note') return 0
     const fp = filePath ?? node.content
-    const artifactId = fp ? fileToId[fp] : undefined
+    const artifactId = fp ? s.fileToId[fp] : undefined
     if (!artifactId) return 0
-    return edges.filter((e) => e.source === artifactId || e.target === artifactId).length
-  }, [node.type, node.content, filePath, fileToId, edges])
+    return s.edgeCountByArtifactId[artifactId] ?? 0
+  })
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

@@ -98,18 +98,7 @@ export function CanvasView(): React.ReactElement {
   const [folderMapProgress, setFolderMapProgress] = useState<FolderMapProgress | null>(null)
   const [previewPlan, setPreviewPlan] = useState<CanvasMutationPlan | null>(null)
   const ontology = useOntologyOrchestrator(commandStack)
-  const rawFileCount = useVaultStore((s) => {
-    const total = s.artifacts.length
-    if (total === 0) return 0
-    return s.artifacts.filter(
-      (a) =>
-        a.connections.length === 0 &&
-        a.clusters_with.length === 0 &&
-        a.tensions_with.length === 0 &&
-        a.related.length === 0 &&
-        a.tags.length === 0
-    ).length
-  })
+  const rawFileCount = useVaultStore((s) => s.rawFileCount)
 
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
