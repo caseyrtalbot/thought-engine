@@ -50,20 +50,6 @@ import {
   type CanvasMutationPlan
 } from '@shared/canvas-mutation-types'
 
-const organizeButtonStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 8,
-  right: 8,
-  zIndex: 20,
-  padding: '6px 12px',
-  borderRadius: 6,
-  backgroundColor: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  color: 'var(--color-text-secondary)',
-  fontSize: 13,
-  fontFamily: 'var(--font-mono, monospace)'
-}
-
 const folderMapProgressStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: 16,
@@ -623,17 +609,9 @@ export function CanvasView(): React.ReactElement {
             addNodeWithUndo(node)
           }}
           onOpenImport={() => setImportOpen(true)}
+          onOrganize={ontology.startOrganize}
+          organizePhase={ontology.phase}
         />
-        <button
-          onClick={ontology.startOrganize}
-          disabled={ontology.phase === 'processing'}
-          style={{
-            ...organizeButtonStyle,
-            cursor: ontology.phase === 'processing' ? 'wait' : 'pointer'
-          }}
-        >
-          {ontology.phase === 'processing' ? 'Organizing...' : 'Organize'}
-        </button>
         <CanvasSurface
           onContextMenu={handleContextMenu}
           onBackgroundClick={handleBackgroundClick}

@@ -1176,6 +1176,44 @@ body {
   color: var(--color-text-primary);
 }
 
+/* ─── Canvas Toolbar Tooltips ─── */
+
+.canvas-toolbtn-wrap {
+  position: relative;
+}
+
+.canvas-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--chrome-panel-elevated);
+  border: 1px solid var(--chrome-panel-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-primary);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-tooltip);
+  z-index: 60;
+}
+
+.canvas-tooltip .canvas-tooltip__shortcut {
+  color: var(--color-text-muted);
+  margin-left: 8px;
+  font-size: 10px;
+}
+
+.canvas-toolbtn-wrap:hover .canvas-tooltip {
+  opacity: 1;
+}
+
 .canvas-zoom-badge {
   font-family: var(--font-mono);
   font-size: 10px;

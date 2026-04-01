@@ -11,7 +11,7 @@ npm run build        # Typecheck + build all (main, preload, renderer)
 npm run build:mac    # Build + package for macOS
 npm test             # Run all tests (vitest)
 npm run test:watch   # Vitest in watch mode
-npm run test:e2e     # Build + run Playwright e2e tests (16 tests)
+npm run test:e2e     # Build + run Playwright e2e tests
 npm run test:live    # CDP health checks against running dev app
 npm run check        # lint + typecheck + test (quality gate)
 npm run typecheck    # Check both node and web tsconfigs
@@ -42,6 +42,7 @@ src/main/                       src/preload/               src/renderer/src/
 │   ├── documents.ts                                       ├── panels/ (UI sections)
 │   ├── workbench.ts                                       └── design/ (tokens, primitives)
 │   ├── shell.ts
+│   ├── canvas.ts
 │   ├── mcp.ts
 │   └── agents.ts
 └── services/
@@ -51,17 +52,32 @@ src/main/                       src/preload/               src/renderer/src/
     ├── vault-indexing.ts      # Full vault index build
     ├── vault-query-facade.ts  # Query layer for MCP
     ├── mcp-server.ts          # MCP tool definitions
+    ├── mcp-lifecycle.ts       # MCP server lifecycle management
     ├── hitl-gate.ts           # HITL dialog + write rate limiter
+    ├── path-guard.ts          # Path traversal prevention
     ├── shell-service.ts
     ├── agent-spawner.ts       # Agent process spawning (tmux)
+    ├── tmux-service.ts        # tmux session management
+    ├── tmux-monitor.ts        # Live tmux observation
+    ├── session-tailer.ts      # Tails agent session logs
+    ├── session-router.ts      # Routes session events
+    ├── project-watcher.ts     # Project directory watching
+    ├── project-session-parser.ts
+    ├── session-milestone-grouper.ts
+    ├── quit-coordinator.ts    # 2-phase coordinated quit
+    ├── gitignore-filter.ts    # Respects .gitignore for indexing
+    ├── event-batcher.ts       # Generic event batching
     └── audit-logger.ts        # MCP write audit log
 
 src/shared/                    ← importable from ALL three processes
 ├── ipc-channels.ts            # Canonical typed IPC contract
-├── types.ts                   # Core domain types
-├── canvas-types.ts
-├── workbench-types.ts
+├── types.ts                   # Core domain types (Artifact, KnowledgeGraph)
+├── canvas-types.ts            # Canvas file format, node/edge types
+├── canvas-mutation-types.ts   # Snapshot-and-plan canvas mutation ops
+├── workbench-types.ts         # Session events, milestones
 ├── agent-types.ts
+├── system-artifacts.ts        # Session/pattern/tension artifact schemas
+├── constants.ts               # TE_DIR (.machina / .machina-dev)
 └── engine/                    # Pure domain kernel (no Electron/React deps)
     ├── parser.ts              # Markdown → Artifact
     ├── graph-builder.ts       # Artifacts → KnowledgeGraph
@@ -69,12 +85,24 @@ src/shared/                    ← importable from ALL three processes
     ├── indexer.ts             # VaultIndex for MCP queries
     ├── search-engine.ts       # MiniSearch wrapper
     ├── tag-index.ts           # Hierarchical tag tree
-    └── concept-extractor.ts   # Concept extraction from content
+    ├── concept-extractor.ts   # Concept extraction from content
+    ├── ontology-types.ts      # Semantic grouping types + agent contract
+    ├── ontology-grouping.ts   # Tag-first card grouping algorithm
+    ├── ontology-layout.ts     # Group frame + card position computation
+    ├── project-map-types.ts   # Folder → canvas node/edge types
+    ├── project-map-analyzers.ts # Import/reference extraction
+    ├── rename-links.ts        # Wikilink rename across vault
+    ├── id-generator.ts        # Deterministic ID generation
+    └── posix-path.ts          # Cross-platform path normalization
 ```
 
 **Shared engine kernel**: `src/shared/engine/` has zero Electron or React dependencies. Both the main process (MCP server, vault indexing) and the renderer (Web Worker) import these same modules. Engine code must stay dependency-free.
 
 **Renderer `src/renderer/src/engine/`** re-exports from `@shared/engine/` for convenience. Canonical implementations live in `src/shared/engine/`.
+
+### Dev/Prod State Separation
+
+`TE_DIR` in `src/shared/constants.ts` resolves to `.machina-dev` during `npm run dev` and `.machina` in production/tests. This prevents development from corrupting production vault state.
 
 ### Path Aliases
 
@@ -86,7 +114,7 @@ src/shared/                    ← importable from ALL three processes
 
 ### IPC Pattern
 
-`typedHandle('channel', handler)` in main, `typedInvoke('channel', args)` in preload, `window.api.namespace.method()` in renderer. Namespaces: `fs`, `vault`, `config`, `document`, `window`, `shell`, `workbench`, `terminal`, `agent`, `on` (events).
+`typedHandle('channel', handler)` in main, `typedInvoke('channel', args)` in preload, `window.api.namespace.method()` in renderer. Namespaces: `fs`, `vault`, `config`, `document`, `window`, `shell`, `workbench`, `terminal`, `agent`, `canvas`, `on` (events).
 
 **Adding a new IPC channel (4 steps):**
 1. Declare in `IpcChannels` or `IpcEvents` in `src/shared/ipc-channels.ts`
@@ -131,13 +159,47 @@ Single owner of all open file content. Renderer views are thin IPC clients via `
 
 Parses markdown into typed Artifacts and builds a KnowledgeGraph:
 - **parser.ts**: gray-matter frontmatter (JS engine disabled) into Artifact. Extracts `[[wikilinks]]` into `bodyLinks`. Title: frontmatter TITLE > first H1 > filename stem.
-- **graph-builder.ts**: Artifacts into nodes + edges. Six edge types: `connection`, `cluster`, `tension`, `appears_in`, `related`, `co-occurrence`.
+- **graph-builder.ts**: Artifacts into nodes + edges. Six edge types: `connection`, `cluster`, `tension`, `appears_in`, `related`, `co-occurrence`. Edge provenance tracks source (frontmatter, wikilink, co-occurrence, agent, manual).
 - **ghost-index.ts**: Builds ghost entries (unresolved wikilinks) sorted by reference count, filters path-style ghosts.
 - **vault-worker.ts**: Web Worker for bulk parse + graph build with incremental updates.
 - **graph-physics-worker.ts**: D3-force simulation off main thread for graph panel.
 - **vault-event-hub.ts**: Singleton dispatching batched watcher events to three subscriber tiers (batch, any-file, path-specific).
 - **search-engine.ts**: MiniSearch (title x10, tags x5, body x1).
 - **tag-index.ts**: Hierarchical tag tree with aggregate counts.
+- **rename-links.ts**: Updates wikilinks across vault when an artifact is renamed.
+
+### Canvas Mutations (Snapshot-and-Plan)
+
+Canvas changes from automated sources (folder map, ontology, agents) use optimistic concurrency:
+1. `canvas:get-snapshot` returns current file + mtime
+2. Build a `CanvasMutationPlan` (defined in `canvas-mutation-types.ts`) with add/move/resize/remove ops
+3. `canvas:apply-plan` sends plan + `expectedMtime`; rejects with `'stale'` if file changed since snapshot
+4. `filterCanvasAdditions()` deduplicates nodes/edges against existing canvas state
+
+### Ontology System
+
+Semantic grouping layer that organizes canvas cards into bounded regions:
+- **ontology-grouping.ts**: Tag-first algorithm groups cards by shared tags, with link-analysis fallback
+- **ontology-layout.ts**: Computes `GroupFrame` positions and card placement within groups
+- **ontology-types.ts**: `OntologySnapshot` (semantic layer) + `OntologyLayoutResult` (geometry). `GroupProvenance` tracks whether grouping came from user tags, link analysis, or AI inference
+- **ontology-worker.ts**: Web Worker for off-thread grouping + layout computation
+- **OntologyPreview.tsx / SectionOverlay.tsx**: Visual rendering of group regions on canvas
+
+### Project Map
+
+Visualizes folder structure as canvas cards with import/reference edges:
+- **project-map-types.ts**: `ProjectMapSnapshot` with `contains`/`imports`/`references` edge kinds
+- **project-map-analyzers.ts**: Extracts imports and references from source files
+- **project-map-worker.ts**: Web Worker for filesystem analysis
+- **folder-map-orchestrator.ts**: Coordinates snapshot → layout → canvas mutation plan pipeline
+
+### System Artifacts
+
+Structured markdown documents stored in `.machina/artifacts/{sessions,patterns,tensions}/`:
+- **Session artifacts**: Track Claude Code session activity (files touched, commands run, milestones)
+- **Pattern artifacts**: Reusable workflows with terminal launch specs
+- **Tension artifacts**: Open questions/hypotheses with evidence tracking
+- Schemas and rendering in `src/shared/system-artifacts.ts`
 
 ### MCP Server
 
@@ -145,6 +207,7 @@ Exposes vault to AI agents via Model Context Protocol:
 - Six tools: `vault.read_file`, `search.query`, `graph.get_neighbors`, `graph.get_ghosts` (reads); `vault.write_file`, `vault.create_file` (writes gated by ElectronHitlGate + WriteRateLimiter)
 - Read results wrapped in Spotlighting trust markers for prompt injection mitigation
 - `mcp-cli.ts` provides headless stdio mode for Claude Desktop integration
+- `mcp-lifecycle.ts` manages server start/stop lifecycle
 
 ### Terminal Webview Isolation
 
@@ -154,9 +217,19 @@ The terminal panel runs inside an Electron `<webview>` tag with its own preload 
 
 Agents are spawned as tmux sessions via `agent-spawner.ts`. The system includes:
 - **tmux-service.ts / tmux-monitor.ts**: Session management and live observation
-- **session-tailer.ts**: Tails agent session logs in real-time
+- **session-tailer.ts**: Tails agent session logs in real-time, emits `SessionMilestone` events
+- **session-router.ts / session-milestone-grouper.ts**: Routes and groups session events into milestones
 - **use-agent-observer.ts / use-agent-states.ts**: Renderer hooks for agent lifecycle
 - IPC namespace: `window.api.agent` with `agent:get-states`, `agent:spawn` channels
+
+### Workbench Panel
+
+Live session monitoring and system artifact management:
+- **WorkbenchPanel.tsx**: Displays session thread, milestones, and system artifact cards
+- **SessionThreadPanel.tsx**: Real-time view of active Claude session activity
+- **workbench-artifacts.ts**: Generates system artifact content from session data
+- **workbench-artifact-placement.ts**: Positions artifact cards on canvas
+- **workbench-migration.ts**: Migrates older workbench state formats
 
 ### Coordinated Quit (2-phase)
 
@@ -168,6 +241,14 @@ before-quit → event.preventDefault
   → main: documentManager.flushAll() + service cleanup
   → app.quit()
 ```
+
+### Web Workers
+
+Heavy computation runs off the renderer main thread:
+- **vault-worker.ts**: Bulk markdown parse + graph build (incremental updates via `WorkerCommand`)
+- **graph-physics-worker.ts**: D3-force simulation for graph panel layout
+- **ontology-worker.ts**: Card grouping + group frame layout computation
+- **project-map-worker.ts**: Filesystem analysis for folder-to-canvas mapping
 
 ### Canvas System (`src/renderer/src/panels/canvas/`)
 
@@ -182,10 +263,14 @@ KeepAlive pattern: panels are mounted once on first visit, then hidden via `disp
 - **vault-store**: Files, artifacts, graph, vault path/config/state, fileToId map
 - **editor-store**: Active note, mode (rich|source), dirty state, content, cursor, tabs, nav history
 - **canvas-store**: Nodes, edges, viewport, selection, split editor state
+- **canvas-autosave**: Debounced canvas file persistence
 - **graph-view-store**: Viewport, hover/selected node, force params
 - **ui-store**: Per-note UI state (backlink expansion), persisted via IPC
 - **tab-store**: View tabs, persisted state
+- **view-store**: Active panel/view routing
 - **settings-store**: Theme, accent, fonts (localStorage)
+- **sidebar-filter-store**: File tree filtering state
+- **workbench-store / workbench-actions-store**: Session monitoring and workbench UI state
 
 **Persistence**: `vault-persist.ts` gathers state from stores and writes to `.machina/state.json` via IPC on 1s debounce. See "Coordinated Quit" above for shutdown sequence.
 
@@ -210,7 +295,7 @@ Three-layer material model: canvas void (darkest), cards (semi-transparent with 
 
 ## Testing
 
-- **Unit**: Vitest with happy-dom (695+ tests, 68 files). `tests/` mirrors `src/` for pure logic; `src/**/__tests__/` for colocated component tests.
+- **Unit**: Vitest with happy-dom (1600+ tests, 154 files). `tests/` mirrors `src/` for pure logic; `src/**/__tests__/` for colocated component tests.
 - **Integration**: Override with `// @vitest-environment node` at file top for tests needing real Node APIs.
 - **Store tests**: Reset via `store.setState(store.getInitialState())` in `beforeEach`.
 - **E2E**: Playwright with `workers:1`, `test.describe.serial`, `beforeAll/afterAll` lifecycle. Test vault at `e2e/fixtures/test-vault/`.
