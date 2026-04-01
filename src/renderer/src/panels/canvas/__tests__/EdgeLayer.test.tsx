@@ -8,6 +8,7 @@ let mockZoom = 1
 let mockSelectedEdgeId: string | null = null
 let mockSelectedNodeIds = new Set<string>()
 let mockHoveredNodeId: string | null = null
+let mockShowAllEdges = false
 const mockSetSelectedEdge = vi.fn()
 
 vi.mock('../../../store/canvas-store', () => ({
@@ -20,6 +21,7 @@ vi.mock('../../../store/canvas-store', () => ({
         selectedEdgeId: mockSelectedEdgeId,
         selectedNodeIds: mockSelectedNodeIds,
         hoveredNodeId: mockHoveredNodeId,
+        showAllEdges: mockShowAllEdges,
         setSelectedEdge: mockSetSelectedEdge
       }),
     {
@@ -70,14 +72,16 @@ describe('EdgeLayer', () => {
     mockSelectedEdgeId = null
     mockSelectedNodeIds = new Set()
     mockHoveredNodeId = null
+    mockShowAllEdges = false
     mockSetSelectedEdge.mockClear()
   })
 
   it('renders an edge path when both nodes exist', async () => {
+    mockShowAllEdges = true
     const EdgeLayer = await loadEdgeLayer()
     const { container } = render(<EdgeLayer />)
     const paths = container.querySelectorAll('path')
-    // 2 paths per edge: hit area + visible
+    // 2 paths per edge: hit area + visible (showAllEdges reveals the visible path)
     expect(paths.length).toBe(2)
   })
 
@@ -99,14 +103,19 @@ describe('EdgeLayer', () => {
     expect(groups.length).toBe(1)
   })
 
-  it('hides hidden edges unless endpoint is hovered', async () => {
-    mockEdges = [{ ...makeEdge('e1', 'a', 'b'), hidden: true }]
+  it('hides visible stroke but keeps hit area when not revealed', async () => {
+    mockEdges = [makeEdge('e1', 'a', 'b')]
     mockHoveredNodeId = null
 
     const EdgeLayer = await loadEdgeLayer()
     const { container } = render(<EdgeLayer />)
+    // Hit area always renders, so the group exists
     const groups = container.querySelectorAll('[data-canvas-edge]')
-    expect(groups.length).toBe(0)
+    expect(groups.length).toBe(1)
+    // Only the hit-area path renders (transparent stroke), no visible stroke
+    const paths = container.querySelectorAll('path')
+    expect(paths.length).toBe(1)
+    expect(paths[0].getAttribute('stroke')).toBe('transparent')
   })
 
   it('shows hidden edges when endpoint is hovered', async () => {

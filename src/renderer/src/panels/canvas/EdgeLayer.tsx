@@ -45,17 +45,18 @@ function EdgePathInner({ edge, nodeMap, zoom }: EdgePathProps) {
   const isSelected = useCanvasStore((s) => s.selectedEdgeId === edge.id)
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
   const hoveredNodeId = useCanvasStore((s) => s.hoveredNodeId)
+  const showAllEdges = useCanvasStore((s) => s.showAllEdges)
 
   const from_node = nodeMap.get(edge.fromNode)
   const to_node = nodeMap.get(edge.toNode)
   if (!from_node || !to_node) return null
 
-  if (edge.hidden) {
-    const endpointHovered = hoveredNodeId === edge.fromNode || hoveredNodeId === edge.toNode
-    const endpointSelected = selectedNodeIds.has(edge.fromNode) || selectedNodeIds.has(edge.toNode)
-    const zoomRevealed = zoom > 0.8 && (edge.kind === 'imports' || edge.kind === 'references')
-    if (!endpointHovered && !endpointSelected && !zoomRevealed) return null
-  }
+  // Demand-rendering: determine if this edge should be visually shown
+  const endpointHovered = hoveredNodeId === edge.fromNode || hoveredNodeId === edge.toNode
+  const endpointSelected = selectedNodeIds.has(edge.fromNode) || selectedNodeIds.has(edge.toNode)
+  const zoomRevealed = zoom > 0.8 && (edge.kind === 'imports' || edge.kind === 'references')
+  const isRevealed =
+    showAllEdges || isSelected || endpointHovered || endpointSelected || zoomRevealed
 
   const kindColor = edge.kind ? EDGE_KIND_COLORS[edge.kind] : undefined
   const strokeDasharray = getEdgeStrokeDasharray(edge.kind)
@@ -74,7 +75,7 @@ function EdgePathInner({ edge, nodeMap, zoom }: EdgePathProps) {
 
   return (
     <g data-canvas-edge>
-      {/* Hit area (wider invisible path for easier clicking) */}
+      {/* Hit area: always rendered for click-to-select */}
       <path
         d={d}
         fill="none"
@@ -86,17 +87,23 @@ function EdgePathInner({ edge, nodeMap, zoom }: EdgePathProps) {
           useCanvasStore.getState().setSelectedEdge(edge.id)
         }}
       />
-      {/* Visible edge */}
-      <path
-        d={d}
-        fill="none"
-        stroke={isSelected ? colors.accent.default : (kindColor ?? colors.text.secondary)}
-        strokeWidth={isSelected ? 2.5 : strokeWidthBase}
-        markerEnd="url(#arrowhead)"
-        opacity={endpointActive ? 1 : isSelected ? 1 : 0.6}
-        strokeDasharray={endpointActive ? '8 4' : strokeDasharray}
-        style={endpointActive ? { animation: 'te-edge-flow 0.8s linear infinite' } : undefined}
-      />
+      {/* Visible edge: only when revealed */}
+      {isRevealed && (
+        <path
+          d={d}
+          fill="none"
+          stroke={isSelected ? colors.accent.default : (kindColor ?? colors.text.secondary)}
+          strokeWidth={isSelected ? 2.5 : strokeWidthBase}
+          markerEnd="url(#arrowhead)"
+          opacity={endpointActive ? 1 : isSelected ? 1 : 0.6}
+          strokeDasharray={endpointActive ? '8 4' : strokeDasharray}
+          style={
+            endpointActive
+              ? { animation: 'te-edge-flow 0.8s linear infinite' }
+              : { animation: 'te-edge-reveal 150ms ease forwards' }
+          }
+        />
+      )}
     </g>
   )
 }
