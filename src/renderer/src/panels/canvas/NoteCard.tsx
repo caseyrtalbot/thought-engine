@@ -120,6 +120,47 @@ export function NoteCard({ node }: NoteCardProps) {
     })
   }, [loading, html])
 
+  // Post-process mermaid code blocks in static HTML
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!html || !contentRef.current) return
+    const codeBlocks = contentRef.current.querySelectorAll('pre > code.language-mermaid')
+    if (codeBlocks.length === 0) return
+
+    let cancelled = false
+
+    import('mermaid').then(({ default: mermaid }) => {
+      if (cancelled) return
+      mermaid.initialize({ startOnLoad: false, theme: 'dark' })
+
+      codeBlocks.forEach(async (codeEl, i) => {
+        if (cancelled) return
+        const pre = codeEl.parentElement
+        if (!pre) return
+        const source = codeEl.textContent ?? ''
+        if (!source.trim()) return
+
+        try {
+          const id = `mermaid-notecard-${node.id}-${i}`
+          const { svg } = await mermaid.render(id, source)
+          if (!cancelled && pre.parentElement) {
+            const wrapper = document.createElement('div')
+            wrapper.className = 'mermaid-rendered'
+            wrapper.innerHTML = svg
+            pre.parentElement.replaceChild(wrapper, pre)
+          }
+        } catch {
+          // Leave raw code block if mermaid fails to parse
+        }
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [html, node.id])
+
   const openInEditor = useCallback(() => {
     useCanvasStore.getState().openSplit(filePath)
   }, [filePath])
@@ -173,6 +214,7 @@ export function NoteCard({ node }: NoteCardProps) {
 
             <div className="canvas-prose" onClick={handleWikilinkClick}>
               <div
+                ref={contentRef}
                 className="ProseMirror focus:outline-none"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
