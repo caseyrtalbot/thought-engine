@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
 import { logError } from '../../utils/error-logger'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
@@ -190,4 +190,4 @@ export function NoteCard({ node }: NoteCardProps) {
   )
 }
 
-export default NoteCard
+export default memo(NoteCard)

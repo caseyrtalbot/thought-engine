@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { CardShell } from './CardShell'
@@ -140,4 +140,4 @@ export function MarkdownCard({ node }: MarkdownCardProps) {
   )
 }
 
-export default MarkdownCard
+export default memo(MarkdownCard)

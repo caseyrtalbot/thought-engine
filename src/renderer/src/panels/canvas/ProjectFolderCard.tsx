@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { CanvasNode } from '@shared/canvas-types'
 import { useCanvasStore } from '../../store/canvas-store'
 import { CardShell } from './CardShell'
@@ -13,7 +14,7 @@ function lastPathSegment(value: unknown): string | null {
   return parts.at(-1) ?? null
 }
 
-export default function ProjectFolderCard({ node }: ProjectFolderCardProps) {
+function ProjectFolderCard({ node }: ProjectFolderCardProps) {
   const removeNode = useCanvasStore((s) => s.removeNode)
 
   const { relativePath, childCount, collapsed } = node.metadata as {
@@ -95,3 +96,5 @@ export default function ProjectFolderCard({ node }: ProjectFolderCardProps) {
     </CardShell>
   )
 }
+
+export default memo(ProjectFolderCard)
