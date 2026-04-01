@@ -120,46 +120,66 @@ export function NoteCard({ node }: NoteCardProps) {
     })
   }, [loading, html])
 
-  // Post-process mermaid code blocks in static HTML
-  const contentRef = useRef<HTMLDivElement>(null)
+  // Render mermaid diagrams into the HTML string via state (not DOM mutation).
+  // DOM mutation gets wiped by React re-renders; state-based approach is stable.
+  const [mermaidSvgs, setMermaidSvgs] = useState<Record<number, string>>({})
 
   useEffect(() => {
-    if (!html || !contentRef.current) return
-    const codeBlocks = contentRef.current.querySelectorAll('pre > code.language-mermaid')
-    if (codeBlocks.length === 0) return
+    if (!html) return
+    // Check for mermaid blocks without touching the DOM
+    if (!html.includes('language-mermaid')) return
 
     let cancelled = false
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const codeBlocks = doc.querySelectorAll('pre > code.language-mermaid')
+    if (codeBlocks.length === 0) return
 
-    import('mermaid').then(({ default: mermaid }) => {
+    import('mermaid').then(async ({ default: mermaid }) => {
       if (cancelled) return
       mermaid.initialize({ startOnLoad: false, theme: 'dark' })
+      const svgs: Record<number, string> = {}
 
-      codeBlocks.forEach(async (codeEl, i) => {
-        if (cancelled) return
-        const pre = codeEl.parentElement
-        if (!pre) return
-        const source = codeEl.textContent ?? ''
-        if (!source.trim()) return
-
+      for (let i = 0; i < codeBlocks.length; i++) {
+        if (cancelled) break
+        const source = codeBlocks[i].textContent ?? ''
+        if (!source.trim()) continue
         try {
           const id = `mermaid-notecard-${node.id}-${i}`
           const { svg } = await mermaid.render(id, source)
-          if (!cancelled && pre.parentElement) {
-            const wrapper = document.createElement('div')
-            wrapper.className = 'mermaid-rendered'
-            wrapper.innerHTML = svg
-            pre.parentElement.replaceChild(wrapper, pre)
-          }
+          svgs[i] = svg
         } catch {
-          // Leave raw code block if mermaid fails to parse
+          // Leave as source code
         }
-      })
+      }
+
+      if (!cancelled && Object.keys(svgs).length > 0) {
+        setMermaidSvgs(svgs)
+      }
     })
 
     return () => {
       cancelled = true
     }
   }, [html, node.id])
+
+  // Merge rendered mermaid SVGs back into the HTML string
+  const processedHtml = useMemo(() => {
+    if (!html || Object.keys(mermaidSvgs).length === 0) return html
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const codeBlocks = doc.querySelectorAll('pre > code.language-mermaid')
+    codeBlocks.forEach((codeEl, i) => {
+      if (mermaidSvgs[i] && codeEl.parentElement) {
+        const wrapper = doc.createElement('div')
+        wrapper.className = 'mermaid-rendered'
+        wrapper.style.cssText = 'width: 100%; overflow-x: auto;'
+        wrapper.innerHTML = mermaidSvgs[i]
+        codeEl.parentElement.replaceWith(wrapper)
+      }
+    })
+    return doc.body.innerHTML
+  }, [html, mermaidSvgs])
 
   const openInEditor = useCallback(() => {
     useCanvasStore.getState().openSplit(filePath)
@@ -214,9 +234,8 @@ export function NoteCard({ node }: NoteCardProps) {
 
             <div className="canvas-prose" onClick={handleWikilinkClick}>
               <div
-                ref={contentRef}
                 className="ProseMirror focus:outline-none"
-                dangerouslySetInnerHTML={{ __html: html }}
+                dangerouslySetInnerHTML={{ __html: processedHtml }}
               />
             </div>
           </div>
