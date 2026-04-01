@@ -57,17 +57,21 @@ export function MarkdownCard({ node }: MarkdownCardProps) {
     }
   })
 
-  // Load initial content into Tiptap
+  // Load initial content into Tiptap.
+  // queueMicrotask defers setContent out of React's commit phase,
+  // avoiding ProseMirror's internal flushSync collision.
   useEffect(() => {
     if (!editor) return
-    const manager = editor.storage.markdown?.manager
-    if (manager && node.content) {
-      const json = manager.parse(node.content)
-      editor.commands.setContent(json)
-    } else if (node.content) {
-      editor.commands.setContent(node.content)
-    }
-  }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+    queueMicrotask(() => {
+      if (editor.isDestroyed) return
+      const manager = editor.storage.markdown?.manager
+      if (manager && node.content) {
+        editor.commands.setContent(manager.parse(node.content), { emitUpdate: false })
+      } else if (node.content) {
+        editor.commands.setContent(node.content, { emitUpdate: false })
+      }
+    })
+  }, [editor, node.content])
 
   // Toggle editable when viewMode changes
   useEffect(() => {

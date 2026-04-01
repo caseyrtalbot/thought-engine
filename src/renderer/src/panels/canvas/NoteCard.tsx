@@ -93,16 +93,20 @@ export function NoteCard({ node }: NoteCardProps) {
     }
   }, [filePath])
 
-  // Sync body into Tiptap editor for rich rendering
+  // Sync body into Tiptap editor for rich rendering.
+  // queueMicrotask defers setContent out of React's commit phase,
+  // avoiding ProseMirror's internal flushSync collision.
   useEffect(() => {
     if (!editor || !body || loading) return
-    const manager = editor.storage.markdown?.manager
-    if (manager) {
-      const json = manager.parse(body)
-      editor.commands.setContent(json)
-    } else {
-      editor.commands.setContent(body)
-    }
+    queueMicrotask(() => {
+      if (editor.isDestroyed) return
+      const manager = editor.storage.markdown?.manager
+      if (manager) {
+        editor.commands.setContent(manager.parse(body))
+      } else {
+        editor.commands.setContent(body)
+      }
+    })
   }, [editor, body, loading])
 
   // Auto-scroll past badge + metadata to reveal the title on first load
