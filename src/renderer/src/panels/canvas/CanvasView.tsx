@@ -42,6 +42,7 @@ import { FolderMapPreviewGhosts, FolderMapPreviewBar } from './FolderMapPreview'
 import { SectionOverlay } from './SectionOverlay'
 import { OntologyPreview } from './OntologyPreview'
 import { useOntologyOrchestrator } from './ontology-orchestrator'
+import { useAgentPlanListener } from '../../hooks/use-agent-plan-listener'
 import { applyFolderMapPlan } from './folder-map-apply'
 import { augmentFolderMapWithVaultSemantics } from './folder-map-semantic'
 import {
@@ -84,6 +85,7 @@ export function CanvasView(): React.ReactElement {
   const [folderMapProgress, setFolderMapProgress] = useState<FolderMapProgress | null>(null)
   const [previewPlan, setPreviewPlan] = useState<CanvasMutationPlan | null>(null)
   const ontology = useOntologyOrchestrator(commandStack)
+  useAgentPlanListener()
   const rawFileCount = useVaultStore((s) => s.rawFileCount)
 
   const vaultPath = useVaultStore((s) => s.vaultPath)
