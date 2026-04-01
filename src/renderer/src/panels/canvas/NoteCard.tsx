@@ -45,6 +45,17 @@ export function NoteCard({ node }: NoteCardProps) {
 
   const html = useMemo(() => (body ? markdownToHtml(body) : ''), [body])
 
+  // CMD+click on wikilinks in static HTML
+  const handleWikilinkClick = useCallback((e: React.MouseEvent) => {
+    if (!e.metaKey && !e.ctrlKey) return
+    const el = (e.target as HTMLElement).closest('[data-wikilink-target]')
+    if (!el) return
+    const linkTarget = el.getAttribute('data-wikilink-target')
+    if (linkTarget) {
+      useCanvasStore.getState().openSplit(linkTarget)
+    }
+  }, [])
+
   // Load file content
   useEffect(() => {
     if (!filePath) {
@@ -160,7 +171,7 @@ export function NoteCard({ node }: NoteCardProps) {
 
             {metadataEntries.length > 0 && <MetadataGrid entries={metadataEntries} />}
 
-            <div className="canvas-prose">
+            <div className="canvas-prose" onClick={handleWikilinkClick}>
               <div
                 className="ProseMirror focus:outline-none"
                 dangerouslySetInnerHTML={{ __html: html }}
