@@ -58,7 +58,7 @@ export const STRUCTURAL_COLORS: StructuralColors = {
     default: 'rgba(255, 255, 255, 0.10)',
     subtle: 'rgba(255, 255, 255, 0.05)'
   },
-  text: { primary: '#d9d9d9', secondary: '#808080', muted: '#525252' },
+  text: { primary: '#d9d9d9', secondary: '#8a8a8a', muted: '#636363' },
   canvas: {
     cardBorder: 'rgba(255, 255, 255, 0.06)',
     textHeading: '#e8e8e8',
