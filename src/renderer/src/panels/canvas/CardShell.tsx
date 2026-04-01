@@ -483,7 +483,11 @@ export function CardShell({
       <div
         data-canvas-card-content
         className={`flex-1 relative${isTerminalCard ? '' : ' canvas-card-content'}`}
-        style={{ minHeight: 0, overflow: isTerminalCard ? 'hidden' : undefined }}
+        style={{
+          minHeight: 0,
+          overflow: isTerminalCard ? 'hidden' : undefined,
+          contain: isTerminalCard ? undefined : 'layout style paint'
+        }}
       >
         {children}
         {/* Pointer-events shield: blocks content interaction until card is focused.
