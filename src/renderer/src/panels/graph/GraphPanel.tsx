@@ -278,9 +278,13 @@ export function GraphPanel() {
     labelLayerRef.current = labelLayer
 
     // Spawn physics worker
-    const worker = new Worker(new URL('../../engine/graph-physics-worker.ts', import.meta.url), {
+    const worker = new Worker(new URL('@engine/graph-physics-worker.ts', import.meta.url), {
       type: 'module'
     })
+
+    worker.onerror = (e) => {
+      console.error('[GraphPanel] physics worker error:', e)
+    }
 
     worker.onmessage = (e: MessageEvent<PhysicsResult>) => {
       if (!mountedRef.current) return
