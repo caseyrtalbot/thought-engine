@@ -14,6 +14,7 @@ import { registerMcpIpc } from './ipc/mcp'
 import { registerAgentIpc, setAgentServices, stopAgentServices } from './ipc/agents'
 import { registerCanvasIpc } from './ipc/canvas'
 import { registerAgentActionIpc } from './ipc/agent-actions'
+import { registerGhostEmergeIpc } from './ipc/ghost-emerge'
 import { McpLifecycle } from './services/mcp-lifecycle'
 import { TmuxMonitor } from './services/tmux-monitor'
 import { AgentSpawner } from './services/agent-spawner'
@@ -182,6 +183,7 @@ app.whenReady().then(() => {
   registerAgentIpc() // Register once at startup, services update via setAgentServices
   registerCanvasIpc()
   registerAgentActionIpc()
+  registerGhostEmergeIpc()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
