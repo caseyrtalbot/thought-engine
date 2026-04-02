@@ -9,7 +9,8 @@ function makeCallbacks(): RendererCallbacks {
     onNodeClick: vi.fn(),
     onNodeDrag: vi.fn(),
     onNodeDragEnd: vi.fn(),
-    onViewportChange: vi.fn()
+    onViewportChange: vi.fn(),
+    onDeselect: vi.fn()
   }
 }
 
@@ -116,5 +117,20 @@ describe('GraphRenderer', () => {
     ]
     renderer.setGraphData(nodes, [])
     expect(renderer.getNodeCount()).toBe(2)
+  })
+
+  describe('RendererCallbacks interface', () => {
+    it('requires onDeselect in callbacks', () => {
+      const callbacks = makeCallbacks()
+      // onDeselect must be present in the interface
+      expect(callbacks.onDeselect).toBeDefined()
+      expect(typeof callbacks.onDeselect).toBe('function')
+    })
+
+    it('constructs with onDeselect callback', () => {
+      const callbacks = makeCallbacks()
+      const renderer = new GraphRenderer(callbacks)
+      expect(renderer).toBeDefined()
+    })
   })
 })

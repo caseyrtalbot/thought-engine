@@ -22,6 +22,7 @@ export interface RendererCallbacks {
   readonly onNodeDrag: (nodeIndex: number, x: number, y: number) => void
   readonly onNodeDragEnd: (nodeIndex: number) => void
   readonly onViewportChange: (viewport: GraphViewport) => void
+  readonly onDeselect: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -421,10 +422,9 @@ export class GraphRenderer {
     if (this.positions.length === 0) return
 
     const width = edgeWidth(this.viewport.scale)
+    const focusNode = this.highlightedNode ?? this.selectedNodeIndex
     const neighborSet =
-      this.highlightedNode !== null
-        ? (this.adjacency.get(this.highlightedNode) ?? new Set<number>())
-        : null
+      focusNode !== null ? (this.adjacency.get(focusNode) ?? new Set<number>()) : null
 
     for (const edge of this.edges) {
       const sx = this.positions[edge.sourceIndex * 2]
@@ -440,8 +440,7 @@ export class GraphRenderer {
 
       // Apply neighborhood dimming / highlighting
       if (neighborSet !== null) {
-        isHighlighted =
-          edge.sourceIndex === this.highlightedNode || edge.targetIndex === this.highlightedNode
+        isHighlighted = edge.sourceIndex === focusNode || edge.targetIndex === focusNode
         if (isHighlighted) {
           color = HIGHLIGHT_EDGE_COLOR
           alpha = NEIGHBOR_EDGE_ALPHA
@@ -491,10 +490,9 @@ export class GraphRenderer {
 
     const { showGhostNodes, showOrphanNodes, nodeScale } = this.displayOptions
 
+    const focusNode = this.highlightedNode ?? this.selectedNodeIndex
     const neighborSet =
-      this.highlightedNode !== null
-        ? (this.adjacency.get(this.highlightedNode) ?? new Set<number>())
-        : null
+      focusNode !== null ? (this.adjacency.get(focusNode) ?? new Set<number>()) : null
 
     for (let i = 0; i < this.nodes.length; i++) {
       const g = this.nodeGraphics[i]
@@ -520,7 +518,7 @@ export class GraphRenderer {
       g.position.set(x, y)
 
       // Hovered node: scale up for glow effect
-      const isHighlighted = i === this.highlightedNode
+      const isHighlighted = i === focusNode
       g.scale.set(isHighlighted ? 1.2 : 1)
 
       // Compute alpha
@@ -710,6 +708,9 @@ export class GraphRenderer {
       } else {
         this.callbacks.onNodeDragEnd(this.dragNodeIndex)
       }
+    } else if (this.isPanning && !this.pointerMoved) {
+      // Tap on empty canvas (not a pan gesture) — clear selection
+      this.callbacks.onDeselect()
     }
 
     this.dragNodeIndex = null
