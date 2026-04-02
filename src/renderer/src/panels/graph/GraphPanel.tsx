@@ -5,6 +5,7 @@ import { GraphRenderer } from './graph-renderer'
 import { LabelLayer } from './graph-label-layer'
 import { GraphSettingsPanel } from './GraphSettingsPanel'
 import { getGraphLod } from './graph-lod'
+import { resolveFocusIdx } from './graph-focus'
 import { colors, floatingPanel } from '@renderer/design/tokens'
 import type { SimNode, PhysicsCommand, PhysicsResult, ForceParams } from './graph-types'
 import type { KnowledgeGraph } from '@shared/types'
@@ -209,6 +210,11 @@ export function GraphPanel() {
     return neighbors
   }, [])
 
+  /** Resolve the effective focus node index: hover takes priority, falls back to selection. */
+  const getFocusIdx = useCallback((): number | null => {
+    return resolveFocusIdx(nodeIndexMapRef.current)
+  }, [])
+
   // Mount renderer + worker once
   useEffect(() => {
     const container = containerRef.current
@@ -234,6 +240,11 @@ export function GraphPanel() {
         setSelectedNode(nextId)
         renderer.setSelectedNode(nextId !== null ? idx : null)
       },
+      onDeselect: () => {
+        if (!mountedRef.current) return
+        setSelectedNode(null)
+        renderer.setSelectedNode(null)
+      },
       onNodeDrag: (idx, x, y) => {
         if (!workerRef.current) return
         const cmd: PhysicsCommand = { type: 'drag', nodeIndex: idx, x, y }
@@ -252,16 +263,15 @@ export function GraphPanel() {
         const ll = labelLayerRef.current
         if (ll && positionsRef.current.length > 0) {
           const lod = getGraphLod(vp.scale)
-          const hoveredId = useGraphViewStore.getState().hoveredNodeId
-          const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
-          const ns = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
+          const focusIdx = getFocusIdx()
+          const ns = focusIdx !== null ? getNeighborSet(focusIdx) : null
           const { showLabels, labelScale } = useGraphViewStore.getState()
           ll.render(
             simNodesRef.current,
             positionsRef.current,
             vp,
             lod,
-            hoveredIdx,
+            focusIdx,
             ns,
             showLabels,
             labelScale
@@ -304,9 +314,8 @@ export function GraphPanel() {
         // Update label layer
         const vp = useGraphViewStore.getState().viewport
         const lod = getGraphLod(vp.scale)
-        const hoveredId = useGraphViewStore.getState().hoveredNodeId
-        const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
-        const neighborSet = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
+        const focusIdx = getFocusIdx()
+        const neighborSet = focusIdx !== null ? getNeighborSet(focusIdx) : null
 
         const { showLabels, labelScale } = useGraphViewStore.getState()
         labelLayer.render(
@@ -314,7 +323,7 @@ export function GraphPanel() {
           msg.buffer,
           vp,
           lod,
-          hoveredIdx,
+          focusIdx,
           neighborSet,
           showLabels,
           labelScale
@@ -407,15 +416,14 @@ export function GraphPanel() {
     if (ll && positionsRef.current.length > 0) {
       const vp = useGraphViewStore.getState().viewport
       const lod = getGraphLod(vp.scale)
-      const hoveredId = useGraphViewStore.getState().hoveredNodeId
-      const hoveredIdx = hoveredId ? (nodeIndexMapRef.current.get(hoveredId) ?? null) : null
-      const ns = hoveredIdx !== null ? getNeighborSet(hoveredIdx) : null
+      const focusIdx = getFocusIdx()
+      const ns = focusIdx !== null ? getNeighborSet(focusIdx) : null
       ll.render(
         simNodesRef.current,
         positionsRef.current,
         vp,
         lod,
-        hoveredIdx,
+        focusIdx,
         ns,
         showLabels,
         labelScale
