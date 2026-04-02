@@ -22,7 +22,7 @@
     "build:mac": "npm run build && electron-builder --mac",
     "build:linux": "npm run build && electron-builder --linux",
     "package": "electron-vite build && electron-builder --mac --dir",
-    "package:install": "npm run package && cp -R 'dist/mac-arm64/Machina.app' /Applications/",
+    "package:install": "npm run package && rm -rf /Applications/Machina.app && cp -R 'dist/mac-arm64/Machina.app' /Applications/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "electron-vite build && playwright test --config playwright.config.ts",
