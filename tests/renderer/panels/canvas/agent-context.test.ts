@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { extractAgentContext } from '../../../../src/renderer/src/panels/canvas/agent-context'
 import type { CanvasNode, CanvasEdge } from '@shared/canvas-types'
-import type { AgentActionName } from '@shared/agent-action-types'
 
 function makeNode(overrides: Partial<CanvasNode> & { id: string }): CanvasNode {
   return {

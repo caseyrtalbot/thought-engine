@@ -524,6 +524,7 @@ export function CanvasView(): React.ReactElement {
     }
     window.addEventListener('agent-action-trigger', handler)
     return () => window.removeEventListener('agent-action-trigger', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- agent.trigger is a stable useCallback
   }, [agent.trigger])
 
   // Folder-map: trigger analysis when a folder path is set.
