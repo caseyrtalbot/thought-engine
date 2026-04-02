@@ -43,6 +43,10 @@ import { SectionOverlay } from './SectionOverlay'
 import { OntologyPreview } from './OntologyPreview'
 import { useOntologyOrchestrator } from './ontology-orchestrator'
 import { useAgentPlanListener } from '../../hooks/use-agent-plan-listener'
+import { useAgentOrchestrator } from '../../hooks/use-agent-orchestrator'
+import { AgentPreview } from './AgentPreview'
+import { computeGhostNodes } from './agent-ghost-layer'
+import type { AgentActionName } from '@shared/agent-action-types'
 import { applyFolderMapPlan } from './folder-map-apply'
 import { augmentFolderMapWithVaultSemantics } from './folder-map-semantic'
 import {
@@ -82,9 +86,11 @@ export function CanvasView(): React.ReactElement {
   const splitFilePath = useCanvasStore((s) => s.splitFilePath)
   const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
   const commandStack = useRef(new CommandStack())
+  const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
   const [folderMapProgress, setFolderMapProgress] = useState<FolderMapProgress | null>(null)
   const [previewPlan, setPreviewPlan] = useState<CanvasMutationPlan | null>(null)
   const ontology = useOntologyOrchestrator(commandStack)
+  const agent = useAgentOrchestrator(commandStack, containerSize)
   useAgentPlanListener()
   const rawFileCount = useVaultStore((s) => s.rawFileCount)
 
@@ -143,7 +149,6 @@ export function CanvasView(): React.ReactElement {
 
   // Track container size for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
-  const [containerSize, setContainerSize] = useState({ width: 1920, height: 1080 })
   const [importOpen, setImportOpen] = useState(false)
 
   // Track which filePath has already been auto-centered so we don't fight user panning
@@ -511,6 +516,16 @@ export function CanvasView(): React.ReactElement {
     return () => clearTimeout(timer)
   }, [activeTabId, filePath, isDirty, toCanvasFile, markSaved])
 
+  // Agent palette: listen for agent-action-trigger events from command palette
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent<{ action: AgentActionName }>).detail.action
+      agent.trigger(action)
+    }
+    window.addEventListener('agent-action-trigger', handler)
+    return () => window.removeEventListener('agent-action-trigger', handler)
+  }, [agent.trigger])
+
   // Folder-map: trigger analysis when a folder path is set.
   // We capture the path, clear pendingFolderMap immediately, and run the orchestrator.
   // Cancel only runs on unmount via a separate effect, NOT on dependency changes,
@@ -635,6 +650,32 @@ export function CanvasView(): React.ReactElement {
             )
           })}
           {previewPlan && <FolderMapPreviewGhosts plan={previewPlan} />}
+          {agent.phase === 'preview' && agent.pendingPlan && (
+            <>
+              {computeGhostNodes(agent.pendingPlan, nodes).map((ghost) => (
+                <div
+                  key={`ghost-${ghost.id}`}
+                  style={{
+                    position: 'absolute',
+                    left: ghost.position.x,
+                    top: ghost.position.y,
+                    width: ghost.size.width,
+                    height: ghost.size.height,
+                    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+                    border: '1px dashed rgba(76, 175, 80, 0.3)',
+                    borderRadius: 8,
+                    padding: 12,
+                    pointerEvents: 'none',
+                    overflow: 'hidden',
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.4)'
+                  }}
+                >
+                  {ghost.isMoved ? '\u21A6 moved' : ghost.content.slice(0, 120)}
+                </div>
+              ))}
+            </>
+          )}
         </CanvasSurface>
 
         <SectionOverlay viewport={viewport} />
@@ -647,6 +688,17 @@ export function CanvasView(): React.ReactElement {
             cardCount={ontologyCardCount}
             onApply={ontology.applyResult}
             onCancel={ontology.cancel}
+          />
+        )}
+
+        {(agent.phase === 'computing' || agent.phase === 'preview' || agent.phase === 'error') && (
+          <AgentPreview
+            phase={agent.phase}
+            actionName={agent.activeAction ? `/${agent.activeAction}` : null}
+            plan={agent.pendingPlan}
+            errorMessage={agent.errorMessage}
+            onApply={agent.apply}
+            onCancel={agent.cancel}
           />
         )}
 
@@ -700,13 +752,20 @@ export function CanvasView(): React.ReactElement {
         {cardContextMenu &&
           (() => {
             const menuNode = nodes.find((n) => n.id === cardContextMenu.nodeId)
-            if (!menuNode || menuNode.type !== 'note') return null
-            const menuFilePath = menuNode.content
+            if (!menuNode) return null
+            const isNote = menuNode.type === 'note'
+            const menuFilePath = isNote ? menuNode.content : undefined
             const { graph, fileToId, artifacts } = useVaultStore.getState()
             return (
               <CardContextMenu
                 x={cardContextMenu.x}
                 y={cardContextMenu.y}
+                selectedCount={selectedNodeIds.size}
+                onAgentAction={(action) => {
+                  setCardContextMenu(null)
+                  agent.trigger(action)
+                }}
+                agentBusy={agent.phase !== 'idle'}
                 onShowConnections={() => {
                   const { newNodes, newEdges } = computeShowConnections(
                     menuNode,
@@ -740,12 +799,16 @@ export function CanvasView(): React.ReactElement {
                   }
                   setCardContextMenu(null)
                 }}
-                onOpenInEditor={() => {
-                  useCanvasStore.getState().openSplit(menuFilePath)
-                  setCardContextMenu(null)
-                }}
+                onOpenInEditor={
+                  isNote
+                    ? () => {
+                        useCanvasStore.getState().openSplit(menuFilePath!)
+                        setCardContextMenu(null)
+                      }
+                    : undefined
+                }
                 onCopyPath={() => {
-                  navigator.clipboard.writeText(menuFilePath)
+                  navigator.clipboard.writeText(menuNode.content)
                   setCardContextMenu(null)
                 }}
                 onClose={() => setCardContextMenu(null)}
