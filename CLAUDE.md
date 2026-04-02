@@ -44,7 +44,8 @@ src/main/                       src/preload/               src/renderer/src/
 │   ├── shell.ts
 │   ├── canvas.ts
 │   ├── mcp.ts
-│   └── agents.ts
+│   ├── agents.ts
+│   └── agent-actions.ts
 └── services/
     ├── document-manager.ts    # Owns all open file content
     ├── file-service.ts        # Atomic disk I/O
@@ -69,7 +70,8 @@ src/main/                       src/preload/               src/renderer/src/
     ├── quit-coordinator.ts    # 2-phase coordinated quit
     ├── gitignore-filter.ts    # Respects .gitignore for indexing
     ├── event-batcher.ts       # Generic event batching
-    └── audit-logger.ts        # MCP write audit log
+    ├── audit-logger.ts        # MCP write audit log
+    └── agent-action-runner.ts # Computes agent actions (canvas mutations)
 
 src/shared/                    ← importable from ALL three processes
 ├── ipc-channels.ts            # Canonical typed IPC contract
@@ -78,6 +80,7 @@ src/shared/                    ← importable from ALL three processes
 ├── canvas-mutation-types.ts   # Snapshot-and-plan canvas mutation ops
 ├── workbench-types.ts         # Session events, milestones
 ├── agent-types.ts
+├── agent-action-types.ts      # Agent action request/response types
 ├── system-artifacts.ts        # Session/pattern/tension artifact schemas
 ├── constants.ts               # TE_DIR (.machina / .machina-dev)
 ├── format-elapsed.ts          # Duration formatting utility
@@ -255,7 +258,7 @@ Heavy computation runs off the renderer main thread:
 
 ### Canvas System (`src/renderer/src/panels/canvas/`)
 
-Infinite pan-zoom canvas (Pixi.js 8) with typed cards and edges. Nine card types: `text`, `note`, `terminal`, `code`, `markdown`, `image`, `pdf`, `project-file`, `system-artifact`. Pointer-events gating (click to focus, click again to interact).
+Infinite pan-zoom canvas (Pixi.js 8) with typed cards and edges. Twelve card types: `text`, `note`, `terminal`, `code`, `markdown`, `image`, `pdf`, `project-file`, `system-artifact`, `file-view`, `agent-session`, `project-folder`. Pointer-events gating (click to focus, click again to interact).
 
 ### Panel Architecture
 
@@ -298,7 +301,7 @@ Three-layer material model: canvas void (darkest), cards (semi-transparent with 
 
 ## Testing
 
-- **Unit**: Vitest with happy-dom (1650+ tests, 158 files). `tests/` mirrors `src/` for pure logic; `src/**/__tests__/` for colocated component tests.
+- **Unit**: Vitest with happy-dom (347+ test files). `tests/` mirrors `src/` for pure logic; `src/**/__tests__/` for colocated component tests.
 - **Integration**: Override with `// @vitest-environment node` at file top for tests needing real Node APIs.
 - **Store tests**: Reset via `store.setState(store.getInitialState())` in `beforeEach`.
 - **E2E**: Playwright with `workers:1`, `test.describe.serial`, `beforeAll/afterAll` lifecycle. Test vault at `e2e/fixtures/test-vault/`.
