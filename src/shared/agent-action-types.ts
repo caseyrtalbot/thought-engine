@@ -13,7 +13,7 @@ export interface AgentActionDef {
   readonly keywords: readonly string[]
 }
 
-export const AGENT_ACTIONS: readonly AgentActionDef[] = [
+export const AGENT_ACTIONS = [
   {
     id: 'challenge',
     label: '/challenge',
@@ -42,7 +42,7 @@ export const AGENT_ACTIONS: readonly AgentActionDef[] = [
     requiresSelection: 0,
     keywords: ['tidy', 'clean', 'align', 'layout', 'spacing', 'overlap']
   }
-] as const
+] as const satisfies readonly AgentActionDef[]
 
 export const AGENT_ACTION_NAMES = AGENT_ACTIONS.map((a) => a.id)
 
