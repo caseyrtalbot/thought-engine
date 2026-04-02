@@ -48,8 +48,8 @@ if (process.platform === 'darwin' && app.isPackaged) {
       timeout: 5000
     })
     if (fullPath) process.env.PATH = fullPath
-  } catch {
-    // Fall back to existing PATH if shell resolution fails
+  } catch (err) {
+    console.error('PATH resolution failed, using inherited PATH:', err)
   }
 }
 

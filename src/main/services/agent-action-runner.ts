@@ -1,4 +1,6 @@
 import { spawn } from 'child_process'
+import { existsSync } from 'fs'
+import { join } from 'path'
 import type { CanvasNodeType, CanvasSide } from '@shared/canvas-types'
 import type { CanvasMutationOp, CanvasMutationPlan } from '@shared/canvas-mutation-types'
 import type {
@@ -33,6 +35,22 @@ const VALID_SIDES = new Set<CanvasSide>(['top', 'right', 'bottom', 'left'])
 const DEFAULT_SIZE = { width: 200, height: 100 }
 
 const CLI_TIMEOUT_MS = 60_000
+
+/** Resolve the claude CLI binary, checking common install locations if not on PATH. */
+function resolveClaudeBin(): string {
+  const home = process.env.HOME ?? ''
+  const candidates = [
+    join(home, '.local', 'bin', 'claude'),
+    '/usr/local/bin/claude',
+    join(home, '.nvm', 'current', 'bin', 'claude')
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate
+  }
+  return 'claude'
+}
+
+const CLAUDE_BIN = resolveClaudeBin()
 
 // ---------------------------------------------------------------------------
 // JSON Extraction
@@ -354,7 +372,7 @@ export type CallClaudeFn = (prompt: string) => Promise<string>
 
 export async function callClaude(prompt: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('claude', ['--print'], {
+    const proc = spawn(CLAUDE_BIN, ['--print'], {
       stdio: ['pipe', 'pipe', 'pipe']
     })
 
