@@ -102,21 +102,17 @@ function ActionBar({
 
   return (
     <div className="sidebar-action-bar">
-      <div className="flex items-center gap-2">
+      <div>
         {vaultName && onSelectVault && onOpenVaultPicker ? (
-          <div className="flex-1 min-w-0">
-            <VaultSelector
-              currentName={vaultName}
-              currentPath={useVaultStore.getState().vaultPath}
-              history={vaultHistory}
-              onSelectVault={onSelectVault}
-              onOpenPicker={onOpenVaultPicker}
-              onRemoveFromHistory={onRemoveFromHistory}
-            />
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
+          <VaultSelector
+            currentName={vaultName}
+            currentPath={useVaultStore.getState().vaultPath}
+            history={vaultHistory}
+            onSelectVault={onSelectVault}
+            onOpenPicker={onOpenVaultPicker}
+            onRemoveFromHistory={onRemoveFromHistory}
+          />
+        ) : null}
       </div>
       <div className="sidebar-section-bar">
         <button onClick={() => onToggleFiles?.()} className="sidebar-section-toggle">
