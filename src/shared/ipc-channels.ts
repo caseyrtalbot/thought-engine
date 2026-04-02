@@ -7,6 +7,7 @@ import type {
 } from './workbench-types'
 import type { SystemArtifactKind } from './system-artifacts'
 import type { AgentSidecarState, AgentSpawnRequest } from './agent-types'
+import type { AgentActionRequest, AgentActionResponse } from './agent-action-types'
 import type { CanvasMutationPlan } from './canvas-mutation-types'
 
 export interface IpcChannels {
@@ -148,6 +149,10 @@ export interface IpcChannels {
   'agent:spawn': {
     request: AgentSpawnRequest
     response: { sessionId: string } | { error: string }
+  }
+  'agent-action:compute': {
+    request: AgentActionRequest
+    response: AgentActionResponse
   }
 
   // --- Canvas ---
