@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { colors } from '../../design/tokens'
+import { AGENT_ACTIONS, type AgentActionName } from '@shared/agent-action-types'
 
 interface CardContextMenuProps {
   readonly x: number
@@ -9,24 +10,32 @@ interface CardContextMenuProps {
   readonly onRunClaude?: () => void
   readonly onCopyPath: () => void
   readonly onClose: () => void
+  readonly selectedCount: number
+  readonly onAgentAction?: (action: AgentActionName) => void
+  readonly agentBusy?: boolean
 }
 
 interface MenuItemProps {
   readonly label: string
   readonly onClick: () => void
+  readonly disabled?: boolean
 }
 
-function MenuItem({ label, onClick }: MenuItemProps) {
+function MenuItem({ label, onClick, disabled }: MenuItemProps) {
   return (
     <button
       onClick={(e) => {
         e.stopPropagation()
-        onClick()
+        if (!disabled) onClick()
       }}
       className="w-full text-left px-3 py-1 text-xs transition-colors"
-      style={{ color: colors.text.primary }}
+      style={{
+        color: disabled ? colors.text.secondary : colors.text.primary,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? 'default' : 'pointer'
+      }}
       onMouseEnter={(e) => {
-        ;(e.currentTarget as HTMLElement).style.backgroundColor = colors.accent.muted
+        if (!disabled) (e.currentTarget as HTMLElement).style.backgroundColor = colors.accent.muted
       }}
       onMouseLeave={(e) => {
         ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
@@ -44,7 +53,10 @@ export function CardContextMenu({
   onOpenInEditor,
   onRunClaude,
   onCopyPath,
-  onClose
+  onClose,
+  selectedCount,
+  onAgentAction,
+  agentBusy
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -115,6 +127,36 @@ export function CardContextMenu({
           onClose()
         }}
       />
+      {onAgentAction && (
+        <>
+          <div
+            style={{
+              height: 1,
+              backgroundColor: colors.border.subtle,
+              margin: '4px 8px'
+            }}
+          />
+          <div
+            className="px-3 py-1 text-[10px]"
+            style={{ color: colors.text.secondary, opacity: 0.5 }}
+          >
+            Agent
+          </div>
+          {AGENT_ACTIONS.filter(
+            (a) => a.requiresSelection === 0 || selectedCount >= a.requiresSelection
+          ).map((action) => (
+            <MenuItem
+              key={action.id}
+              label={action.label}
+              onClick={() => {
+                onAgentAction(action.id as AgentActionName)
+                onClose()
+              }}
+              disabled={agentBusy}
+            />
+          ))}
+        </>
+      )}
     </div>
   )
 }

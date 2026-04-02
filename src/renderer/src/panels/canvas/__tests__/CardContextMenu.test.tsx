@@ -9,7 +9,8 @@ function renderMenu(overrides: Partial<React.ComponentProps<typeof CardContextMe
     onShowConnections: vi.fn(),
     onOpenInEditor: vi.fn(),
     onCopyPath: vi.fn(),
-    onClose: vi.fn()
+    onClose: vi.fn(),
+    selectedCount: 1
   }
   return render(<CardContextMenu {...defaults} {...overrides} />)
 }
