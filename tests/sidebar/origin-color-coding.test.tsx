@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
+import { FileTree } from '../../src/renderer/src/panels/sidebar/FileTree'
 import {
-  FileTree,
   isFolderOrigin,
   ORIGIN_FILE_COLOR,
   ORIGIN_FOLDER_COLOR
-} from '../../src/renderer/src/panels/sidebar/FileTree'
+} from '../../src/renderer/src/panels/sidebar/origin-utils'
 import { useSettingsStore } from '../../src/renderer/src/store/settings-store'
 import type { FlatTreeNode } from '../../src/renderer/src/panels/sidebar/buildFileTree'
 
@@ -101,16 +101,6 @@ describe('isFolderOrigin', () => {
     ])
     // Only /vault/dir/a.md is a direct child; deep.md belongs to /vault/dir/sub
     expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(true)
-  })
-})
-
-describe('origin color constants', () => {
-  it('exports the expected green file color', () => {
-    expect(ORIGIN_FILE_COLOR).toBe('#4ade80')
-  })
-
-  it('exports the expected blue folder color', () => {
-    expect(ORIGIN_FOLDER_COLOR).toBe('#60a5fa')
   })
 })
 

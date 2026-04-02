@@ -87,8 +87,7 @@ function formatDateLabel(timestamp?: string): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-export const ORIGIN_FILE_COLOR = '#4ade80'
-export const ORIGIN_FOLDER_COLOR = '#60a5fa'
+import { ORIGIN_FILE_COLOR, ORIGIN_FOLDER_COLOR, isFolderOrigin } from './origin-utils'
 
 interface FileTreeProps {
   nodes: FlatTreeNode[]
@@ -233,16 +232,6 @@ function FileIcon({ filename, origin }: { readonly filename: string; readonly or
 function FolderIcon({ isOriginFolder }: { readonly isOriginFolder?: boolean }) {
   const color = isOriginFolder ? ORIGIN_FOLDER_COLOR : '#a1a1aa'
   return <FolderSimple size={14} color={color} weight="duotone" />
-}
-
-export function isFolderOrigin(
-  folderPath: string,
-  origins: Map<string, string> | undefined,
-  nodes: FlatTreeNode[]
-): boolean {
-  if (!origins || origins.size === 0) return false
-  const children = nodes.filter((n) => !n.isDirectory && n.parentPath === folderPath)
-  return children.length > 0 && children.every((c) => origins.has(c.path))
 }
 
 /** Inline SVG chevron pointing right, rotated via CSS when expanded */
