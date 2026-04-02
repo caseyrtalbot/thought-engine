@@ -1171,7 +1171,11 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         }
       />
       {/* Docked activity bar */}
-      <ActivityBar onToggleSidebar={toggleSidebar} sidebarExpanded={sidebarExpanded} />
+      <ActivityBar
+        onToggleSidebar={toggleSidebar}
+        sidebarExpanded={sidebarExpanded}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
       {/* Docked sidebar with draggable divider */}
       <ResizableSidebar
         onLoadVault={onLoadVault}
