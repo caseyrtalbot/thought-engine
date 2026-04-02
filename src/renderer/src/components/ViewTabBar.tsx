@@ -175,7 +175,7 @@ export function ViewTabBar(_props: ViewTabBarProps) {
       style={{
         height: 36,
         padding: '0 8px',
-        borderBottom: `1px solid ${colors.border.subtle}`
+        borderBottom: '1px solid var(--chrome-panel-border)'
       }}
     >
       {tabs.map((tab) => {

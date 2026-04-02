@@ -703,7 +703,7 @@ body {
   flex-shrink: 0;
   height: 28px;
   overflow-x: auto;
-  background: var(--chrome-panel-bg);
+  background: var(--color-bg-base);
   position: relative;
   -webkit-app-region: no-drag;
 }
