@@ -1,0 +1,197 @@
+// @vitest-environment node
+import { describe, it, expect } from 'vitest'
+import {
+  extractJsonFromResponse,
+  validateAgentOps,
+  buildPlanFromOps,
+  buildPrompt
+} from '../../../src/main/services/agent-action-runner'
+import type { AgentContext } from '@shared/agent-action-types'
+import type { CanvasMutationOp } from '@shared/canvas-mutation-types'
+
+describe('extractJsonFromResponse', () => {
+  it('extracts JSON from a code fence', () => {
+    const text = 'Here is the plan:\n```json\n{"ops": []}\n```\nDone.'
+    expect(extractJsonFromResponse(text)).toEqual({ ops: [] })
+  })
+
+  it('extracts JSON from bare code fence', () => {
+    const text = '```\n{"ops": [{"type": "move-node"}]}\n```'
+    expect(extractJsonFromResponse(text)).toEqual({ ops: [{ type: 'move-node' }] })
+  })
+
+  it('extracts raw JSON object when no fence', () => {
+    const text = '{"ops": [{"type": "add-node"}]}'
+    expect(extractJsonFromResponse(text)).toEqual({ ops: [{ type: 'add-node' }] })
+  })
+
+  it('throws when no JSON found', () => {
+    expect(() => extractJsonFromResponse('No json here')).toThrow('No JSON found')
+  })
+})
+
+describe('validateAgentOps', () => {
+  it('validates add-node ops', () => {
+    const raw = [
+      {
+        type: 'add-node',
+        node: {
+          id: 'n1',
+          type: 'text',
+          position: { x: 100, y: 200 },
+          size: { width: 200, height: 100 },
+          content: 'New card',
+          metadata: {}
+        }
+      }
+    ]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value).toHaveLength(1)
+      expect(result.value[0].type).toBe('add-node')
+    }
+  })
+
+  it('validates move-node ops', () => {
+    const raw = [{ type: 'move-node', nodeId: 'a', position: { x: 50, y: 50 } }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value[0].type).toBe('move-node')
+  })
+
+  it('validates add-edge ops with defaults for missing sides', () => {
+    const raw = [{ type: 'add-edge', edge: { fromNode: 'a', toNode: 'b' } }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      const op = result.value[0] as Extract<CanvasMutationOp, { type: 'add-edge' }>
+      expect(op.edge.id).toBeTruthy() // auto-generated
+      expect(op.edge.fromSide).toBe('bottom') // default
+      expect(op.edge.toSide).toBe('top') // default
+    }
+  })
+
+  it('validates resize-node ops', () => {
+    const raw = [{ type: 'resize-node', nodeId: 'a', size: { width: 300, height: 200 } }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value[0].type).toBe('resize-node')
+  })
+
+  it('validates remove-node ops', () => {
+    const raw = [{ type: 'remove-node', nodeId: 'x' }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+  })
+
+  it('validates remove-edge ops', () => {
+    const raw = [{ type: 'remove-edge', edgeId: 'e1' }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects ops with unknown type', () => {
+    const raw = [{ type: 'fly-away', nodeId: 'a' }]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects non-array input', () => {
+    const result = validateAgentOps('not an array')
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects add-node with invalid node type', () => {
+    const raw = [
+      {
+        type: 'add-node',
+        node: { id: 'n1', type: 'hologram', position: { x: 0, y: 0 }, content: '' }
+      }
+    ]
+    const result = validateAgentOps(raw)
+    expect(result.ok).toBe(false)
+  })
+})
+
+describe('buildPlanFromOps', () => {
+  it('computes summary counts from ops', () => {
+    const ops: CanvasMutationOp[] = [
+      {
+        type: 'add-node',
+        node: {
+          id: 'n1',
+          type: 'text',
+          position: { x: 0, y: 0 },
+          size: { width: 200, height: 100 },
+          content: 'test',
+          metadata: {}
+        }
+      },
+      {
+        type: 'add-edge',
+        edge: {
+          id: 'e1',
+          fromNode: 'a',
+          toNode: 'n1',
+          fromSide: 'bottom',
+          toSide: 'top'
+        }
+      },
+      { type: 'move-node', nodeId: 'a', position: { x: 100, y: 100 } }
+    ]
+    const plan = buildPlanFromOps(ops)
+    expect(plan.source).toBe('agent')
+    expect(plan.summary.addedNodes).toBe(1)
+    expect(plan.summary.addedEdges).toBe(1)
+    expect(plan.summary.movedNodes).toBe(1)
+    expect(plan.id).toBeTruthy()
+    expect(plan.operationId).toBeTruthy()
+  })
+})
+
+describe('buildPrompt', () => {
+  const minimalContext: AgentContext = {
+    action: 'challenge',
+    selectedCards: [
+      {
+        id: 'a',
+        type: 'text',
+        title: 'Test Card',
+        body: 'Some content here',
+        tags: ['idea'],
+        position: { x: 0, y: 0 },
+        size: { width: 200, height: 100 }
+      }
+    ],
+    neighbors: [],
+    edges: [],
+    canvasMeta: {
+      viewportBounds: { x: 0, y: 0, width: 1200, height: 800 },
+      totalCardCount: 1
+    }
+  }
+
+  it('includes the action name in the prompt', () => {
+    const prompt = buildPrompt('challenge', minimalContext)
+    expect(prompt).toContain('challenge')
+  })
+
+  it('includes card content in the prompt', () => {
+    const prompt = buildPrompt('challenge', minimalContext)
+    expect(prompt).toContain('Some content here')
+  })
+
+  it('includes JSON schema instructions', () => {
+    const prompt = buildPrompt('challenge', minimalContext)
+    expect(prompt).toContain('"ops"')
+    expect(prompt).toContain('add-node')
+  })
+
+  it('builds prompts for all four actions', () => {
+    for (const action of ['challenge', 'emerge', 'organize', 'tidy'] as const) {
+      const prompt = buildPrompt(action, { ...minimalContext, action })
+      expect(prompt.length).toBeGreaterThan(100)
+    }
+  })
+})
