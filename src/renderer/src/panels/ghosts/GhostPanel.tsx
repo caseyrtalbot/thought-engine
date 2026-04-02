@@ -459,62 +459,66 @@ export function GhostPanel() {
   }
 
   return (
-    <div
-      className="h-full overflow-y-auto"
-      style={{
-        padding: '24px 22px 28px',
-        fontFamily: typography.fontFamily.body
-      }}
-    >
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 13, fontWeight: 300, color: colors.text.primary, marginBottom: 2 }}>
-          Unresolved References
-        </div>
-        <div
-          style={{
-            fontSize: 48,
-            fontWeight: 200,
-            color: colors.text.primary,
-            letterSpacing: '-0.03em',
-            lineHeight: 1.1
-          }}
-        >
-          {totalCount}
-        </div>
-        <div style={{ fontSize: 12, color: colors.text.muted }}>
-          ghost{totalCount !== 1 ? 's' : ''} across your vault
-        </div>
-      </div>
-
-      {/* Sections */}
-      {sections.map((section) => (
-        <div key={section.label}>
+    <div className="h-full overflow-y-auto" style={{ fontFamily: typography.fontFamily.body }}>
+      <div
+        style={{
+          maxWidth: '52rem',
+          margin: '0 auto',
+          padding: '2rem 2rem 3rem'
+        }}
+      >
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div
+            style={{ fontSize: 13, fontWeight: 300, color: colors.text.primary, marginBottom: 2 }}
+          >
+            Unresolved References
+          </div>
           <div
             style={{
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase' as const,
-              color: colors.text.muted,
-              padding: '14px 0 6px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-              marginBottom: 2
+              fontSize: 48,
+              fontWeight: 200,
+              color: colors.text.primary,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1
             }}
           >
-            {section.label}
+            {totalCount}
           </div>
-          {section.ghosts.map((ghost) => (
-            <GhostRow
-              key={ghost.id}
-              ghost={ghost}
-              maxCount={maxCount}
-              artifacts={artifacts}
-              onDismiss={() => dismissGhost(ghost.id)}
-            />
-          ))}
+          <div style={{ fontSize: 12, color: colors.text.muted }}>
+            ghost{totalCount !== 1 ? 's' : ''} across your vault
+          </div>
         </div>
-      ))}
+
+        {/* Sections */}
+        {sections.map((section) => (
+          <div key={section.label}>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase' as const,
+                color: colors.text.muted,
+                padding: '14px 0 6px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                marginBottom: 2
+              }}
+            >
+              {section.label}
+            </div>
+            {section.ghosts.map((ghost) => (
+              <GhostRow
+                key={ghost.id}
+                ghost={ghost}
+                maxCount={maxCount}
+                artifacts={artifacts}
+                onDismiss={() => dismissGhost(ghost.id)}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
