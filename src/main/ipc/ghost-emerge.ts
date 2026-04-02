@@ -5,6 +5,8 @@ import { callClaude, extractJsonFromResponse } from '../services/agent-action-ru
 import type { CallClaudeFn } from '../services/agent-action-runner'
 import { serializeArtifact } from '@shared/engine/parser'
 import { inferFolder } from '@shared/engine/ghost-index'
+import { PathGuard } from '../services/path-guard'
+import { PathGuardError } from '@shared/agent-types'
 import type { Artifact } from '@shared/types'
 import type { Result } from '@shared/engine/types'
 import { typedHandle } from '../typed-ipc'
@@ -168,64 +170,101 @@ function buildArtifact(
 }
 
 // ---------------------------------------------------------------------------
+// Security: filename sanitization
+// ---------------------------------------------------------------------------
+
+const VALID_ORIGINS = new Set(['emerge', 'challenge'])
+
+/** Strip dangerous characters from ghost title before using as filename. */
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[/\\:\0]/g, '_')
+    .replace(/^\.+/, '_')
+    .slice(0, 200)
+}
+
+// ---------------------------------------------------------------------------
 // IPC Registration
 // ---------------------------------------------------------------------------
 
+let _emerging = false
+
 export function registerGhostEmergeIpc(callClaudeFn: CallClaudeFn = callClaude): void {
   typedHandle('vault:emerge-ghost', async ({ ghostId, ghostTitle, referencePaths, vaultPath }) => {
-    // 1. Read reference files (skip unreadable)
-    const refContents: Array<{ path: string; content: string }> = []
-    for (const refPath of referencePaths) {
+    // Concurrency guard (server-side)
+    if (_emerging) throw new Error('Ghost emergence already in progress')
+    _emerging = true
+
+    try {
+      const guard = new PathGuard(vaultPath)
+
+      // 1. Read reference files (validate paths, skip unreadable)
+      const refContents: Array<{ path: string; content: string }> = []
+      for (const refPath of referencePaths) {
+        try {
+          guard.assertWithinVault(refPath)
+          const content = await readFile(refPath, 'utf-8')
+          refContents.push({ path: refPath, content })
+        } catch (err) {
+          if (err instanceof PathGuardError) throw err
+          // Skip unreadable files (ENOENT, EACCES, etc.)
+        }
+      }
+
+      // 2. Quick-parse each for title, tags, body
+      const refs: ReferenceNote[] = refContents.map((rc) => quickParseRef(rc.content, rc.path))
+
+      // 3. Infer folder
+      const folderPath = inferFolder(ghostId, referencePaths, vaultPath)
+      guard.assertWithinVault(folderPath)
+
+      // 4. Build prompt
+      const prompt = buildEmergePrompt(ghostTitle, refs)
+
+      // 5-6. Call Claude CLI and parse response (with fallback)
+      let emergeResult: EmergeResult | null = null
       try {
-        const content = await readFile(refPath, 'utf-8')
-        refContents.push({ path: refPath, content })
-      } catch {
-        // Skip unreadable files
+        const rawResponse = await callClaudeFn(prompt)
+        const parsed = parseEmergeResponse(rawResponse)
+        if (parsed.ok) {
+          // Validate origin is from allowlist
+          const validatedOrigin = VALID_ORIGINS.has(parsed.value.origin)
+            ? parsed.value.origin
+            : 'emerge'
+          emergeResult = { ...parsed.value, origin: validatedOrigin }
+        }
+      } catch (err) {
+        if (err instanceof PathGuardError) throw err
+        // Fallback: empty note (Claude CLI not found, timeout, etc.)
       }
-    }
 
-    // 2. Quick-parse each for title, tags, body
-    const refs: ReferenceNote[] = refContents.map((rc) => quickParseRef(rc.content, rc.path))
+      // 7. Build Artifact
+      const artifact = buildArtifact(ghostId, ghostTitle, referencePaths, emergeResult)
 
-    // 3. Infer folder
-    const folderPath = inferFolder(ghostId, referencePaths, vaultPath)
+      // 8. Serialize
+      const content = serializeArtifact(artifact)
 
-    // 4. Build prompt
-    const prompt = buildEmergePrompt(ghostTitle, refs)
+      // 9. Sanitize filename, ensure folder, validate write path
+      const safeFilename = sanitizeFilename(ghostTitle)
+      const filePath = join(folderPath, `${safeFilename}.md`)
+      guard.assertWithinVault(filePath)
 
-    // 5-6. Call Claude CLI and parse response (with fallback)
-    let emergeResult: EmergeResult | null = null
-    try {
-      const rawResponse = await callClaudeFn(prompt)
-      const parsed = parseEmergeResponse(rawResponse)
-      if (parsed.ok) {
-        emergeResult = parsed.value
+      const folderCreated = !existsSync(folderPath)
+      if (!existsSync(folderPath)) {
+        mkdirSync(folderPath, { recursive: true })
       }
-    } catch {
-      // Fallback: empty note (Claude CLI not found, timeout, etc.)
-    }
 
-    // 7. Build Artifact
-    const artifact = buildArtifact(ghostId, ghostTitle, referencePaths, emergeResult)
+      const fd = openSync(filePath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY)
+      try {
+        writeSync(fd, content)
+      } finally {
+        closeSync(fd)
+      }
 
-    // 8. Serialize
-    const content = serializeArtifact(artifact)
-
-    // 9. Ensure folder exists and atomic write
-    const folderCreated = !existsSync(folderPath)
-    if (!existsSync(folderPath)) {
-      mkdirSync(folderPath, { recursive: true })
-    }
-
-    const filePath = join(folderPath, `${ghostTitle}.md`)
-    const fd = openSync(filePath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY)
-    try {
-      writeSync(fd, content)
+      // 10. Return result
+      return { filePath, folderCreated, folderPath }
     } finally {
-      closeSync(fd)
+      _emerging = false
     }
-
-    // 10. Return result
-    return { filePath, folderCreated, folderPath }
   })
 }
