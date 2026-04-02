@@ -19,6 +19,7 @@ import { EdgeLayer } from './EdgeLayer'
 import { ConnectionDragOverlay } from './ConnectionDragOverlay'
 import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
+import { TE_DIR } from '@shared/constants'
 import { CanvasToolbar } from './CanvasToolbar'
 import { CanvasMinimap } from './CanvasMinimap'
 import { ZoomIndicator } from './ZoomIndicator'
@@ -102,17 +103,15 @@ export function CanvasView(): React.ReactElement {
   const loadCanvas = useCanvasStore((s) => s.loadCanvas)
   const activeTabId = useTabStore((s) => s.activeTabId)
 
-  // Load existing canvas file if one exists, but don't create one eagerly.
-  // A canvas file is created lazily on first mutation (see ensureCanvasFile below).
-  // This prevents empty Untitled.canvas files from appearing in vaults where
-  // the user hasn't interacted with the canvas yet.
+  // Load existing default canvas from .machina/ if one exists.
+  // The default canvas is a system file — never pollutes the vault root.
   const didLoadCanvas = useRef(false)
   useEffect(() => {
     if (didLoadCanvas.current || filePath || !vaultPath) return
     didLoadCanvas.current = true
 
     void (async () => {
-      const defaultPath = `${vaultPath}/Untitled.canvas`
+      const defaultPath = `${vaultPath}/${TE_DIR}/canvas.json`
       try {
         const exists = await window.api.fs.fileExists(defaultPath)
         if (exists) {
@@ -120,22 +119,24 @@ export function CanvasView(): React.ReactElement {
           const { deserializeCanvas } = await import('./canvas-io')
           loadCanvas(defaultPath, deserializeCanvas(raw))
         }
-        // If no file exists, canvas works in-memory until first mutation
+        // If no file exists, canvas works in-memory until first content mutation
       } catch {
         // Non-fatal: canvas works without persistence
       }
     })()
   }, [filePath, vaultPath, loadCanvas])
 
-  // Lazily create the canvas file on first mutation so autosave has a path.
-  // This replaces the eager creation that used to write Untitled.canvas on mount.
+  // Lazily create the canvas file on first content mutation (node or edge added).
+  // Viewport-only changes do not create the file.
   const didEnsureFile = useRef(false)
+  const edges = useCanvasStore((s) => s.edges)
+  const hasContent = nodes.length > 0 || edges.length > 0
   useEffect(() => {
-    if (didEnsureFile.current || filePath || !vaultPath || !isDirty) return
+    if (didEnsureFile.current || filePath || !vaultPath || !hasContent) return
     didEnsureFile.current = true
 
     void (async () => {
-      const defaultPath = `${vaultPath}/Untitled.canvas`
+      const defaultPath = `${vaultPath}/${TE_DIR}/canvas.json`
       try {
         const { createCanvasFile } = await import('@shared/canvas-types')
         const data = createCanvasFile()
@@ -145,7 +146,7 @@ export function CanvasView(): React.ReactElement {
         // Non-fatal
       }
     })()
-  }, [filePath, vaultPath, isDirty, loadCanvas, toCanvasFile])
+  }, [filePath, vaultPath, hasContent, loadCanvas, toCanvasFile])
 
   // Track container size for viewport culling
   const containerRef = useRef<HTMLDivElement>(null)
