@@ -68,7 +68,13 @@ const api = {
     ) => typedInvoke('vault:create-system-artifact', { vaultPath, kind, filename, content }),
     updateSystemArtifact: (vaultPath: string, path: string, content: string) =>
       typedInvoke('vault:update-system-artifact', { vaultPath, path, content }),
-    deleteFile: (filePath: string) => typedInvoke('fs:delete-file', { path: filePath })
+    deleteFile: (filePath: string) => typedInvoke('fs:delete-file', { path: filePath }),
+    emergeGhost: (
+      ghostId: string,
+      ghostTitle: string,
+      referencePaths: readonly string[],
+      vaultPath: string
+    ) => typedInvoke('vault:emerge-ghost', { ghostId, ghostTitle, referencePaths, vaultPath })
   },
   shell: {
     showInFolder: (path: string) => typedInvoke('shell:show-in-folder', { path }),

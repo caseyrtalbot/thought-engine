@@ -60,6 +60,19 @@ export interface IpcChannels {
     request: { vaultPath: string; path: string; content: string }
     response: void
   }
+  'vault:emerge-ghost': {
+    request: {
+      ghostId: string
+      ghostTitle: string
+      referencePaths: readonly string[]
+      vaultPath: string
+    }
+    response: {
+      filePath: string
+      folderCreated: boolean
+      folderPath: string
+    }
+  }
   'vault:watch-start': { request: { vaultPath: string }; response: void }
   'vault:watch-stop': { request: void; response: void }
 
