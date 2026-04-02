@@ -278,7 +278,7 @@ export function GraphPanel() {
     labelLayerRef.current = labelLayer
 
     // Spawn physics worker
-    const worker = new Worker(new URL('@engine/graph-physics-worker.ts', import.meta.url), {
+    const worker = new Worker(new URL('../../engine/graph-physics-worker.ts', import.meta.url), {
       type: 'module'
     })
 
