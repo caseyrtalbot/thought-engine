@@ -369,7 +369,7 @@ export function CanvasToolbar({
         <Tip label={showAllEdges ? 'Hide edges' : 'Show edges'} />
       </div>
 
-      <div className="canvas-toolbtn-wrap">
+      <div className="canvas-toolbtn-wrap" style={{ position: 'relative' }}>
         <button
           onClick={onLibrarian}
           className={`canvas-toolbtn${librarianActive || librarianAlive ? ' canvas-toolbtn--active' : ''}`}
@@ -396,12 +396,16 @@ export function CanvasToolbar({
         {librarianAlive && (
           <div
             style={{
+              position: 'absolute',
+              left: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginLeft: 6,
               fontSize: 8,
               fontWeight: 500,
               letterSpacing: '0.04em',
-              color: 'var(--color-accent-default)',
-              textAlign: 'center',
-              padding: '1px 0',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
               background:
                 'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
               backgroundClip: 'text',
@@ -492,12 +496,16 @@ export function CanvasToolbar({
         {curatorAlive && (
           <div
             style={{
+              position: 'absolute',
+              left: '100%',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              marginLeft: 6,
               fontSize: 8,
               fontWeight: 500,
               letterSpacing: '0.04em',
-              color: 'var(--color-accent-default)',
-              textAlign: 'center',
-              padding: '1px 0',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
               background:
                 'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
               backgroundClip: 'text',
