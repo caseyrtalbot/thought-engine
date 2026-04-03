@@ -7,6 +7,8 @@ import type { AgentSpawnRequest } from '@shared/agent-types'
 import type { SessionId } from '@shared/types'
 import type { LibrarianMonitor } from './librarian-monitor'
 import { TE_DIR } from '@shared/constants'
+import bundledLibrarianPrompt from './default-librarian-prompt.md?raw'
+import bundledCuratorPrompt from './default-curator-prompt.md?raw'
 
 /** Shell-escape a string by wrapping in single quotes and escaping embedded quotes. */
 function shellEscape(s: string): string {
@@ -14,21 +16,12 @@ function shellEscape(s: string): string {
 }
 
 /** Read the librarian system prompt, preferring a user-customized file over the bundled default. */
-function readLibrarianPrompt(vaultRoot: string): string | null {
+function readLibrarianPrompt(vaultRoot: string): string {
   const userCustomized = join(vaultRoot, TE_DIR, 'librarian-prompt.md')
   if (existsSync(userCustomized)) {
     return readFileSync(userCustomized, 'utf-8')
   }
-
-  const bundledDefault = __dirname.includes('.asar')
-    ? join(process.resourcesPath, 'services', 'default-librarian-prompt.md')
-    : join(__dirname, 'default-librarian-prompt.md')
-
-  if (existsSync(bundledDefault)) {
-    return readFileSync(bundledDefault, 'utf-8')
-  }
-
-  return null
+  return bundledLibrarianPrompt
 }
 
 /** Curator mode descriptions, keyed by mode ID. */
@@ -48,21 +41,12 @@ const CURATOR_MODES: Record<string, string> = {
 }
 
 /** Read the curator system prompt, preferring a user-customized file over the bundled default. */
-function readCuratorPrompt(vaultRoot: string): string | null {
+function readCuratorPrompt(vaultRoot: string): string {
   const userCustomized = join(vaultRoot, TE_DIR, 'curator-prompt.md')
   if (existsSync(userCustomized)) {
     return readFileSync(userCustomized, 'utf-8')
   }
-
-  const bundledDefault = __dirname.includes('.asar')
-    ? join(process.resourcesPath, 'services', 'default-curator-prompt.md')
-    : join(__dirname, 'default-curator-prompt.md')
-
-  if (existsSync(bundledDefault)) {
-    return readFileSync(bundledDefault, 'utf-8')
-  }
-
-  return null
+  return bundledCuratorPrompt
 }
 
 /** Read the agent system prompt, preferring a user-customized file over the bundled default. */
@@ -115,9 +99,7 @@ export class AgentSpawner {
       scopeNote
     ]
 
-    if (systemPrompt) {
-      args.unshift('--system-prompt', systemPrompt)
-    }
+    args.unshift('--system-prompt', systemPrompt)
 
     const child = cpSpawn('claude', args, {
       cwd: vaultPath,
@@ -193,9 +175,7 @@ export class AgentSpawner {
       scopeNote
     ]
 
-    if (systemPrompt) {
-      args.unshift('--system-prompt', systemPrompt)
-    }
+    args.unshift('--system-prompt', systemPrompt)
 
     const child = cpSpawn('claude', args, {
       cwd: vaultPath,
