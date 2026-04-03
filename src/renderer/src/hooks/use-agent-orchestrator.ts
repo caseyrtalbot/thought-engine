@@ -15,6 +15,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { useCanvasStore } from '../store/canvas-store'
+import { useVaultStore } from '../store/vault-store'
 import { extractAgentContext } from '../panels/canvas/agent-context'
 import { applyAgentResult } from '../panels/canvas/agent-apply'
 import type { AgentActionName } from '@shared/agent-action-types'
@@ -55,6 +56,14 @@ export function useAgentOrchestrator(
     async (action: AgentActionName) => {
       // Single agent lock — ref is always current, no stale closure risk
       if (phaseRef.current !== 'idle') return
+
+      // Librarian is a long-running tmux session, not a single-shot action
+      if (action === 'librarian') {
+        const vaultPath = useVaultStore.getState().vaultPath
+        if (!vaultPath) return
+        window.api.agent.spawn({ cwd: vaultPath, prompt: '/librarian' })
+        return
+      }
 
       const { nodes, edges, selectedNodeIds, viewport } = useCanvasStore.getState()
 
