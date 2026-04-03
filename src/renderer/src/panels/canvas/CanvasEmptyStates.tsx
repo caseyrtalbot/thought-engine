@@ -38,7 +38,7 @@ export function CanvasWelcomeCard() {
             marginBottom: 12
           }}
         >
-          Thought Engine
+          Machina
         </div>
         <h2
           style={{
@@ -63,8 +63,8 @@ export function CanvasWelcomeCard() {
             marginBottom: 24
           }}
         >
-          Point Thought Engine at any folder of markdown files. Your notes become an explorable
-          knowledge graph with connections, clusters, and tensions.
+          Point Machina at any folder of markdown files. Your notes become an explorable knowledge
+          graph with connections, clusters, and tensions.
         </p>
         <button
           type="button"

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Standalone MCP server for Thought Engine vaults.
+ * Standalone MCP server for Machina vaults.
  *
  * Claude Code (or any MCP client) spawns this as a subprocess and
  * communicates over stdio. The server exposes read-only vault tools:
@@ -14,7 +14,7 @@
  *
  * Claude Code config (~/.claude/settings.json):
  *   "mcpServers": {
- *     "thought-engine": {
+ *     "machina": {
  *       "command": "node",
  *       "args": ["<project>/out/main/mcp-cli.js", "/path/to/vault"]
  *     }
@@ -29,16 +29,16 @@ import { AuditLogger } from './services/audit-logger'
 import { VaultQueryFacade } from './services/vault-query-facade'
 import { initVaultIndex } from './services/vault-indexing'
 
-/** Resolve audit log directory (no Electron app.getPath, use ~/.thought-engine/audit). */
+/** Resolve audit log directory (no Electron app.getPath, use ~/.machina/audit). */
 function auditLogDir(): string {
-  return join(homedir(), '.thought-engine', 'audit')
+  return join(homedir(), '.machina', 'audit')
 }
 
 function parseVaultPath(args: readonly string[]): string {
   const vaultPath = args[2] // node script.js <vault-path>
   if (!vaultPath) {
     process.stderr.write(
-      'Usage: thought-engine-mcp <vault-path>\n\n' +
+      'Usage: machina-mcp <vault-path>\n\n' +
         'Starts a read-only MCP server for the given vault.\n' +
         'Communicates over stdio (JSON-RPC).\n'
     )
@@ -48,7 +48,7 @@ function parseVaultPath(args: readonly string[]): string {
 }
 
 export async function startMcpServer(vaultPath: string): Promise<void> {
-  process.stderr.write(`[thought-engine-mcp] Indexing vault: ${vaultPath}\n`)
+  process.stderr.write(`[machina-mcp] Indexing vault: ${vaultPath}\n`)
 
   const deps = await initVaultIndex(vaultPath)
 
@@ -63,7 +63,7 @@ export async function startMcpServer(vaultPath: string): Promise<void> {
   await server.connect(transport)
 
   process.stderr.write(
-    `[thought-engine-mcp] Server ready (4 read-only tools, ${deps.vaultIndex.getArtifacts().length} files indexed)\n`
+    `[machina-mcp] Server ready (4 read-only tools, ${deps.vaultIndex.getArtifacts().length} files indexed)\n`
   )
 }
 
@@ -76,7 +76,7 @@ const isDirectRun =
 if (isDirectRun) {
   const vaultPath = parseVaultPath(process.argv)
   startMcpServer(vaultPath).catch((err) => {
-    process.stderr.write(`[thought-engine-mcp] Fatal: ${String(err)}\n`)
+    process.stderr.write(`[machina-mcp] Fatal: ${String(err)}\n`)
     process.exit(1)
   })
 }

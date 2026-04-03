@@ -25,8 +25,11 @@ test-results/
 
 # Working documents (specs, plans, research)
 docs/working/
+docs/superpowers/
+docs/forge/
 
 # Ephemeral project state
 .thought-engine-project-canvas.json
 .thought-engine/
 .thought-engine-dev/
+.machina-project-canvas.json

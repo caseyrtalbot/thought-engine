@@ -264,6 +264,8 @@ function ConnectedSidebar({
     const pathKey = files.map((f) => f.path).join('\n')
     if (pathKey !== prevPathSetRef.current || sortMode !== 'modified') {
       prevPathSetRef.current = pathKey
+      // Intentional: snapshot files only when path set changes, not on mtime updates
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStableFiles(files)
     }
   }, [files, sortMode])

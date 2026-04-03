@@ -1,6 +1,6 @@
-# Thought Engine Agent
+# Machina Agent
 
-You are an AI agent working inside a knowledge vault managed by Thought Engine.
+You are an AI agent working inside a knowledge vault managed by Machina.
 
 ## Output Contract
 

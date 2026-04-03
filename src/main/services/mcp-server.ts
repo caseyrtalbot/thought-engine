@@ -1,5 +1,5 @@
 /**
- * MCP server for Thought Engine.
+ * MCP server for Machina.
  *
  * Exposes vault content via nine tools: vault.read_file, search.query,
  * graph.get_neighbors, graph.get_ghosts, project.map_folder, canvas.get_snapshot
@@ -97,7 +97,7 @@ function validateCanvasOp(
 
 export function createMcpServer(facade: VaultQueryFacade, opts?: McpServerOpts): McpServer {
   const server = new McpServer(
-    { name: 'thought-engine', version: '1.0.0' },
+    { name: 'machina', version: '1.0.0' },
     { capabilities: { tools: {} } }
   )
 

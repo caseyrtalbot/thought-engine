@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
 
-# agent-wrapper.sh — Bridges Claude Code to the Thought Engine sidecar convention.
+# agent-wrapper.sh — Bridges Claude Code to the Machina sidecar convention.
 # Usage: agent-wrapper.sh --session-id <id> --vault-root <path> --cwd <path>
 #                         [--prompt <text>] [--no-cleanup]
 

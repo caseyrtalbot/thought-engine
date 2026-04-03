@@ -1,5 +1,5 @@
 /**
- * Tests for the Thought Engine MCP server.
+ * Tests for the Machina MCP server.
  *
  * Uses the MCP SDK's in-memory transport for testing server behavior
  * without stdio.

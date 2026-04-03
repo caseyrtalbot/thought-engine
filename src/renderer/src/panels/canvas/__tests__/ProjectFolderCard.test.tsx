@@ -27,7 +27,7 @@ function makeFolderNode(metaOverrides?: Partial<Record<string, unknown>>): Canva
     content: '',
     metadata: {
       relativePath: 'src/utils',
-      rootPath: '/Users/casey/Projects/thought-engine',
+      rootPath: '/Users/casey/Projects/machina',
       childCount: 5,
       collapsed: false,
       ...metaOverrides
@@ -53,11 +53,11 @@ describe('ProjectFolderCard', () => {
     const ProjectFolderCard = mod.default
     const node = makeFolderNode({
       relativePath: '.',
-      rootPath: '/Users/casey/Projects/thought-engine'
+      rootPath: '/Users/casey/Projects/machina'
     })
     render(<ProjectFolderCard node={node} />)
 
-    expect(screen.getByTestId('folder-name').textContent).toBe('thought-engine')
+    expect(screen.getByTestId('folder-name').textContent).toBe('machina')
   })
 
   it('shows the child count badge when childCount > 0', async () => {

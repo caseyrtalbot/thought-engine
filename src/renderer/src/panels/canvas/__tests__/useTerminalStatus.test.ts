@@ -54,9 +54,7 @@ describe('deriveLabel', () => {
   })
 
   it('returns basename when metadata.initialCwd is set', () => {
-    expect(deriveLabel({ initialCwd: '/Users/casey/Projects/thought-engine' })).toBe(
-      'thought-engine'
-    )
+    expect(deriveLabel({ initialCwd: '/Users/casey/Projects/machina' })).toBe('machina')
   })
 
   it('returns "Terminal" when no relevant metadata', () => {

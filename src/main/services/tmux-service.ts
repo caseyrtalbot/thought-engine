@@ -340,7 +340,7 @@ export class TmuxService {
       this.clients.delete(sessionId)
     }
 
-    // Build UTF-8 safe environment (matches Collaborator pattern)
+    // Build UTF-8 safe environment
     const env: Record<string, string> = { ...tmuxRuntimeEnv(), PROMPT_EOL_MARK: '' }
     if (!env.LANG || !env.LANG.includes('UTF-8')) {
       env.LANG = 'en_US.UTF-8'
