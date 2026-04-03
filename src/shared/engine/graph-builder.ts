@@ -37,6 +37,7 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
       type: a.type,
       signal: a.signal,
       connectionCount: 0,
+      origin: a.origin,
       tags: [...a.tags],
       created: a.created
     })
@@ -80,7 +81,14 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
   function hasExplicitEdge(source: string, target: string): boolean {
     const sorted = [source, target].sort()
     const pairKey = sorted.join('<->')
-    for (const kind of ['connection', 'cluster', 'tension', 'appears_in', 'related'] as const) {
+    for (const kind of [
+      'connection',
+      'cluster',
+      'tension',
+      'appears_in',
+      'related',
+      'derived_from'
+    ] as const) {
       const key = kind === 'appears_in' ? `${source}->${target}:${kind}` : `${pairKey}:${kind}`
       if (edgeSet.has(key)) return true
       if (kind === 'appears_in') {
@@ -92,8 +100,11 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
 
   // Build a lowercase-to-id lookup for case-insensitive bodyLink resolution
   const lowerToId = new Map<string, string>()
+  // Title-to-id lookup for sources (wikilinks reference by title)
+  const lowerTitleToId = new Map<string, string>()
   for (const a of artifacts) {
     lowerToId.set(a.id.toLowerCase(), a.id)
+    lowerTitleToId.set(a.title.toLowerCase(), a.id)
   }
 
   // Phase 1: Explicit frontmatter edges
@@ -115,6 +126,13 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     for (const link of a.bodyLinks) {
       const resolvedTarget = lowerToId.get(link.toLowerCase()) ?? link
       addEdge(a.id, resolvedTarget, 'related', wikilinkProvenance)
+    }
+    for (const sourceTitle of a.sources ?? []) {
+      const resolvedTarget =
+        lowerTitleToId.get(sourceTitle.toLowerCase()) ??
+        lowerToId.get(sourceTitle.toLowerCase()) ??
+        sourceTitle
+      addEdge(a.id, resolvedTarget, 'derived_from', frontmatterProvenance)
     }
   }
 

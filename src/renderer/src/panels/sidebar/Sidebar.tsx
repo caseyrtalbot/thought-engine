@@ -9,6 +9,7 @@ import { SearchBar } from './SearchBar'
 import { VaultSelector } from './VaultSelector'
 import { WorkspaceFilter } from './WorkspaceFilter'
 import type { ArtifactType } from '@shared/types'
+import type { ArtifactOrigin } from './origin-utils'
 import type { SystemArtifactKind } from '@shared/system-artifacts'
 import type { FlatTreeNode } from './buildFileTree'
 import type { FileContextMenuState } from './FileContextMenu'
@@ -38,7 +39,7 @@ interface SidebarProps {
   activeFilePath: string | null
   collapsedPaths: Set<string>
   artifactTypes?: Map<string, ArtifactType>
-  artifactOrigins?: Map<string, string>
+  artifactOrigins?: Map<string, ArtifactOrigin>
   onCanvasPaths?: ReadonlySet<string>
   canvasConnectionCounts?: ReadonlyMap<string, number>
   sortMode?: SortMode

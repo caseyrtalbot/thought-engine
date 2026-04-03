@@ -3,22 +3,34 @@ import { AGENT_ACTIONS, AGENT_ACTION_NAMES } from '@shared/agent-action-types'
 import type { AgentActionName } from '@shared/agent-action-types'
 
 describe('AGENT_ACTIONS registry', () => {
-  it('has four actions', () => {
-    expect(AGENT_ACTIONS).toHaveLength(4)
+  it('has six actions', () => {
+    expect(AGENT_ACTIONS).toHaveLength(6)
   })
 
-  it('contains challenge, emerge, organize, tidy', () => {
+  it('contains challenge, emerge, organize, tidy, compile, librarian', () => {
     const ids = AGENT_ACTIONS.map((a) => a.id)
-    expect(ids).toEqual(['challenge', 'emerge', 'organize', 'tidy'])
+    expect(ids).toEqual(['challenge', 'emerge', 'organize', 'tidy', 'compile', 'librarian'])
   })
 
   it('exports AGENT_ACTION_NAMES matching registry ids', () => {
-    expect(AGENT_ACTION_NAMES).toEqual(['challenge', 'emerge', 'organize', 'tidy'])
+    expect(AGENT_ACTION_NAMES).toEqual([
+      'challenge',
+      'emerge',
+      'organize',
+      'tidy',
+      'compile',
+      'librarian'
+    ])
   })
 
-  it('challenge requires 1+ selection', () => {
+  it('challenge requires no selection (vault-scope capable)', () => {
     const challenge = AGENT_ACTIONS.find((a) => a.id === 'challenge')!
-    expect(challenge.requiresSelection).toBe(1)
+    expect(challenge.requiresSelection).toBe(0)
+  })
+
+  it('compile requires 1+ selection', () => {
+    const compile = AGENT_ACTIONS.find((a) => a.id === 'compile')!
+    expect(compile.requiresSelection).toBe(1)
   })
 
   it('organize requires 2+ selection', () => {
@@ -39,7 +51,12 @@ describe('AGENT_ACTIONS registry', () => {
     }
   })
 
-  it('AgentActionName type is a union of the four ids', () => {
+  it('librarian requires no selection (vault-scope capable)', () => {
+    const librarian = AGENT_ACTIONS.find((a) => a.id === 'librarian')!
+    expect(librarian.requiresSelection).toBe(0)
+  })
+
+  it('AgentActionName type is a union of the six ids', () => {
     const name: AgentActionName = 'challenge'
     expect(AGENT_ACTION_NAMES).toContain(name)
   })

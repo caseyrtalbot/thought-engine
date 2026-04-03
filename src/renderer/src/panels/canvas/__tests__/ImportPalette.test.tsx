@@ -38,6 +38,8 @@ describe('ImportPalette active note identity', () => {
           tensions_with: [],
           appears_in: [],
           related: [],
+          origin: 'human',
+          sources: [],
           concepts: [],
           bodyLinks: [],
           body: 'Hello body',

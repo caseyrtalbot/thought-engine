@@ -238,6 +238,129 @@ describe('shared engine: rename-links', () => {
   })
 })
 
+describe('shared engine: parseArtifact origin and sources', () => {
+  it('parses origin field from frontmatter', () => {
+    const md = `---
+id: compiled-article
+title: Compiled Article
+type: research
+origin: agent
+sources:
+  - "[[Paper A]]"
+  - "[[Paper B]]"
+created: 2026-04-02
+modified: 2026-04-02
+---
+
+Compiled content.
+`
+    const result = parseArtifact(md, 'compiled-article.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.origin).toBe('agent')
+    expect(result.value.sources).toEqual(['Paper A', 'Paper B'])
+  })
+
+  it('defaults origin to human when absent', () => {
+    const result = parseArtifact(SAMPLE_MD, 'test-note.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.origin).toBe('human')
+    expect(result.value.sources).toEqual([])
+  })
+
+  it('accepts source and agent as valid origins', () => {
+    const md = `---
+title: Raw Paper
+origin: source
+---
+
+Raw content.
+`
+    const result = parseArtifact(md, 'raw.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.origin).toBe('source')
+  })
+
+  it('defaults invalid origin to human', () => {
+    const md = `---
+title: Bad Origin
+origin: invalid
+---
+
+Content.
+`
+    const result = parseArtifact(md, 'bad.md')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.origin).toBe('human')
+  })
+})
+
+describe('shared engine: buildGraph derived_from edges', () => {
+  it('creates derived_from edges from sources field', () => {
+    const sourceArtifact = parseArtifact(
+      `---
+id: paper-a
+title: Paper A
+type: research
+origin: source
+---
+
+Raw paper content.
+`,
+      'paper-a.md'
+    )
+
+    const compiledArtifact = parseArtifact(
+      `---
+id: compiled-concept
+title: Compiled Concept
+type: research
+origin: agent
+sources:
+  - "[[Paper A]]"
+---
+
+Compiled concept article.
+`,
+      'compiled-concept.md'
+    )
+
+    expect(sourceArtifact.ok && compiledArtifact.ok).toBe(true)
+    if (!sourceArtifact.ok || !compiledArtifact.ok) return
+
+    const graph = buildGraph([sourceArtifact.value, compiledArtifact.value])
+    const derivedEdges = graph.edges.filter((e) => e.kind === 'derived_from')
+    expect(derivedEdges).toHaveLength(1)
+    expect(derivedEdges[0].source).toBe('compiled-concept')
+    expect(derivedEdges[0].target).toBe('paper-a')
+    expect(derivedEdges[0].provenance?.source).toBe('frontmatter')
+  })
+
+  it('does not create derived_from edges when sources is empty', () => {
+    const artifact = parseArtifact(
+      `---
+id: plain-note
+title: Plain Note
+type: note
+---
+
+Just a note.
+`,
+      'plain-note.md'
+    )
+
+    expect(artifact.ok).toBe(true)
+    if (!artifact.ok) return
+
+    const graph = buildGraph([artifact.value])
+    const derivedEdges = graph.edges.filter((e) => e.kind === 'derived_from')
+    expect(derivedEdges).toHaveLength(0)
+  })
+})
+
 describe('shared engine: concept-extractor', () => {
   it('extracts concept nodes from body text', () => {
     const body = 'This mentions <node>First Concept</node> and <node>Second Concept</node>.'

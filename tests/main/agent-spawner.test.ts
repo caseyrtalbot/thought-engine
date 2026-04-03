@@ -88,7 +88,7 @@ describe('AgentSpawner', () => {
     expect(shellArg).toContain('Fix the failing tests')
   })
 
-  it('omits --prompt from shell command when prompt is not provided', async () => {
+  it('sends agent prompt template even when no user prompt is provided', async () => {
     const { AgentSpawner } = await import('../../src/main/services/agent-spawner')
     const spawner = new AgentSpawner(mockShellService, '/vault/root')
     const request: AgentSpawnRequest = { cwd: '/projects/my-app' }
@@ -96,7 +96,9 @@ describe('AgentSpawner', () => {
     spawner.spawn(request)
 
     const shellArg = (mockShellService.create as ReturnType<typeof vi.fn>).mock.calls[0][3]
-    expect(shellArg).not.toContain('--prompt')
+    // When the bundled default-agent-prompt.md exists, it gets sent as the prompt
+    expect(shellArg).toContain('--prompt')
+    expect(shellArg).toContain('Output Contract')
   })
 
   it('sets label with agent: prefix for terminal tab', async () => {

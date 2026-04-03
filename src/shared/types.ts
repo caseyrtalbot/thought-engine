@@ -67,6 +67,10 @@ export interface Artifact {
   appears_in: string[]
   related: string[]
   concepts: readonly string[]
+  /** Provenance: who created this artifact. */
+  readonly origin: 'human' | 'source' | 'agent'
+  /** Wikilink titles of source artifacts this was derived from. */
+  readonly sources: readonly string[]
   /** Wikilink targets extracted from body text (derived, not persisted to disk). */
   readonly bodyLinks: readonly string[]
   body: string
@@ -80,7 +84,8 @@ export const RELATIONSHIP_KINDS = [
   'tension',
   'appears_in',
   'related',
-  'co-occurrence'
+  'co-occurrence',
+  'derived_from'
 ] as const
 export type RelationshipKind = (typeof RELATIONSHIP_KINDS)[number]
 
@@ -90,6 +95,7 @@ export interface GraphNode {
   type: ArtifactType
   signal: Signal
   connectionCount: number
+  origin?: 'human' | 'source' | 'agent'
   tags?: string[]
   path?: string
   created?: string

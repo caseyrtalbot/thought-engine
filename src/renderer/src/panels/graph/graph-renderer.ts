@@ -44,6 +44,8 @@ const HIGHLIGHT_GLOW_ALPHA = 0.25
 const HIGHLIGHT_GLOW_WIDTH_MULT = 4
 const HIT_RADIUS = 20
 const SELECTION_RING_COLOR = 0x60a5fa
+const ORIGIN_SOURCE_STROKE = 0x60a5fa // blue for source material
+const ORIGIN_AGENT_STROKE = 0x4ade80 // green for agent-compiled
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -346,8 +348,16 @@ export class GraphRenderer {
       } else {
         g.circle(0, 0, radius)
         g.fill({ color })
+        // Origin-based stroke: source gets blue, agent gets green, human gets default
+        const strokeColor =
+          node.origin === 'source'
+            ? ORIGIN_SOURCE_STROKE
+            : node.origin === 'agent'
+              ? ORIGIN_AGENT_STROKE
+              : NODE_STROKE_COLOR
+        const strokeWidth = node.origin && node.origin !== 'human' ? 2 : 1
         g.circle(0, 0, radius)
-        g.stroke({ width: 1, color: NODE_STROKE_COLOR, alpha: NODE_STROKE_ALPHA })
+        g.stroke({ width: strokeWidth, color: strokeColor, alpha: NODE_STROKE_ALPHA })
       }
 
       // Base alpha from signal

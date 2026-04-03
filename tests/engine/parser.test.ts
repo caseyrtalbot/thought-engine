@@ -392,7 +392,8 @@ title: Emergent Idea
 type: note
 created: 2026-03-20
 modified: 2026-03-20
-origin: emerge
+origin: agent
+category: emerge
 custom_field: hello
 ---
 
@@ -402,7 +403,8 @@ An idea that emerged from observation.`
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
 
-    expect(parsed.value.frontmatter.origin).toBe('emerge')
+    expect(parsed.value.origin).toBe('agent')
+    expect(parsed.value.frontmatter.category).toBe('emerge')
     expect(parsed.value.frontmatter.custom_field).toBe('hello')
 
     const serialized = serializeArtifact(parsed.value)
@@ -410,7 +412,8 @@ An idea that emerged from observation.`
     expect(reparsed.ok).toBe(true)
     if (!reparsed.ok) return
 
-    expect(reparsed.value.frontmatter.origin).toBe('emerge')
+    expect(reparsed.value.origin).toBe('agent')
+    expect(reparsed.value.frontmatter.category).toBe('emerge')
     expect(reparsed.value.frontmatter.custom_field).toBe('hello')
   })
 
@@ -422,7 +425,7 @@ type: gene
 created: 2026-03-20
 modified: 2026-03-20
 tags: [alpha, beta]
-origin: emerge
+origin: agent
 ---
 
 Body text.`
@@ -437,8 +440,10 @@ Body text.`
     const tagMatches = serialized.match(/^tags:/gm)
     expect(tagMatches).toHaveLength(1)
 
-    // origin should be present
-    expect(serialized).toContain('origin: emerge')
+    // origin should appear exactly once and be 'agent'
+    const originMatches = serialized.match(/^origin:/gm)
+    expect(originMatches).toHaveLength(1)
+    expect(serialized).toContain('origin: agent')
   })
 
   it('round-trips a valid artifact', () => {

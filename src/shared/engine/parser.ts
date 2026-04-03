@@ -11,6 +11,7 @@ import type { Result } from './types'
 import { extractConceptNodes } from './concept-extractor'
 
 const VALID_SIGNALS = new Set<string>(['untested', 'emerging', 'validated', 'core'])
+const VALID_ORIGINS = new Set<string>(['human', 'source', 'agent'])
 
 function toStringArray(val: unknown): string[] {
   if (!val) return []
@@ -93,6 +94,10 @@ export function parseArtifact(content: string, filename: string): Result<Artifac
       tensions_with: stripWikilinks(toStringArray(data?.tensions_with)),
       appears_in: stripWikilinks(toStringArray(data?.appears_in)),
       related: stripWikilinks(toStringArray(data?.related)),
+      origin: VALID_ORIGINS.has(data?.origin)
+        ? (data.origin as 'human' | 'source' | 'agent')
+        : 'human',
+      sources: stripWikilinks(toStringArray(data?.sources)),
       concepts: extractConceptNodes(body),
       bodyLinks: extractBodyWikilinks(body),
       body: body.trim(),
@@ -110,6 +115,8 @@ export function serializeArtifact(artifact: Artifact): string {
     modified: artifact.modified
   }
 
+  if (artifact.origin !== 'human') frontmatter.origin = artifact.origin
+  if (artifact.sources.length > 0) frontmatter.sources = [...artifact.sources]
   if (artifact.source) frontmatter.source = artifact.source
   if (artifact.frame) frontmatter.frame = artifact.frame
   if (artifact.signal !== 'untested') frontmatter.signal = artifact.signal
@@ -136,7 +143,9 @@ export function serializeArtifact(artifact: Artifact): string {
     'tensions_with',
     'appears_in',
     'related',
-    'concepts'
+    'concepts',
+    'origin',
+    'sources'
   ])
 
   for (const [key, value] of Object.entries(artifact.frontmatter)) {

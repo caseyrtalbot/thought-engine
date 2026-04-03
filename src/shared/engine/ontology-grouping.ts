@@ -33,6 +33,7 @@ export interface OntologyGroupingInput {
         readonly connections: readonly string[]
         readonly concepts: readonly string[]
         readonly title: string
+        readonly origin?: 'human' | 'source' | 'agent'
       }
     >
   >
@@ -653,9 +654,80 @@ function assignColorTokens(
   return colorMap
 }
 
+// --- Origin-based grouping ---
+
+const ORIGIN_LABELS: Record<string, string> = {
+  human: 'Human',
+  source: 'Sources',
+  agent: 'Agent-Compiled'
+}
+
+const ORIGIN_COLORS: Record<string, OntologyColorToken> = {
+  human: 'ontology-blue',
+  source: 'ontology-orange',
+  agent: 'ontology-green'
+}
+
+function groupByOrigin(input: OntologyGroupingInput): OntologySnapshot {
+  const groups = new Map<string, string[]>()
+
+  for (const card of input.cards) {
+    if (card.type !== 'note') continue
+    const artifactId = input.fileToId[card.content]
+    if (!artifactId) continue
+    const artifact = input.artifacts[artifactId]
+    if (!artifact) continue
+    const origin = artifact.origin ?? 'human'
+    const list = groups.get(origin) ?? []
+    list.push(card.id)
+    groups.set(origin, list)
+  }
+
+  const groupsById: Record<string, OntologyGroupNode> = {}
+  const rootGroupIds: GroupId[] = []
+
+  for (const [origin, cardIds] of groups) {
+    if (cardIds.length === 0) continue
+    const id = groupId(`origin:${origin}`)
+    rootGroupIds.push(id)
+    groupsById[id] = {
+      id,
+      label: ORIGIN_LABELS[origin] ?? origin,
+      parentGroupId: null,
+      colorToken: ORIGIN_COLORS[origin] ?? ONTOLOGY_COLOR_TOKENS[0],
+      cardIds,
+      provenance: { kind: 'user-tag', tagPaths: [`origin:${origin}`] }
+    }
+  }
+
+  const rev = computeRevisionHash(
+    input.cards.map((c) => c.id),
+    [],
+    []
+  )
+
+  return {
+    revisionId: revisionId(rev),
+    createdAt: new Date().toISOString(),
+    rootGroupIds,
+    groupsById,
+    ungroupedNoteIds: [],
+    auxiliaryCardIds: input.cards.filter((c) => c.type !== 'note').map((c) => c.id),
+    interGroupEdges: []
+  }
+}
+
+export type OntologyGroupBy = 'tags' | 'origin'
+
 // --- Main function ---
 
-export function computeOntologySnapshot(input: OntologyGroupingInput): OntologySnapshot {
+export function computeOntologySnapshot(
+  input: OntologyGroupingInput,
+  groupBy: OntologyGroupBy = 'tags'
+): OntologySnapshot {
+  if (groupBy === 'origin') {
+    return groupByOrigin(input)
+  }
   // Step 0: Resolve cards to artifacts
   const { resolved, ungroupedNoteIds, auxiliaryCardIds, canvasArtifactIds } = resolveCards(input)
 

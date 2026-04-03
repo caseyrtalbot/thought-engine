@@ -18,14 +18,14 @@ export const AGENT_ACTIONS = [
     id: 'challenge',
     label: '/challenge',
     description: 'Stress-test ideas, surface contradictions and assumptions',
-    requiresSelection: 1,
+    requiresSelection: 0,
     keywords: ['challenge', 'question', 'contradict', 'assumption', 'stress']
   },
   {
     id: 'emerge',
     label: '/emerge',
     description: 'Surface hidden connections, synthesize across content',
-    requiresSelection: 1,
+    requiresSelection: 0,
     keywords: ['emerge', 'connect', 'synthesize', 'discover', 'link']
   },
   {
@@ -41,6 +41,20 @@ export const AGENT_ACTIONS = [
     description: 'Clean up layout: resolve overlaps, align, improve spacing',
     requiresSelection: 0,
     keywords: ['tidy', 'clean', 'align', 'layout', 'spacing', 'overlap']
+  },
+  {
+    id: 'compile',
+    label: '/compile',
+    description: 'Compile sources into wiki articles',
+    requiresSelection: 1,
+    keywords: ['compile', 'synthesize', 'wiki', 'article', 'summarize']
+  },
+  {
+    id: 'librarian',
+    label: '/librarian',
+    description: 'Launch librarian agent to compile, maintain, and enhance the vault',
+    requiresSelection: 0,
+    keywords: ['librarian', 'maintain', 'compile', 'index', 'health']
   }
 ] as const satisfies readonly AgentActionDef[]
 
@@ -82,6 +96,7 @@ export interface AgentContext {
   readonly selectedCards: readonly AgentCardContext[]
   readonly neighbors: readonly AgentNeighborContext[]
   readonly edges: readonly AgentEdgeContext[]
+  readonly vaultScope?: boolean
   readonly canvasMeta: {
     readonly viewportBounds: {
       readonly x: number

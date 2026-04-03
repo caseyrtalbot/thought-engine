@@ -285,7 +285,22 @@ const ACTION_INSTRUCTIONS: Record<AgentActionName, string> = {
   tidy:
     'You are a layout optimizer. Clean up the canvas layout by resolving overlaps, aligning cards ' +
     'to a grid, and improving spacing. Move and resize cards as needed. Do not change content or ' +
-    'add new cards unless absolutely necessary.'
+    'add new cards unless absolutely necessary.',
+
+  compile:
+    'You are a knowledge compiler. Read the selected source cards and compile them into structured ' +
+    'wiki articles. For each key concept, claim, or theme in the sources, create a new card with a ' +
+    'descriptive title, appropriate type, and tags consistent with the vault. Include sources in the ' +
+    'metadata field as an array of the source card titles (e.g. {"sources": ["Paper A", "Paper B"]}). ' +
+    'Set metadata.origin to "agent". Position new cards near their source cards, offset to form a ' +
+    'visible cluster. Connect new articles to their sources with edges, and to each other where ' +
+    'concepts relate.',
+
+  librarian:
+    'You are the vault librarian. Review the vault structure, find unprocessed sources, ' +
+    'compile them into wiki articles, discover contradictions and gaps, maintain connections, ' +
+    'and update the vault index. Create new cards for compiled articles, tension cards for ' +
+    'contradictions, and connection edges between related content.'
 }
 
 function formatCards(context: AgentContext): string {
@@ -319,8 +334,16 @@ function formatEdges(context: AgentContext): string {
     .join('\n')
 }
 
+const VAULT_SCOPE_PREAMBLE =
+  'You are operating at VAULT SCOPE. Instead of selected cards, you have been given a structural ' +
+  'overview of the entire vault: artifact summaries (title, type, signal, tags), the tag tree, and ' +
+  'unresolved references (ghosts). Identify the most important areas to address and produce your ' +
+  'output as new cards positioned in open canvas space.\n\n'
+
 export function buildPrompt(action: AgentActionName, context: AgentContext): string {
-  const instructions = ACTION_INSTRUCTIONS[action]
+  const instructions = context.vaultScope
+    ? VAULT_SCOPE_PREAMBLE + ACTION_INSTRUCTIONS[action]
+    : ACTION_INSTRUCTIONS[action]
   const cards = formatCards(context)
   const neighbors = formatNeighbors(context)
   const edges = formatEdges(context)

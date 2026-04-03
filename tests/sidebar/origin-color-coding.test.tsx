@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { FileTree } from '../../src/renderer/src/panels/sidebar/FileTree'
 import {
-  isFolderOrigin,
-  ORIGIN_FILE_COLOR,
-  ORIGIN_FOLDER_COLOR
+  getOriginColor,
+  getFolderOriginColor,
+  type ArtifactOrigin
 } from '../../src/renderer/src/panels/sidebar/origin-utils'
 import { useSettingsStore } from '../../src/renderer/src/store/settings-store'
 import type { FlatTreeNode } from '../../src/renderer/src/panels/sidebar/buildFileTree'
@@ -21,22 +21,22 @@ function makeNode(overrides: Partial<FlatTreeNode> = {}): FlatTreeNode {
   }
 }
 
-describe('isFolderOrigin', () => {
-  it('returns false when origins map is undefined', () => {
+describe('getFolderOriginColor', () => {
+  it('returns undefined when origins map is undefined', () => {
     const nodes = [
       makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false })
     ]
-    expect(isFolderOrigin('/vault/dir', undefined, nodes)).toBe(false)
+    expect(getFolderOriginColor('/vault/dir', undefined, nodes)).toBeUndefined()
   })
 
-  it('returns false when origins map is empty', () => {
+  it('returns undefined when origins map is empty', () => {
     const nodes = [
       makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false })
     ]
-    expect(isFolderOrigin('/vault/dir', new Map(), nodes)).toBe(false)
+    expect(getFolderOriginColor('/vault/dir', new Map(), nodes)).toBeUndefined()
   })
 
-  it('returns false when folder has no children (no files)', () => {
+  it('returns undefined when folder has no children (no files)', () => {
     const nodes = [
       makeNode({
         name: 'dir',
@@ -46,29 +46,65 @@ describe('isFolderOrigin', () => {
         itemCount: 0
       })
     ]
-    const origins = new Map([['some/other.md', 'agent']])
-    expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(false)
+    const origins = new Map<string, ArtifactOrigin>([['some/other.md', 'agent']])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBeUndefined()
   })
 
-  it('returns true when all child files have origins', () => {
+  it('returns agent color when all children are agent origin', () => {
     const nodes = [
       makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false }),
       makeNode({ path: '/vault/dir/b.md', parentPath: '/vault/dir', isDirectory: false })
     ]
-    const origins = new Map([
-      ['/vault/dir/a.md', 'agent-x'],
-      ['/vault/dir/b.md', 'agent-y']
+    const origins = new Map<string, ArtifactOrigin>([
+      ['/vault/dir/a.md', 'agent'],
+      ['/vault/dir/b.md', 'agent']
     ])
-    expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(true)
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBe('#4ade80')
   })
 
-  it('returns false when only some child files have origins', () => {
+  it('returns source color when all children are source origin', () => {
     const nodes = [
       makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false }),
       makeNode({ path: '/vault/dir/b.md', parentPath: '/vault/dir', isDirectory: false })
     ]
-    const origins = new Map([['/vault/dir/a.md', 'agent']])
-    expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(false)
+    const origins = new Map<string, ArtifactOrigin>([
+      ['/vault/dir/a.md', 'source'],
+      ['/vault/dir/b.md', 'source']
+    ])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBe('#60a5fa')
+  })
+
+  it('returns undefined when children have mixed origins', () => {
+    const nodes = [
+      makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false }),
+      makeNode({ path: '/vault/dir/b.md', parentPath: '/vault/dir', isDirectory: false })
+    ]
+    const origins = new Map<string, ArtifactOrigin>([
+      ['/vault/dir/a.md', 'agent'],
+      ['/vault/dir/b.md', 'source']
+    ])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBeUndefined()
+  })
+
+  it('returns undefined when any child is human origin', () => {
+    const nodes = [
+      makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false }),
+      makeNode({ path: '/vault/dir/b.md', parentPath: '/vault/dir', isDirectory: false })
+    ]
+    const origins = new Map<string, ArtifactOrigin>([
+      ['/vault/dir/a.md', 'agent'],
+      ['/vault/dir/b.md', 'human']
+    ])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBeUndefined()
+  })
+
+  it('returns undefined when only some child files have origins', () => {
+    const nodes = [
+      makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false }),
+      makeNode({ path: '/vault/dir/b.md', parentPath: '/vault/dir', isDirectory: false })
+    ]
+    const origins = new Map<string, ArtifactOrigin>([['/vault/dir/a.md', 'agent']])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBeUndefined()
   })
 
   it('ignores directory children when checking origins', () => {
@@ -82,8 +118,8 @@ describe('isFolderOrigin', () => {
       }),
       makeNode({ path: '/vault/dir/a.md', parentPath: '/vault/dir', isDirectory: false })
     ]
-    const origins = new Map([['/vault/dir/a.md', 'agent']])
-    expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(true)
+    const origins = new Map<string, ArtifactOrigin>([['/vault/dir/a.md', 'agent']])
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBe('#4ade80')
   })
 
   it('only considers direct children, not nested descendants', () => {
@@ -95,12 +131,12 @@ describe('isFolderOrigin', () => {
         isDirectory: false
       })
     ]
-    const origins = new Map([
+    const origins = new Map<string, ArtifactOrigin>([
       ['/vault/dir/a.md', 'agent'],
       ['/vault/dir/sub/deep.md', 'agent']
     ])
     // Only /vault/dir/a.md is a direct child; deep.md belongs to /vault/dir/sub
-    expect(isFolderOrigin('/vault/dir', origins, nodes)).toBe(true)
+    expect(getFolderOriginColor('/vault/dir', origins, nodes)).toBe('#4ade80')
   })
 })
 
@@ -111,7 +147,7 @@ describe('FileTree origin color coding', () => {
     }))
   })
 
-  it('renders file icon with origin color when artifactOrigins has an entry', () => {
+  it('renders file icon with agent color when origin is agent', () => {
     const nodes = [
       makeNode({
         name: 'generated.md',
@@ -121,7 +157,7 @@ describe('FileTree origin color coding', () => {
         depth: 0
       })
     ]
-    const origins = new Map([['/vault/generated.md', 'agent-session-1']])
+    const origins = new Map<string, ArtifactOrigin>([['/vault/generated.md', 'agent']])
 
     const { container } = render(
       <FileTree
@@ -139,7 +175,67 @@ describe('FileTree origin color coding', () => {
     const svg = fileRow?.querySelector('svg')
     expect(svg).not.toBeNull()
     // The Phosphor icon receives color prop which sets fill on the SVG
-    expect(svg?.getAttribute('fill')).toBe(ORIGIN_FILE_COLOR)
+    expect(svg?.getAttribute('fill')).toBe(getOriginColor('agent'))
+  })
+
+  it('renders file icon with source color when origin is source', () => {
+    const nodes = [
+      makeNode({
+        name: 'ingested.md',
+        path: '/vault/ingested.md',
+        parentPath: '/vault',
+        isDirectory: false,
+        depth: 0
+      })
+    ]
+    const origins = new Map<string, ArtifactOrigin>([['/vault/ingested.md', 'source']])
+
+    const { container } = render(
+      <FileTree
+        nodes={nodes}
+        activeFilePath={null}
+        collapsedPaths={new Set()}
+        artifactOrigins={origins}
+        onFileSelect={vi.fn()}
+        onToggleDirectory={vi.fn()}
+      />
+    )
+
+    const fileRow = container.querySelector('.file-row-hover')
+    const svg = fileRow?.querySelector('svg')
+    expect(svg).not.toBeNull()
+    expect(svg?.getAttribute('fill')).toBe(getOriginColor('source'))
+  })
+
+  it('renders file icon with default color when origin is human', () => {
+    const nodes = [
+      makeNode({
+        name: 'normal.md',
+        path: '/vault/normal.md',
+        parentPath: '/vault',
+        isDirectory: false,
+        depth: 0
+      })
+    ]
+    const origins = new Map<string, ArtifactOrigin>([['/vault/normal.md', 'human']])
+
+    const { container } = render(
+      <FileTree
+        nodes={nodes}
+        activeFilePath={null}
+        collapsedPaths={new Set()}
+        artifactOrigins={origins}
+        onFileSelect={vi.fn()}
+        onToggleDirectory={vi.fn()}
+      />
+    )
+
+    const fileRow = container.querySelector('.file-row-hover')
+    const svg = fileRow?.querySelector('svg')
+    expect(svg).not.toBeNull()
+    // Human origin should use default icon color, not an origin override
+    expect(svg?.getAttribute('fill')).not.toBe(getOriginColor('agent'))
+    expect(svg?.getAttribute('fill')).not.toBe(getOriginColor('source'))
   })
 
   it('renders file icon with default color when no origin', () => {
@@ -167,11 +263,12 @@ describe('FileTree origin color coding', () => {
     const fileRow = container.querySelector('.file-row-hover')
     const svg = fileRow?.querySelector('svg')
     expect(svg).not.toBeNull()
-    // Default markdown color, NOT the origin green
-    expect(svg?.getAttribute('fill')).not.toBe(ORIGIN_FILE_COLOR)
+    // Default markdown color, NOT any origin color
+    expect(svg?.getAttribute('fill')).not.toBe(getOriginColor('agent'))
+    expect(svg?.getAttribute('fill')).not.toBe(getOriginColor('source'))
   })
 
-  it('renders folder icon with origin color when all children have origins', () => {
+  it('renders folder icon with agent color when all children are agent origin', () => {
     const nodes = [
       makeNode({
         name: 'agents',
@@ -189,7 +286,7 @@ describe('FileTree origin color coding', () => {
         depth: 1
       })
     ]
-    const origins = new Map([['/vault/agents/output.md', 'agent-x']])
+    const origins = new Map<string, ArtifactOrigin>([['/vault/agents/output.md', 'agent']])
 
     const { container } = render(
       <FileTree
@@ -208,10 +305,10 @@ describe('FileTree origin color coding', () => {
     // First SVG is the chevron, second is the FolderSimple icon
     const folderSvg = svgs?.[1]
     expect(folderSvg).not.toBeNull()
-    expect(folderSvg?.getAttribute('fill')).toBe(ORIGIN_FOLDER_COLOR)
+    expect(folderSvg?.getAttribute('fill')).toBe(getOriginColor('agent'))
   })
 
-  it('renders folder icon with default color when not all children have origins', () => {
+  it('renders folder icon with default color when not all children have same origin', () => {
     const nodes = [
       makeNode({
         name: 'mixed',
@@ -236,7 +333,10 @@ describe('FileTree origin color coding', () => {
         depth: 1
       })
     ]
-    const origins = new Map([['/vault/mixed/generated.md', 'agent']])
+    const origins = new Map<string, ArtifactOrigin>([
+      ['/vault/mixed/generated.md', 'agent'],
+      ['/vault/mixed/manual.md', 'human']
+    ])
 
     const { container } = render(
       <FileTree
@@ -253,7 +353,8 @@ describe('FileTree origin color coding', () => {
     const svgs = dirRow?.querySelectorAll('svg')
     const folderSvg = svgs?.[1]
     expect(folderSvg).not.toBeNull()
-    // Default gray, NOT the origin blue
-    expect(folderSvg?.getAttribute('fill')).not.toBe(ORIGIN_FOLDER_COLOR)
+    // Default gray, NOT any origin color
+    expect(folderSvg?.getAttribute('fill')).not.toBe(getOriginColor('agent'))
+    expect(folderSvg?.getAttribute('fill')).not.toBe(getOriginColor('source'))
   })
 })

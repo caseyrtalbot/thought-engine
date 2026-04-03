@@ -18,6 +18,7 @@ import { ThemeProvider } from './design/Theme'
 import { Sidebar } from './panels/sidebar/Sidebar'
 import type { SystemArtifactListItem } from './panels/sidebar/Sidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
+import type { ArtifactOrigin } from './panels/sidebar/origin-utils'
 import { EditorSplitView } from './panels/editor/EditorSplitView'
 import { ActivityBar } from './components/ActivityBar'
 import { useTabStore, TAB_DEFINITIONS } from './store/tab-store'
@@ -241,13 +242,12 @@ function ConnectedSidebar({
   }, [artifacts, fileToId])
 
   const artifactOrigins = useMemo(() => {
-    const map = new Map<string, string>()
+    const map = new Map<string, ArtifactOrigin>()
     const artifactById = new Map(artifacts.map((a) => [a.id, a]))
     for (const [filePath, artifactId] of Object.entries(fileToId)) {
       const artifact = artifactById.get(artifactId)
-      const origin = artifact?.frontmatter?.origin
-      if (typeof origin === 'string') {
-        map.set(filePath, origin)
+      if (artifact) {
+        map.set(filePath, artifact.origin)
       }
     }
     return map

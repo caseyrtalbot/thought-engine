@@ -433,6 +433,50 @@ export function FrontmatterHeader({
         </span>
       </div>
 
+      {/* Origin indicator (only for source/agent) */}
+      {artifact?.origin && artifact.origin !== 'human' && (
+        <div
+          style={{
+            marginTop: '0.5rem',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: colors.text.muted,
+            letterSpacing: '0.08em'
+          }}
+        >
+          <span style={{ textTransform: 'uppercase' }}>
+            {artifact.origin === 'source' ? 'source material' : 'agent-compiled'}
+          </span>
+          {artifact.sources.length > 0 && (
+            <span style={{ marginLeft: '0.75rem', color: colors.text.secondary }}>
+              from{' '}
+              {artifact.sources.map((src, i) => (
+                <span key={src}>
+                  {i > 0 && ', '}
+                  <span
+                    onClick={() => onNavigate?.(src)}
+                    style={{
+                      cursor: onNavigate ? 'pointer' : 'default',
+                      textDecoration: 'underline',
+                      textDecorationColor: `${colors.text.muted}40`,
+                      textUnderlineOffset: '2px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (onNavigate) e.currentTarget.style.color = colors.text.primary
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = colors.text.secondary
+                    }}
+                  >
+                    {src}
+                  </span>
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Key-value lines: editable */}
       <div
         style={{

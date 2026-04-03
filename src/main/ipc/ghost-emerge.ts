@@ -168,6 +168,8 @@ function buildArtifact(
     tensions_with: [],
     appears_in: [],
     related: [],
+    origin: 'human',
+    sources: [],
     concepts: [],
     bodyLinks: [],
     body,

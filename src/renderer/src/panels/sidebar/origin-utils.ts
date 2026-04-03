@@ -1,14 +1,43 @@
 import type { FlatTreeNode } from './buildFileTree'
 
-export const ORIGIN_FILE_COLOR = '#4ade80'
-export const ORIGIN_FOLDER_COLOR = '#60a5fa'
+export type ArtifactOrigin = 'human' | 'source' | 'agent'
 
-export function isFolderOrigin(
+const ORIGIN_COLORS: Record<ArtifactOrigin, string | undefined> = {
+  source: '#60a5fa', // blue — raw ingested material
+  agent: '#4ade80', // green — LLM-produced content
+  human: undefined // default (no override)
+}
+
+/** Returns a color hex for the given origin, or undefined for human/missing. */
+export function getOriginColor(origin: ArtifactOrigin | undefined): string | undefined {
+  if (!origin) return undefined
+  return ORIGIN_COLORS[origin]
+}
+
+/**
+ * Determines the dominant non-human origin for a folder's children.
+ * Returns the origin color if all file children share the same non-human origin,
+ * otherwise returns undefined (default folder color).
+ */
+export function getFolderOriginColor(
   folderPath: string,
-  origins: Map<string, string> | undefined,
+  origins: Map<string, ArtifactOrigin> | undefined,
   nodes: FlatTreeNode[]
-): boolean {
-  if (!origins || origins.size === 0) return false
+): string | undefined {
+  if (!origins || origins.size === 0) return undefined
   const children = nodes.filter((n) => !n.isDirectory && n.parentPath === folderPath)
-  return children.length > 0 && children.every((c) => origins.has(c.path))
+  if (children.length === 0) return undefined
+
+  let sharedOrigin: ArtifactOrigin | undefined
+  for (const child of children) {
+    const childOrigin = origins.get(child.path)
+    if (!childOrigin || childOrigin === 'human') return undefined
+    if (sharedOrigin === undefined) {
+      sharedOrigin = childOrigin
+    } else if (sharedOrigin !== childOrigin) {
+      return undefined
+    }
+  }
+
+  return getOriginColor(sharedOrigin)
 }

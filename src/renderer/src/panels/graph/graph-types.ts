@@ -8,6 +8,7 @@ export interface SimNode {
   readonly type: ArtifactType
   readonly signal: Signal
   readonly connectionCount: number
+  readonly origin?: 'human' | 'source' | 'agent'
   readonly isGhost: boolean
 }
 

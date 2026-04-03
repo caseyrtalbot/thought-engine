@@ -6,6 +6,8 @@ import type {
   AgentNeighborContext,
   AgentEdgeContext
 } from '@shared/agent-action-types'
+import type { TagTreeNode } from '@shared/engine/tag-index'
+import type { GhostEntry } from '@shared/engine/ghost-index'
 
 /**
  * Pure function: extracts agent context from canvas state.
@@ -118,4 +120,81 @@ function extractTags(node: CanvasNode): readonly string[] {
   const tags = node.metadata?.tags
   if (Array.isArray(tags)) return tags as string[]
   return []
+}
+
+// ---------------------------------------------------------------------------
+// Vault-scope context (no card selection)
+// ---------------------------------------------------------------------------
+
+export interface ArtifactSummary {
+  readonly id: string
+  readonly title: string
+  readonly type: string
+  readonly signal: string
+  readonly tags: readonly string[]
+  readonly origin: string
+}
+
+/**
+ * Build agent context from vault-wide summaries (no card selection).
+ * Used for vault-scope /challenge and /emerge.
+ */
+export function buildVaultScopeContext(
+  action: AgentActionName,
+  artifacts: readonly ArtifactSummary[],
+  tagTree: readonly TagTreeNode[],
+  ghosts: readonly GhostEntry[],
+  canvasMeta: {
+    viewportBounds: { x: number; y: number; width: number; height: number }
+    totalCardCount: number
+  }
+): AgentContext {
+  const selectedCards: AgentCardContext[] = artifacts.map((a, i) => ({
+    id: a.id,
+    type: 'text' as const,
+    title: a.title,
+    body: `[${a.type}] ${a.title} (signal: ${a.signal}, origin: ${a.origin}, tags: ${a.tags.join(', ') || 'none'})`,
+    tags: a.tags,
+    position: { x: 0, y: i * 20 },
+    size: { width: 200, height: 40 }
+  }))
+
+  const tagSummary = tagTree.map((t) => `${t.fullPath} (${t.count})`).join(', ')
+
+  const ghostSummary = ghosts
+    .slice(0, 20)
+    .map((g) => `${g.id} (${g.referenceCount} refs)`)
+    .join(', ')
+
+  const neighbors: AgentNeighborContext[] = [
+    ...(tagSummary
+      ? [
+          {
+            id: '_tag_tree',
+            title: `Tag Tree: ${tagSummary}`,
+            tags: [] as readonly string[],
+            edgeKind: 'metadata'
+          }
+        ]
+      : []),
+    ...(ghostSummary
+      ? [
+          {
+            id: '_ghost_index',
+            title: `Unresolved References: ${ghostSummary}`,
+            tags: [] as readonly string[],
+            edgeKind: 'metadata'
+          }
+        ]
+      : [])
+  ]
+
+  return {
+    action,
+    vaultScope: true,
+    selectedCards,
+    neighbors,
+    edges: [],
+    canvasMeta
+  }
 }

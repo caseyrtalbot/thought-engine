@@ -21,6 +21,7 @@ import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
 import { TE_DIR } from '@shared/constants'
 import { CanvasToolbar } from './CanvasToolbar'
+import { CanvasActionBar } from './CanvasActionBar'
 import { CanvasMinimap } from './CanvasMinimap'
 import { ZoomIndicator } from './ZoomIndicator'
 import { EdgeDots } from './EdgeDots'
@@ -630,6 +631,10 @@ export function CanvasView(): React.ReactElement {
           onOpenImport={() => setImportOpen(true)}
           onOrganize={ontology.startOrganize}
           organizePhase={ontology.phase}
+        />
+        <CanvasActionBar
+          onTriggerAction={agent.trigger}
+          librarianRunning={agent.phase === 'computing' && agent.activeAction === 'librarian'}
         />
         <CanvasSurface
           onContextMenu={handleContextMenu}

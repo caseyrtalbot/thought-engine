@@ -131,7 +131,8 @@ export const EDGE_KIND_COLORS: Record<string, string> = {
   causal: '#da76bb', // oklch(0.70 0.15 340) pink
   contains: '#4e5661', // oklch(0.45 0.02 255) subtle structural gray
   imports: '#5b8dd9', // oklch(0.65 0.12 260) muted blue
-  references: '#9887e8' // oklch(0.68 0.14 290) muted purple
+  references: '#9887e8', // oklch(0.68 0.14 290) muted purple
+  derived_from: '#5b8dd9' // oklch(0.65 0.12 260) muted blue — lineage relationship
 } as const
 
 export const canvasTokens = {

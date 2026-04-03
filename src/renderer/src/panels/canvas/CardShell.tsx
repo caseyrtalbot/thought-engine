@@ -203,6 +203,14 @@ export function CardShell({
     return s.edgeCountByArtifactId[artifactId] ?? 0
   })
 
+  // Origin accent for non-human artifacts
+  const origin = useVaultStore((s) => {
+    if (!filePath) return undefined
+    const artifactId = s.fileToId[filePath]
+    if (!artifactId) return undefined
+    return s.artifactById[artifactId]?.origin
+  })
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -496,6 +504,25 @@ export function CardShell({
             First click selects+focuses the card, second click interacts with content. */}
         {!isFocused && !isLocked && <div className="absolute inset-0 z-[1]" aria-hidden="true" />}
       </div>
+
+      {/* Origin accent — subtle left border for non-human artifacts */}
+      {origin && origin !== 'human' && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 2,
+            borderRadius: '10px 0 0 10px',
+            backgroundColor:
+              origin === 'source' ? 'rgba(96, 165, 250, 0.5)' : 'rgba(74, 222, 128, 0.4)',
+            pointerEvents: 'none',
+            zIndex: 6
+          }}
+        />
+      )}
 
       {/* Resize handle — only visible on hover */}
       {hovered && (
