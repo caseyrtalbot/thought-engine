@@ -368,7 +368,7 @@ Total cards on canvas: ${totalCardCount}
 
 Respond with a JSON object containing an "ops" array. Each op must be one of:
 
-- {"type": "add-node", "node": {"id": "unique_id", "type": "text", "position": {"x": 0, "y": 0}, "size": {"width": 200, "height": 100}, "content": "...", "metadata": {}}}
+- {"type": "add-node", "node": {"id": "unique_id", "type": "markdown", "position": {"x": 0, "y": 0}, "size": {"width": 200, "height": 100}, "content": "...", "metadata": {}}}
 - {"type": "add-edge", "edge": {"fromNode": "id", "toNode": "id", "fromSide": "bottom", "toSide": "top"}}
 - {"type": "move-node", "nodeId": "id", "position": {"x": 0, "y": 0}}
 - {"type": "resize-node", "nodeId": "id", "size": {"width": 200, "height": 100}}
