@@ -29,9 +29,9 @@ export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
       env: { ...ENV_DEFAULTS },
-      displayFont: 'Inter',
-      bodyFont: 'Inter',
-      monoFont: 'JetBrains Mono',
+      displayFont: 'Manrope',
+      bodyFont: 'Manrope',
+      monoFont: 'Space Mono',
       defaultEditorMode: 'rich',
       autosaveInterval: 1500,
       spellCheck: false,

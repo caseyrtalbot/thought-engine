@@ -22,10 +22,14 @@ export function MarkdownCard({ node }: MarkdownCardProps) {
 
   // Debounce content saves
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Guard: skip saves until initial content has been loaded into the editor.
+  // Without this, Tiptap can fire onUpdate during creation with empty content,
+  // and the debounced save overwrites the real content in the store.
+  const initializedRef = useRef(false)
 
   const handleUpdate = useCallback(
     ({ editor: ed }: { editor: ReturnType<typeof useEditor> }) => {
-      if (!ed) return
+      if (!ed || !initializedRef.current) return
       const manager = ed.storage.markdown?.manager
       if (!manager) return
       const markdown = manager.serialize(ed.getJSON())
@@ -70,6 +74,7 @@ export function MarkdownCard({ node }: MarkdownCardProps) {
       } else if (node.content) {
         editor.commands.setContent(node.content, { emitUpdate: false })
       }
+      initializedRef.current = true
     })
   }, [editor, node.content])
 
