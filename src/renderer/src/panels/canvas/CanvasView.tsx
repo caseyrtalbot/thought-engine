@@ -662,7 +662,6 @@ export function CanvasView(): React.ReactElement {
           onStop={agent.cancel}
           activeAction={agent.activeAction}
           phase={agent.phase}
-          librarianActive={librarianActive}
         />
         <CanvasSurface
           onContextMenu={handleContextMenu}

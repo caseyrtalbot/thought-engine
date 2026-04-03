@@ -48,13 +48,6 @@ export const AGENT_ACTIONS = [
     description: 'Compile sources into wiki articles',
     requiresSelection: 1,
     keywords: ['compile', 'synthesize', 'wiki', 'article', 'summarize']
-  },
-  {
-    id: 'librarian',
-    label: '/librarian',
-    description: 'Launch librarian agent to compile, maintain, and enhance the vault',
-    requiresSelection: 0,
-    keywords: ['librarian', 'maintain', 'compile', 'index', 'health']
   }
 ] as const satisfies readonly AgentActionDef[]
 
