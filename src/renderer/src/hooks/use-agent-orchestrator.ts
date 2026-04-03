@@ -66,9 +66,25 @@ export function useAgentOrchestrator(
       if (action === 'librarian') {
         const vaultPath = useVaultStore.getState().vaultPath
         if (!vaultPath) return
-        const result = await window.api.agent.spawn({ cwd: vaultPath, prompt: '/librarian' })
-        if ('sessionId' in result) {
-          setLibrarianSessionId(result.sessionId)
+        try {
+          const result = await window.api.agent.spawn({ cwd: vaultPath, prompt: '/librarian' })
+          if ('sessionId' in result) {
+            setLibrarianSessionId(result.sessionId)
+          } else if ('error' in result) {
+            setPhase({
+              phase: 'error',
+              activeAction: 'librarian',
+              pendingPlan: null,
+              errorMessage: result.error
+            })
+          }
+        } catch (err) {
+          setPhase({
+            phase: 'error',
+            activeAction: 'librarian',
+            pendingPlan: null,
+            errorMessage: (err as Error).message
+          })
         }
         return
       }
