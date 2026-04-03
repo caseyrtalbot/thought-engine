@@ -98,16 +98,26 @@ export function CanvasView(): React.ReactElement {
   const rawFileCount = useVaultStore((s) => s.rawFileCount)
 
   // Track librarian running state via the tmux agent state system.
-  // When the librarian session exits or disappears, clear the tracked ID.
+  // Only clear the tracked ID after the monitor has seen the session at least once,
+  // to avoid a race where the IPC spawn response arrives before the 3s monitor poll.
   const agentStates = useAgentStates()
+  const librarianSeenRef = useRef(false)
   const librarianActive = useMemo(() => {
-    if (!agent.librarianSessionId) return false
+    if (!agent.librarianSessionId) {
+      librarianSeenRef.current = false
+      return false
+    }
     const session = agentStates.find((s) => s.sessionId === agent.librarianSessionId)
-    if (!session || session.status === 'exited') {
-      // Clear tracked ID when session ends (deferred to avoid render-during-render)
+    if (session && session.status !== 'exited') {
+      librarianSeenRef.current = true
+      return true
+    }
+    // Session not found or exited — only clear if we saw it at least once
+    if (librarianSeenRef.current) {
       queueMicrotask(() => agent.setLibrarianSessionId(null))
       return false
     }
+    // Not yet seen by monitor — keep the ID, assume still starting
     return true
   }, [agent.librarianSessionId, agentStates, agent.setLibrarianSessionId])
 
