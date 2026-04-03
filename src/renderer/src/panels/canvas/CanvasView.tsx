@@ -147,13 +147,6 @@ export function CanvasView(): React.ReactElement {
     }
   }, [librarianActive, curatorActive])
 
-  const agentStatusText = useMemo(() => {
-    const activeId = agent.librarianSessionId ?? agent.curatorSessionId
-    if (!activeId) return undefined
-    const session = agentStates.find((s) => s.sessionId === activeId)
-    return session?.sidecar?.currentTask ?? undefined
-  }, [agent.librarianSessionId, agent.curatorSessionId, agentStates])
-
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
   const graph = useVaultStore((s) => s.graph)
@@ -755,7 +748,6 @@ export function CanvasView(): React.ReactElement {
           onLibrarian={handleLibrarian}
           curatorActive={curatorActive}
           onCurator={handleCurator}
-          agentStatusText={agentStatusText}
         />
         <CanvasActionBar
           onTriggerAction={agent.trigger}

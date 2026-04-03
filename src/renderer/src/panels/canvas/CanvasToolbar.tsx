@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useSettingsStore } from '../../store/settings-store'
@@ -6,6 +6,7 @@ import { createCanvasNode } from '@shared/canvas-types'
 import { generateClaudeMd } from '../../engine/claude-md-template'
 import { TILE_PATTERNS, type TilePattern } from './canvas-tiling'
 import { colors } from '../../design/tokens'
+import { useAgentStates } from '../../hooks/use-agent-states'
 
 interface CanvasToolbarProps {
   readonly canUndo: boolean
@@ -20,7 +21,6 @@ interface CanvasToolbarProps {
   readonly onLibrarian: () => void
   readonly curatorActive: boolean
   readonly onCurator: (mode: string) => void
-  readonly agentStatusText?: string
 }
 
 function Tip({
@@ -50,8 +50,7 @@ export function CanvasToolbar({
   librarianActive,
   onLibrarian,
   curatorActive,
-  onCurator,
-  agentStatusText
+  onCurator
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
@@ -67,6 +66,17 @@ export function CanvasToolbar({
   const tileMenuRef = useRef<HTMLDivElement>(null)
   const envMenuRef = useRef<HTMLDivElement>(null)
   const curatorMenuRef = useRef<HTMLDivElement>(null)
+
+  // Ground-truth agent status from the process monitor
+  const agentStates = useAgentStates()
+  const librarianAlive = useMemo(
+    () => agentStates.some((s) => s.label === 'librarian' && s.status === 'alive'),
+    [agentStates]
+  )
+  const curatorAlive = useMemo(
+    () => agentStates.some((s) => s.label === 'curator' && s.status === 'alive'),
+    [agentStates]
+  )
 
   useEffect(() => {
     if (!tileMenuOpen && !envMenuOpen && !curatorMenuOpen) return
@@ -362,7 +372,7 @@ export function CanvasToolbar({
       <div className="canvas-toolbtn-wrap">
         <button
           onClick={onLibrarian}
-          className={`canvas-toolbtn${librarianActive ? ' canvas-toolbtn--active' : ''}`}
+          className={`canvas-toolbtn${librarianActive || librarianAlive ? ' canvas-toolbtn--active' : ''}`}
           data-testid="canvas-librarian"
         >
           <svg
@@ -374,7 +384,7 @@ export function CanvasToolbar({
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={librarianActive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
+            style={librarianAlive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
           >
             {/* Open book icon */}
             <path d="M8 3C6.5 2 4.5 1.5 2 2v10c2.5-.5 4.5 0 6 1" />
@@ -382,7 +392,28 @@ export function CanvasToolbar({
             <line x1="8" y1="3" x2="8" y2="13" />
           </svg>
         </button>
-        <Tip label={librarianActive ? 'Stop Librarian' : 'Librarian'} />
+        <Tip label={librarianAlive ? 'Stop Librarian' : 'Librarian'} />
+        {librarianAlive && (
+          <div
+            style={{
+              fontSize: 8,
+              fontWeight: 500,
+              letterSpacing: '0.04em',
+              color: 'var(--color-accent-default)',
+              textAlign: 'center',
+              padding: '1px 0',
+              background:
+                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundSize: '200% 100%',
+              animation: 'te-shimmer 2s ease-in-out infinite'
+            }}
+          >
+            working
+          </div>
+        )}
       </div>
 
       <div ref={curatorMenuRef} style={{ position: 'relative' }}>
@@ -392,7 +423,7 @@ export function CanvasToolbar({
               if (curatorActive) return
               setCuratorMenuOpen((prev) => !prev)
             }}
-            className={`canvas-toolbtn${curatorActive ? ' canvas-toolbtn--active' : ''}`}
+            className={`canvas-toolbtn${curatorActive || curatorAlive ? ' canvas-toolbtn--active' : ''}`}
             data-testid="canvas-curator"
           >
             <svg
@@ -404,7 +435,7 @@ export function CanvasToolbar({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              style={curatorActive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
+              style={curatorAlive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
             >
               {/* Stamp/seal icon */}
               <rect x="4" y="1" width="8" height="4" rx="1" />
@@ -412,7 +443,7 @@ export function CanvasToolbar({
               <rect x="2" y="9" width="12" height="5" rx="1" />
             </svg>
           </button>
-          <Tip label={curatorActive ? 'Curator running\u2026' : 'Curator'} />
+          <Tip label={curatorAlive ? 'Curator running\u2026' : 'Curator'} />
         </div>
         {curatorMenuOpen && (
           <div
@@ -458,27 +489,28 @@ export function CanvasToolbar({
             ))}
           </div>
         )}
+        {curatorAlive && (
+          <div
+            style={{
+              fontSize: 8,
+              fontWeight: 500,
+              letterSpacing: '0.04em',
+              color: 'var(--color-accent-default)',
+              textAlign: 'center',
+              padding: '1px 0',
+              background:
+                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundSize: '200% 100%',
+              animation: 'te-shimmer 2s ease-in-out infinite'
+            }}
+          >
+            working
+          </div>
+        )}
       </div>
-
-      {(librarianActive || curatorActive) && agentStatusText && (
-        <div
-          style={{
-            fontSize: 9,
-            color: 'var(--color-accent-default)',
-            padding: '2px 4px',
-            maxWidth: 36,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            textAlign: 'center',
-            animation: 'te-pulse 2s ease-in-out infinite',
-            lineHeight: 1.2
-          }}
-          title={agentStatusText}
-        >
-          {librarianActive ? 'Librarian' : 'Curator'}
-        </div>
-      )}
 
       <div className="canvas-toolrail__divider" />
 

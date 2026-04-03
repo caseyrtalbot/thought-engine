@@ -53,6 +53,11 @@ vi.mock('../../../engine/claude-md-template', () => ({
   generateClaudeMd: vi.fn()
 }))
 
+let mockAgentStates: unknown[] = []
+vi.mock('../../../hooks/use-agent-states', () => ({
+  useAgentStates: vi.fn(() => mockAgentStates)
+}))
+
 // Lazy import after mocks
 import { CanvasToolbar } from '../CanvasToolbar'
 
@@ -96,16 +101,20 @@ describe('CanvasToolbar librarian button', () => {
     expect(tip).toBeTruthy()
   })
 
-  it('shows "Stop Librarian" tooltip when active', () => {
+  it('shows "Stop Librarian" tooltip when alive', () => {
+    mockAgentStates = [{ label: 'librarian', status: 'alive', sessionId: 'x' }]
     render(<CanvasToolbar {...baseProps} librarianActive={true} />)
     const tip = screen.getByText('Stop Librarian')
     expect(tip).toBeTruthy()
+    mockAgentStates = []
   })
 
-  it('applies active class when librarianActive is true', () => {
+  it('applies active class when librarian alive', () => {
+    mockAgentStates = [{ label: 'librarian', status: 'alive', sessionId: 'x' }]
     render(<CanvasToolbar {...baseProps} librarianActive={true} />)
     const btn = screen.getByTestId('canvas-librarian')
     expect(btn.className).toContain('canvas-toolbtn--active')
+    mockAgentStates = []
   })
 
   it('does not apply active class when librarianActive is false', () => {
@@ -114,12 +123,14 @@ describe('CanvasToolbar librarian button', () => {
     expect(btn.className).not.toContain('canvas-toolbtn--active')
   })
 
-  it('applies pulse animation on svg when active', () => {
+  it('applies pulse animation on svg when alive', () => {
+    mockAgentStates = [{ label: 'librarian', status: 'alive', sessionId: 'x' }]
     render(<CanvasToolbar {...baseProps} librarianActive={true} />)
     const btn = screen.getByTestId('canvas-librarian')
     const svg = btn.querySelector('svg')
     expect(svg).toBeTruthy()
     expect(svg!.style.animation).toContain('te-pulse')
+    mockAgentStates = []
   })
 
   it('does not apply pulse animation on svg when inactive', () => {

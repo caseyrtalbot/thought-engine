@@ -20,6 +20,7 @@ import type { SystemArtifactListItem } from './panels/sidebar/Sidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
 import type { ArtifactOrigin } from './panels/sidebar/origin-utils'
 import { useSidebarSelectionStore } from './store/sidebar-selection-store'
+import { useAgentStates } from './hooks/use-agent-states'
 import { EditorSplitView } from './panels/editor/EditorSplitView'
 import { ActivityBar } from './components/ActivityBar'
 import { useTabStore, TAB_DEFINITIONS } from './store/tab-store'
@@ -525,6 +526,16 @@ function ConnectedSidebar({
     [files]
   )
 
+  // Ground-truth: any vault agent (librarian/curator) alive?
+  const allAgentStates = useAgentStates()
+  const vaultAgentAlive = useMemo(
+    () =>
+      allAgentStates.some(
+        (s) => (s.label === 'librarian' || s.label === 'curator') && s.status === 'alive'
+      ),
+    [allAgentStates]
+  )
+
   return (
     <Sidebar
       nodes={treeNodes}
@@ -537,7 +548,7 @@ function ConnectedSidebar({
       onCanvasPaths={onCanvasPaths}
       canvasConnectionCounts={canvasConnectionCounts}
       selectedPaths={useSidebarSelectionStore((s) => s.selectedPaths)}
-      agentActive={useSidebarSelectionStore((s) => s.agentActive)}
+      agentActive={vaultAgentAlive}
       sortMode={sortMode}
       vaultName={vaultName}
       vaultHistory={vaultHistory}
