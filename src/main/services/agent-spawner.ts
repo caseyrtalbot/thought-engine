@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { spawn as cpSpawn } from 'child_process'
 import type { ShellService } from './shell-service'
 import type { AgentSpawnRequest } from '@shared/agent-types'
 import type { SessionId } from '@shared/types'
+import type { LibrarianMonitor } from './librarian-monitor'
 import { TE_DIR } from '@shared/constants'
 
 /** Shell-escape a string by wrapping in single quotes and escaping embedded quotes. */
@@ -48,10 +50,67 @@ function readAgentPrompt(vaultRoot: string): string | null {
 }
 
 export class AgentSpawner {
+  private librarianMonitor: LibrarianMonitor | null = null
+
   constructor(
     private readonly shellService: ShellService,
     private readonly vaultRoot: string
   ) {}
+
+  setLibrarianMonitor(monitor: LibrarianMonitor): void {
+    this.librarianMonitor = monitor
+  }
+
+  /** Spawn a librarian as a direct child process (no tmux, no wrapper script). */
+  spawnLibrarian(vaultPath: string): { sessionId: string } {
+    const sessionId = randomUUID()
+    const systemPrompt = readLibrarianPrompt(this.vaultRoot)
+
+    const args = [
+      '-p',
+      '--dangerously-skip-permissions',
+      '--allowedTools',
+      'Read,Write,Edit,Glob,Grep,Bash',
+      '--model',
+      'sonnet',
+      'Run the librarian workflow on this vault.'
+    ]
+
+    if (systemPrompt) {
+      args.unshift('--system-prompt', systemPrompt)
+    }
+
+    const child = cpSpawn('claude', args, {
+      cwd: vaultPath,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env }
+    })
+
+    const killFn = () => {
+      try {
+        child.kill('SIGTERM')
+      } catch {
+        /* already dead */
+      }
+    }
+
+    this.librarianMonitor?.register(sessionId, child.pid ?? 0, vaultPath, killFn)
+
+    child.on('exit', (code) => {
+      this.librarianMonitor?.complete(sessionId, code ?? 0)
+      // Auto-cleanup after a short delay so the UI can show the exited state
+      setTimeout(() => {
+        this.librarianMonitor?.cleanup(sessionId)
+      }, 5000)
+    })
+
+    child.on('error', (err) => {
+      console.error(`Librarian process error: ${err.message}`)
+      this.librarianMonitor?.complete(sessionId, 1)
+    })
+
+    return { sessionId }
+  }
 
   spawn(request: AgentSpawnRequest): SessionId {
     const sessionId = randomUUID()
