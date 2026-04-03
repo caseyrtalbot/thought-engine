@@ -5,7 +5,6 @@ import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import Link from '@tiptap/extension-link'
 import { useEditorStore } from '../../store/editor-store'
 import { useVaultStore } from '../../store/vault-store'
 import { FrontmatterHeader } from './FrontmatterHeader'
@@ -92,7 +91,6 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
       Markdown,
       TaskList,
       TaskItem.configure({ nested: true }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { rel: null, target: null } }),
       ConceptNodeMark,
       CalloutBlock,
       HighlightMark,
