@@ -162,21 +162,27 @@ function useAdjustedPosition(
 
   useEffect(() => {
     if (!state) return
-    // Start at the click position
-    let { x, y } = state
+    const { x } = state
 
-    // After the menu renders, adjust if it overflows
+    // Position with bottom-left corner at the cursor (menu grows upward).
+    // Use rAF so the menu has rendered and we can measure its height.
     requestAnimationFrame(() => {
       const el = menuRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
-      if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8
-      if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8
-      setPos({ x: Math.max(0, x), y: Math.max(0, y) })
+      let finalX = x
+      let finalY = state.y - rect.height
+
+      // Keep within viewport
+      if (finalX + rect.width > window.innerWidth) finalX = window.innerWidth - rect.width - 8
+      if (finalX < 0) finalX = 8
+      if (finalY < 0) finalY = 8
+      setPos({ x: finalX, y: finalY })
     })
 
+    // Place offscreen initially to avoid flash at wrong position
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial position before rAF adjusts
-    setPos({ x, y })
+    setPos({ x, y: -9999 })
   }, [state, menuRef])
 
   return pos
