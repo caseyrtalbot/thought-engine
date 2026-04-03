@@ -688,33 +688,35 @@ export function CanvasView(): React.ReactElement {
 
   const handleCurator = useCallback(
     (mode: string) => {
-      if (curatorActive && agent.curatorSessionId) {
+      // Stop if already running (empty mode = stop request from status label)
+      if ((curatorActive || !mode) && agent.curatorSessionId) {
         agent.setCuratorSessionId(null)
-      } else {
-        const vp = useVaultStore.getState().vaultPath
-        if (!vp) return
-        const sel = useSidebarSelectionStore.getState().selectedPaths
-        const selectedFiles =
-          sel.size > 0
-            ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
-            : undefined
-        void (async () => {
-          try {
-            const result = await window.api.agent.spawn({
-              cwd: vp,
-              type: 'curator',
-              curatorMode: mode,
-              selectedFiles
-            })
-            if ('sessionId' in result) {
-              agent.setCuratorSessionId(result.sessionId)
-              useSidebarSelectionStore.getState().setAgentActive(true)
-            }
-          } catch (err) {
-            console.error('Curator spawn failed:', err)
-          }
-        })()
+        return
       }
+      if (!mode) return
+      const vp = useVaultStore.getState().vaultPath
+      if (!vp) return
+      const sel = useSidebarSelectionStore.getState().selectedPaths
+      const selectedFiles =
+        sel.size > 0
+          ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
+          : undefined
+      void (async () => {
+        try {
+          const result = await window.api.agent.spawn({
+            cwd: vp,
+            type: 'curator',
+            curatorMode: mode,
+            selectedFiles
+          })
+          if ('sessionId' in result) {
+            agent.setCuratorSessionId(result.sessionId)
+            useSidebarSelectionStore.getState().setAgentActive(true)
+          }
+        } catch (err) {
+          console.error('Curator spawn failed:', err)
+        }
+      })()
     },
     [curatorActive, agent]
   )

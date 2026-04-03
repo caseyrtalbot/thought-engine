@@ -38,6 +38,46 @@ function Tip({
   )
 }
 
+function AgentStatusLabel({ onClick }: { readonly onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'absolute',
+        left: '100%',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        marginLeft: 10,
+        fontSize: 8,
+        fontWeight: 500,
+        letterSpacing: '0.04em',
+        whiteSpace: 'nowrap',
+        cursor: 'pointer',
+        transition: 'opacity 120ms ease-out',
+        ...(hovered
+          ? {
+              color: 'var(--color-accent-default)',
+              opacity: 1
+            }
+          : {
+              background:
+                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundSize: '200% 100%',
+              animation: 'te-shimmer 2s ease-in-out infinite'
+            })
+      }}
+    >
+      {hovered ? 'stop' : 'working'}
+    </div>
+  )
+}
+
 export function CanvasToolbar({
   canUndo,
   canRedo,
@@ -393,31 +433,7 @@ export function CanvasToolbar({
           </svg>
         </button>
         <Tip label={librarianAlive ? 'Stop Librarian' : 'Librarian'} />
-        {librarianAlive && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '100%',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              marginLeft: 6,
-              fontSize: 8,
-              fontWeight: 500,
-              letterSpacing: '0.04em',
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-              background:
-                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundSize: '200% 100%',
-              animation: 'te-shimmer 2s ease-in-out infinite'
-            }}
-          >
-            working
-          </div>
-        )}
+        {librarianAlive && <AgentStatusLabel onClick={onLibrarian} />}
       </div>
 
       <div ref={curatorMenuRef} style={{ position: 'relative' }}>
@@ -493,31 +509,7 @@ export function CanvasToolbar({
             ))}
           </div>
         )}
-        {curatorAlive && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '100%',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              marginLeft: 6,
-              fontSize: 8,
-              fontWeight: 500,
-              letterSpacing: '0.04em',
-              whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-              background:
-                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundSize: '200% 100%',
-              animation: 'te-shimmer 2s ease-in-out infinite'
-            }}
-          >
-            working
-          </div>
-        )}
+        {curatorAlive && <AgentStatusLabel onClick={() => onCurator('')} />}
       </div>
 
       <div className="canvas-toolrail__divider" />
