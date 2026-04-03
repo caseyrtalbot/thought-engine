@@ -80,6 +80,16 @@ h6 {
   }
 }
 
+@keyframes te-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes te-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes te-edge-flow {
   to {
     stroke-dashoffset: -20;
@@ -599,6 +609,18 @@ body {
 
 .file-row-hover[data-selected='true'] .file-name-text {
   color: var(--color-text-primary) !important;
+}
+
+.file-row-hover[data-selected='true'][data-processing='true'] {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-accent-default) 18%, transparent) 50%,
+      transparent 100%
+    );
+  background-size: 200% 100%;
+  animation: te-shimmer 2s ease-in-out infinite;
 }
 
 .file-row-hover:hover {

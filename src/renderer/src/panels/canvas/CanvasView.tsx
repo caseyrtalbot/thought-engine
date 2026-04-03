@@ -140,6 +140,20 @@ export function CanvasView(): React.ReactElement {
     return true
   }, [agent.curatorSessionId, agentStates, agent.setCuratorSessionId])
 
+  // Clear agentActive in sidebar selection store when no vault agent is running
+  useEffect(() => {
+    if (!librarianActive && !curatorActive) {
+      useSidebarSelectionStore.getState().setAgentActive(false)
+    }
+  }, [librarianActive, curatorActive])
+
+  const agentStatusText = useMemo(() => {
+    const activeId = agent.librarianSessionId ?? agent.curatorSessionId
+    if (!activeId) return undefined
+    const session = agentStates.find((s) => s.sessionId === activeId)
+    return session?.sidecar?.currentTask ?? undefined
+  }, [agent.librarianSessionId, agent.curatorSessionId, agentStates])
+
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
   const graph = useVaultStore((s) => s.graph)
@@ -670,6 +684,7 @@ export function CanvasView(): React.ReactElement {
           })
           if ('sessionId' in result) {
             agent.setLibrarianSessionId(result.sessionId)
+            useSidebarSelectionStore.getState().setAgentActive(true)
           }
         } catch (err) {
           console.error('Librarian spawn failed:', err)
@@ -700,6 +715,7 @@ export function CanvasView(): React.ReactElement {
             })
             if ('sessionId' in result) {
               agent.setCuratorSessionId(result.sessionId)
+              useSidebarSelectionStore.getState().setAgentActive(true)
             }
           } catch (err) {
             console.error('Curator spawn failed:', err)
@@ -739,6 +755,7 @@ export function CanvasView(): React.ReactElement {
           onLibrarian={handleLibrarian}
           curatorActive={curatorActive}
           onCurator={handleCurator}
+          agentStatusText={agentStatusText}
         />
         <CanvasActionBar
           onTriggerAction={agent.trigger}

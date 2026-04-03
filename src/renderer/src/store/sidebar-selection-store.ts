@@ -5,6 +5,8 @@ interface SidebarSelectionStore {
   readonly selectedPaths: ReadonlySet<string>
   /** Anchor path for shift-click range selection. */
   readonly anchorPath: string | null
+  /** True when a vault agent (librarian/curator) is actively running. */
+  readonly agentActive: boolean
 
   /** Toggle a single path in the selection (cmd-click). */
   toggle: (path: string) => void
@@ -14,11 +16,14 @@ interface SidebarSelectionStore {
   selectRange: (targetPath: string, orderedPaths: readonly string[]) => void
   /** Clear all selection. */
   clear: () => void
+  /** Set whether a vault agent is actively running. */
+  setAgentActive: (active: boolean) => void
 }
 
 export const useSidebarSelectionStore = create<SidebarSelectionStore>((set, get) => ({
   selectedPaths: new Set<string>(),
   anchorPath: null,
+  agentActive: false,
 
   toggle: (path) => {
     const next = new Set(get().selectedPaths)
@@ -63,5 +68,7 @@ export const useSidebarSelectionStore = create<SidebarSelectionStore>((set, get)
   clear: () => {
     if (get().selectedPaths.size === 0) return
     set({ selectedPaths: new Set<string>(), anchorPath: null })
-  }
+  },
+
+  setAgentActive: (active) => set({ agentActive: active })
 }))

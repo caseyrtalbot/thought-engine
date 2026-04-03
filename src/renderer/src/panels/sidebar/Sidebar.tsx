@@ -49,6 +49,7 @@ interface SidebarProps {
   onSearch: (query: string) => void
   onWorkspaceSelect: (workspace: string | null) => void
   selectedPaths?: ReadonlySet<string>
+  agentActive?: boolean
   onFileSelect: (path: string, e?: React.MouseEvent) => void
   onFileDoubleClick?: (path: string) => void
   onSystemArtifactSelect?: (item: SystemArtifactListItem) => void
@@ -288,6 +289,7 @@ export function Sidebar({
   onCanvasPaths,
   canvasConnectionCounts,
   selectedPaths,
+  agentActive,
   sortMode = 'modified',
   vaultName,
   vaultHistory,
@@ -420,6 +422,7 @@ export function Sidebar({
               onCanvasPaths={onCanvasPaths}
               canvasConnectionCounts={canvasConnectionCounts}
               selectedPaths={selectedPaths}
+              agentActive={agentActive}
               onFileSelect={onFileSelect}
               onFileDoubleClick={onFileDoubleClick}
               onToggleDirectory={onToggleDirectory}

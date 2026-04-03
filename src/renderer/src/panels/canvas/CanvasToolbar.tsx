@@ -20,6 +20,7 @@ interface CanvasToolbarProps {
   readonly onLibrarian: () => void
   readonly curatorActive: boolean
   readonly onCurator: (mode: string) => void
+  readonly agentStatusText?: string
 }
 
 function Tip({
@@ -49,7 +50,8 @@ export function CanvasToolbar({
   librarianActive,
   onLibrarian,
   curatorActive,
-  onCurator
+  onCurator,
+  agentStatusText
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
@@ -457,6 +459,26 @@ export function CanvasToolbar({
           </div>
         )}
       </div>
+
+      {(librarianActive || curatorActive) && agentStatusText && (
+        <div
+          style={{
+            fontSize: 9,
+            color: 'var(--color-accent-default)',
+            padding: '2px 4px',
+            maxWidth: 36,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+            animation: 'te-pulse 2s ease-in-out infinite',
+            lineHeight: 1.2
+          }}
+          title={agentStatusText}
+        >
+          {librarianActive ? 'Librarian' : 'Curator'}
+        </div>
+      )}
 
       <div className="canvas-toolrail__divider" />
 

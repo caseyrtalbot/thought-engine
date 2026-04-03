@@ -537,6 +537,7 @@ function ConnectedSidebar({
       onCanvasPaths={onCanvasPaths}
       canvasConnectionCounts={canvasConnectionCounts}
       selectedPaths={useSidebarSelectionStore((s) => s.selectedPaths)}
+      agentActive={useSidebarSelectionStore((s) => s.agentActive)}
       sortMode={sortMode}
       vaultName={vaultName}
       vaultHistory={vaultHistory}
