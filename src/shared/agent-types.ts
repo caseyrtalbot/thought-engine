@@ -85,6 +85,8 @@ export interface AgentSpawnRequest {
   readonly prompt?: string
   readonly type?: 'librarian' | 'curator'
   readonly curatorMode?: string
+  /** When set, scope the agent to only these file paths (relative to cwd). */
+  readonly selectedFiles?: readonly string[]
 }
 
 // ---------------------------------------------------------------------------

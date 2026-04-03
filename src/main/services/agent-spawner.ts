@@ -96,9 +96,14 @@ export class AgentSpawner {
   }
 
   /** Spawn a librarian as a direct child process (no tmux, no wrapper script). */
-  spawnLibrarian(vaultPath: string): { sessionId: string } {
+  spawnLibrarian(vaultPath: string, selectedFiles?: readonly string[]): { sessionId: string } {
     const sessionId = randomUUID()
     const systemPrompt = readLibrarianPrompt(this.vaultRoot)
+
+    const scopeNote =
+      selectedFiles && selectedFiles.length > 0
+        ? `Focus ONLY on these files:\n${selectedFiles.map((f) => `- ${f}`).join('\n')}`
+        : 'Run the librarian workflow on this vault.'
 
     const args = [
       '-p',
@@ -107,7 +112,7 @@ export class AgentSpawner {
       'Read,Write,Edit,Glob,Grep,Bash',
       '--model',
       'sonnet',
-      'Run the librarian workflow on this vault.'
+      scopeNote
     ]
 
     if (systemPrompt) {
@@ -155,7 +160,11 @@ export class AgentSpawner {
   }
 
   /** Spawn a curator as a direct child process. */
-  spawnCurator(vaultPath: string, mode: string): { sessionId: string } {
+  spawnCurator(
+    vaultPath: string,
+    mode: string,
+    selectedFiles?: readonly string[]
+  ): { sessionId: string } {
     const sessionId = randomUUID()
     let systemPrompt = readCuratorPrompt(this.vaultRoot)
 
@@ -169,6 +178,11 @@ export class AgentSpawner {
         .replace('{{MODE_DESCRIPTION}}', modeDescription)
     }
 
+    const scopeNote =
+      selectedFiles && selectedFiles.length > 0
+        ? `Run the curator ${mode} workflow. Focus ONLY on these files:\n${selectedFiles.map((f) => `- ${f}`).join('\n')}\nUse the librarian reports in _librarian/ for context.`
+        : `Run the curator ${mode} workflow on this vault using the librarian reports in _librarian/.`
+
     const args = [
       '-p',
       '--dangerously-skip-permissions',
@@ -176,7 +190,7 @@ export class AgentSpawner {
       'Read,Write,Edit,Glob,Grep,Bash',
       '--model',
       'sonnet',
-      `Run the curator ${mode} workflow on this vault using the librarian reports in _librarian/.`
+      scopeNote
     ]
 
     if (systemPrompt) {

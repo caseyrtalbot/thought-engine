@@ -591,6 +591,16 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.file-row-hover[data-selected='true'] {
+  background: color-mix(in srgb, var(--color-accent-default) 12%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--color-accent-default) 24%, transparent);
+  outline-offset: -1px;
+}
+
+.file-row-hover[data-selected='true'] .file-name-text {
+  color: var(--color-text-primary) !important;
+}
+
 .file-row-hover:hover {
   background: rgba(255, 255, 255, 0.04);
 }

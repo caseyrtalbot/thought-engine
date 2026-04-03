@@ -20,12 +20,16 @@ export function registerAgentIpc(): void {
 
     // Dispatch librarian spawns to the direct child_process path
     if (request.type === 'librarian') {
-      return activeSpawner.spawnLibrarian(request.cwd)
+      return activeSpawner.spawnLibrarian(request.cwd, request.selectedFiles)
     }
 
     // Dispatch curator spawns to the direct child_process path
     if (request.type === 'curator') {
-      return activeSpawner.spawnCurator(request.cwd, request.curatorMode ?? 'emerge')
+      return activeSpawner.spawnCurator(
+        request.cwd,
+        request.curatorMode ?? 'emerge',
+        request.selectedFiles
+      )
     }
 
     const sessionId = activeSpawner.spawn(request)

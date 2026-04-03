@@ -57,6 +57,7 @@ import {
   filterCanvasAdditions,
   type CanvasMutationPlan
 } from '@shared/canvas-mutation-types'
+import { useSidebarSelectionStore } from '../../store/sidebar-selection-store'
 
 const folderMapProgressStyle: React.CSSProperties = {
   position: 'absolute',
@@ -655,9 +656,18 @@ export function CanvasView(): React.ReactElement {
     } else {
       const vp = useVaultStore.getState().vaultPath
       if (!vp) return
+      const sel = useSidebarSelectionStore.getState().selectedPaths
+      const selectedFiles =
+        sel.size > 0
+          ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
+          : undefined
       void (async () => {
         try {
-          const result = await window.api.agent.spawn({ cwd: vp, type: 'librarian' })
+          const result = await window.api.agent.spawn({
+            cwd: vp,
+            type: 'librarian',
+            selectedFiles
+          })
           if ('sessionId' in result) {
             agent.setLibrarianSessionId(result.sessionId)
           }
@@ -675,12 +685,18 @@ export function CanvasView(): React.ReactElement {
       } else {
         const vp = useVaultStore.getState().vaultPath
         if (!vp) return
+        const sel = useSidebarSelectionStore.getState().selectedPaths
+        const selectedFiles =
+          sel.size > 0
+            ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
+            : undefined
         void (async () => {
           try {
             const result = await window.api.agent.spawn({
               cwd: vp,
               type: 'curator',
-              curatorMode: mode
+              curatorMode: mode,
+              selectedFiles
             })
             if ('sessionId' in result) {
               agent.setCuratorSessionId(result.sessionId)
