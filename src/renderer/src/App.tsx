@@ -19,6 +19,8 @@ import { Sidebar } from './panels/sidebar/Sidebar'
 import type { SystemArtifactListItem } from './panels/sidebar/Sidebar'
 import { buildFileTree } from './panels/sidebar/buildFileTree'
 import type { ArtifactOrigin } from './panels/sidebar/origin-utils'
+import { useSidebarSelectionStore } from './store/sidebar-selection-store'
+import { useAgentStates } from './hooks/use-agent-states'
 import { EditorSplitView } from './panels/editor/EditorSplitView'
 import { ActivityBar } from './components/ActivityBar'
 import { useTabStore, TAB_DEFINITIONS } from './store/tab-store'
@@ -338,7 +340,25 @@ function ConnectedSidebar({
   }, [])
 
   const handleFileSelect = useCallback(
-    (path: string) => {
+    (path: string, e?: React.MouseEvent) => {
+      const sel = useSidebarSelectionStore.getState()
+
+      // Cmd-click: toggle file in multi-selection
+      if (e?.metaKey) {
+        sel.toggle(path)
+        return
+      }
+
+      // Shift-click: range select from anchor to clicked file
+      if (e?.shiftKey) {
+        const filePaths = treeNodes.filter((n) => !n.isDirectory).map((n) => n.path)
+        sel.selectRange(path, filePaths)
+        return
+      }
+
+      // Regular click: clear multi-selection, then do existing behavior
+      sel.clear()
+
       // If the file is on the canvas, pan to it (switch to canvas tab if needed)
       const canvasNodes = useCanvasStore.getState().nodes
       const canvasNode = canvasNodes.find(
@@ -363,7 +383,7 @@ function ConnectedSidebar({
       // Single-click only pans canvas; double-click opens in editor
       return
     },
-    [files, openEditorPath]
+    [files, openEditorPath, treeNodes]
   )
 
   const handleFileDoubleClick = useCallback(
@@ -506,6 +526,16 @@ function ConnectedSidebar({
     [files]
   )
 
+  // Ground-truth: any vault agent (librarian/curator) alive?
+  const allAgentStates = useAgentStates()
+  const vaultAgentAlive = useMemo(
+    () =>
+      allAgentStates.some(
+        (s) => (s.label === 'librarian' || s.label === 'curator') && s.status === 'alive'
+      ),
+    [allAgentStates]
+  )
+
   return (
     <Sidebar
       nodes={treeNodes}
@@ -517,6 +547,8 @@ function ConnectedSidebar({
       artifactOrigins={artifactOrigins}
       onCanvasPaths={onCanvasPaths}
       canvasConnectionCounts={canvasConnectionCounts}
+      selectedPaths={useSidebarSelectionStore((s) => s.selectedPaths)}
+      agentActive={vaultAgentAlive}
       sortMode={sortMode}
       vaultName={vaultName}
       vaultHistory={vaultHistory}

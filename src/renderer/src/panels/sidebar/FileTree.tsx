@@ -99,7 +99,9 @@ interface FileTreeProps {
   artifactOrigins?: Map<string, ArtifactOrigin>
   onCanvasPaths?: ReadonlySet<string>
   canvasConnectionCounts?: ReadonlyMap<string, number>
-  onFileSelect: (path: string) => void
+  selectedPaths?: ReadonlySet<string>
+  agentActive?: boolean
+  onFileSelect: (path: string, e?: React.MouseEvent) => void
   onFileDoubleClick?: (path: string) => void
   onToggleDirectory: (path: string) => void
   onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
@@ -276,6 +278,8 @@ export const FileTree = memo(function FileTree({
   artifactOrigins,
   onCanvasPaths,
   canvasConnectionCounts,
+  selectedPaths,
+  agentActive,
   onFileSelect,
   onFileDoubleClick,
   onToggleDirectory,
@@ -337,6 +341,8 @@ export const FileTree = memo(function FileTree({
               <FileRow
                 node={node}
                 isActive={node.path === activeFilePath}
+                isSelected={selectedPaths?.has(node.path) ?? false}
+                isProcessing={(selectedPaths?.has(node.path) ?? false) && (agentActive ?? false)}
                 artifactType={artifactTypes?.get(node.path)}
                 origin={artifactOrigins?.get(node.path)}
                 isOnCanvas={onCanvasPaths?.has(node.path) ?? false}
@@ -433,6 +439,8 @@ function DirectoryRow({
 function FileRow({
   node,
   isActive,
+  isSelected,
+  isProcessing,
   artifactType: _artifactType,
   origin,
   isOnCanvas,
@@ -448,11 +456,13 @@ function FileRow({
 }: {
   node: FlatTreeNode
   isActive: boolean
+  isSelected: boolean
+  isProcessing: boolean
   artifactType?: ArtifactType
   origin?: ArtifactOrigin
   isOnCanvas: boolean
   canvasConnectionCount: number
-  onFileSelect: (path: string) => void
+  onFileSelect: (path: string, e?: React.MouseEvent) => void
   onFileDoubleClick?: (path: string) => void
   onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
   isRenaming?: boolean
@@ -466,6 +476,8 @@ function FileRow({
   return (
     <div
       data-active={isActive ? 'true' : 'false'}
+      data-selected={isSelected ? 'true' : 'false'}
+      data-processing={isProcessing ? 'true' : 'false'}
       onMouseDown={(e) => {
         if (e.button === 0) {
           e.currentTarget.setAttribute('draggable', 'true')
@@ -482,7 +494,7 @@ function FileRow({
       onMouseUp={(e) => {
         e.currentTarget.setAttribute('draggable', 'false')
       }}
-      onClick={() => onFileSelect(node.path)}
+      onClick={(e) => onFileSelect(node.path, e)}
       onDoubleClick={() => (onFileDoubleClick ?? onFileSelect)(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, false)}
       className="flex items-center py-[2px] file-row-hover"

@@ -57,6 +57,7 @@ import {
   filterCanvasAdditions,
   type CanvasMutationPlan
 } from '@shared/canvas-mutation-types'
+import { useSidebarSelectionStore } from '../../store/sidebar-selection-store'
 
 const folderMapProgressStyle: React.CSSProperties = {
   position: 'absolute',
@@ -120,6 +121,31 @@ export function CanvasView(): React.ReactElement {
     // Not yet seen by monitor — keep the ID, assume still starting
     return true
   }, [agent.librarianSessionId, agentStates, agent.setLibrarianSessionId])
+
+  const curatorSeenRef = useRef(false)
+  const curatorActive = useMemo(() => {
+    if (!agent.curatorSessionId) {
+      curatorSeenRef.current = false
+      return false
+    }
+    const session = agentStates.find((s) => s.sessionId === agent.curatorSessionId)
+    if (session && session.status !== 'exited') {
+      curatorSeenRef.current = true
+      return true
+    }
+    if (curatorSeenRef.current) {
+      queueMicrotask(() => agent.setCuratorSessionId(null))
+      return false
+    }
+    return true
+  }, [agent.curatorSessionId, agentStates, agent.setCuratorSessionId])
+
+  // Clear agentActive in sidebar selection store when no vault agent is running
+  useEffect(() => {
+    if (!librarianActive && !curatorActive) {
+      useSidebarSelectionStore.getState().setAgentActive(false)
+    }
+  }, [librarianActive, curatorActive])
 
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
@@ -631,6 +657,72 @@ export function CanvasView(): React.ReactElement {
     setPreviewPlan(null)
   }, [])
 
+  const handleLibrarian = useCallback(() => {
+    if (librarianActive && agent.librarianSessionId) {
+      void window.api.agent.kill(agent.librarianSessionId)
+      agent.setLibrarianSessionId(null)
+    } else {
+      const vp = useVaultStore.getState().vaultPath
+      if (!vp) return
+      const sel = useSidebarSelectionStore.getState().selectedPaths
+      const selectedFiles =
+        sel.size > 0
+          ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
+          : undefined
+      void (async () => {
+        try {
+          const result = await window.api.agent.spawn({
+            cwd: vp,
+            type: 'librarian',
+            selectedFiles
+          })
+          if ('sessionId' in result) {
+            agent.setLibrarianSessionId(result.sessionId)
+            useSidebarSelectionStore.getState().setAgentActive(true)
+          }
+        } catch (err) {
+          console.error('Librarian spawn failed:', err)
+        }
+      })()
+    }
+  }, [librarianActive, agent])
+
+  const handleCurator = useCallback(
+    (mode: string) => {
+      // Stop if already running (empty mode = stop request from status label)
+      if ((curatorActive || !mode) && agent.curatorSessionId) {
+        void window.api.agent.kill(agent.curatorSessionId)
+        agent.setCuratorSessionId(null)
+        return
+      }
+      if (!mode) return
+      const vp = useVaultStore.getState().vaultPath
+      if (!vp) return
+      const sel = useSidebarSelectionStore.getState().selectedPaths
+      const selectedFiles =
+        sel.size > 0
+          ? [...sel].map((p) => (p.startsWith(vp) ? p.slice(vp.length + 1) : p))
+          : undefined
+      void (async () => {
+        try {
+          const result = await window.api.agent.spawn({
+            cwd: vp,
+            type: 'curator',
+            curatorMode: mode,
+            selectedFiles
+          })
+          if ('sessionId' in result) {
+            agent.setCuratorSessionId(result.sessionId)
+            useSidebarSelectionStore.getState().setAgentActive(true)
+          }
+        } catch (err) {
+          console.error('Curator spawn failed:', err)
+        }
+      })()
+    },
+    [curatorActive, agent]
+  )
+
   const ontologyGroups = ontology.pendingSnapshot
     ? Object.values(ontology.pendingSnapshot.groupsById)
     : []
@@ -656,13 +748,16 @@ export function CanvasView(): React.ReactElement {
           onOpenImport={() => setImportOpen(true)}
           onOrganize={ontology.startOrganize}
           organizePhase={ontology.phase}
+          librarianActive={librarianActive}
+          onLibrarian={handleLibrarian}
+          curatorActive={curatorActive}
+          onCurator={handleCurator}
         />
         <CanvasActionBar
           onTriggerAction={agent.trigger}
           onStop={agent.cancel}
           activeAction={agent.activeAction}
           phase={agent.phase}
-          librarianActive={librarianActive}
         />
         <CanvasSurface
           onContextMenu={handleContextMenu}

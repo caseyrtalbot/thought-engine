@@ -10,7 +10,6 @@ interface CanvasActionBarProps {
   readonly onStop: () => void
   readonly activeAction: AgentActionName | null
   readonly phase: AgentPhase
-  readonly librarianActive: boolean
 }
 
 const actionLabelStyle: React.CSSProperties = {
@@ -31,8 +30,7 @@ export function CanvasActionBar({
   onTriggerAction,
   onStop,
   activeAction,
-  phase,
-  librarianActive
+  phase
 }: CanvasActionBarProps): React.ReactElement | null {
   const artifacts = useVaultStore((s) => s.artifacts)
   const graph = useVaultStore((s) => s.graph)
@@ -94,17 +92,6 @@ export function CanvasActionBar({
           action="challenge"
           isRunning={isComputing && activeAction === 'challenge'}
           isBusy={isComputing && activeAction !== 'challenge'}
-          onTrigger={onTriggerAction}
-          onStop={onStop}
-        />
-      )}
-
-      {hasAnyContent && (
-        <ActionButton
-          label="Librarian"
-          action="librarian"
-          isRunning={librarianActive}
-          isBusy={isComputing}
           onTrigger={onTriggerAction}
           onStop={onStop}
         />

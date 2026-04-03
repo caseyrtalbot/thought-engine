@@ -294,13 +294,7 @@ const ACTION_INSTRUCTIONS: Record<AgentActionName, string> = {
     'metadata field as an array of the source card titles (e.g. {"sources": ["Paper A", "Paper B"]}). ' +
     'Set metadata.origin to "agent". Position new cards near their source cards, offset to form a ' +
     'visible cluster. Connect new articles to their sources with edges, and to each other where ' +
-    'concepts relate.',
-
-  librarian:
-    'You are the vault librarian. Review the vault structure, find unprocessed sources, ' +
-    'compile them into wiki articles, discover contradictions and gaps, maintain connections, ' +
-    'and update the vault index. Create new cards for compiled articles, tension cards for ' +
-    'contradictions, and connection edges between related content.'
+    'concepts relate.'
 }
 
 function formatCards(context: AgentContext): string {
@@ -374,7 +368,7 @@ Total cards on canvas: ${totalCardCount}
 
 Respond with a JSON object containing an "ops" array. Each op must be one of:
 
-- {"type": "add-node", "node": {"id": "unique_id", "type": "text", "position": {"x": 0, "y": 0}, "size": {"width": 200, "height": 100}, "content": "...", "metadata": {}}}
+- {"type": "add-node", "node": {"id": "unique_id", "type": "markdown", "position": {"x": 0, "y": 0}, "size": {"width": 200, "height": 100}, "content": "...", "metadata": {}}}
 - {"type": "add-edge", "edge": {"fromNode": "id", "toNode": "id", "fromSide": "bottom", "toSide": "top"}}
 - {"type": "move-node", "nodeId": "id", "position": {"x": 0, "y": 0}}
 - {"type": "resize-node", "nodeId": "id", "size": {"width": 200, "height": 100}}

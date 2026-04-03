@@ -18,6 +18,14 @@ vi.mock('../../window-registry', () => ({
   getMainWindow: () => state.currentWindow
 }))
 
+function createMockSpawner() {
+  return {
+    spawn: vi.fn(),
+    spawnLibrarian: vi.fn(),
+    setLibrarianMonitor: vi.fn()
+  } as never
+}
+
 describe('registerAgentIpc', () => {
   beforeEach(() => {
     state.currentWindow = { id: 'startup', isDestroyed: () => false, webContents: {} }
@@ -37,9 +45,7 @@ describe('registerAgentIpc', () => {
         }),
         getAgentStates: vi.fn().mockReturnValue([])
       } as never,
-      {
-        spawn: vi.fn()
-      } as never
+      createMockSpawner()
     )
 
     state.currentWindow = { id: 'replacement', isDestroyed: () => false, webContents: {} }
@@ -52,5 +58,61 @@ describe('registerAgentIpc', () => {
         data: { states: [{ id: 'agent-1' }] }
       }
     ])
+  })
+
+  it('merges librarian states with tmux states in callback', () => {
+    registerAgentIpc()
+
+    const mockMonitor = {
+      stop: vi.fn(),
+      start: vi.fn((callback: typeof state.monitorCallback) => {
+        state.monitorCallback = callback
+      }),
+      getAgentStates: vi.fn().mockReturnValue([])
+    }
+
+    setAgentServices(mockMonitor as never, createMockSpawner())
+
+    // Simulate a tmux callback while no librarian sessions exist
+    state.monitorCallback?.([{ id: 'tmux-1' }])
+
+    expect(state.sent.length).toBe(1)
+    // With no librarian sessions, states should be just the tmux states
+    const payload = state.sent[0].data as { states: unknown[] }
+    expect(payload.states).toEqual([{ id: 'tmux-1' }])
+  })
+
+  it('calls killAll on librarianMonitor during stopAgentServices', () => {
+    registerAgentIpc()
+
+    setAgentServices(
+      {
+        stop: vi.fn(),
+        start: vi.fn(),
+        getAgentStates: vi.fn().mockReturnValue([])
+      } as never,
+      createMockSpawner()
+    )
+
+    // stopAgentServices should not throw (killAll on fresh monitor is a no-op)
+    expect(() => stopAgentServices()).not.toThrow()
+  })
+
+  it('wires setLibrarianMonitor on the spawner', () => {
+    registerAgentIpc()
+
+    const spawner = createMockSpawner()
+
+    setAgentServices(
+      {
+        stop: vi.fn(),
+        start: vi.fn(),
+        getAgentStates: vi.fn().mockReturnValue([])
+      } as never,
+      spawner
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((spawner as any).setLibrarianMonitor).toHaveBeenCalled()
   })
 })

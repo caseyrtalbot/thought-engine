@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useSettingsStore } from '../../store/settings-store'
@@ -6,6 +6,7 @@ import { createCanvasNode } from '@shared/canvas-types'
 import { generateClaudeMd } from '../../engine/claude-md-template'
 import { TILE_PATTERNS, type TilePattern } from './canvas-tiling'
 import { colors } from '../../design/tokens'
+import { useAgentStates } from '../../hooks/use-agent-states'
 
 interface CanvasToolbarProps {
   readonly canUndo: boolean
@@ -16,6 +17,10 @@ interface CanvasToolbarProps {
   readonly onOpenImport: () => void
   readonly onOrganize: () => void
   readonly organizePhase: string
+  readonly librarianActive: boolean
+  readonly onLibrarian: () => void
+  readonly curatorActive: boolean
+  readonly onCurator: (mode: string) => void
 }
 
 function Tip({
@@ -33,6 +38,46 @@ function Tip({
   )
 }
 
+function AgentStatusLabel({ onClick }: { readonly onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'absolute',
+        left: '100%',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        marginLeft: 10,
+        fontSize: 8,
+        fontWeight: 500,
+        letterSpacing: '0.04em',
+        whiteSpace: 'nowrap',
+        cursor: 'pointer',
+        transition: 'opacity 120ms ease-out',
+        ...(hovered
+          ? {
+              color: 'var(--color-accent-default)',
+              opacity: 1
+            }
+          : {
+              background:
+                'linear-gradient(90deg, transparent 0%, var(--color-accent-default) 50%, transparent 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundSize: '200% 100%',
+              animation: 'te-shimmer 2s ease-in-out infinite'
+            })
+      }}
+    >
+      {hovered ? 'stop' : 'working'}
+    </div>
+  )
+}
+
 export function CanvasToolbar({
   canUndo,
   canRedo,
@@ -41,7 +86,11 @@ export function CanvasToolbar({
   onAddCard,
   onOpenImport,
   onOrganize,
-  organizePhase
+  organizePhase,
+  librarianActive,
+  onLibrarian,
+  curatorActive,
+  onCurator
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
@@ -53,11 +102,24 @@ export function CanvasToolbar({
   const setEnv = useSettingsStore((s) => s.setEnv)
   const [tileMenuOpen, setTileMenuOpen] = useState(false)
   const [envMenuOpen, setEnvMenuOpen] = useState(false)
+  const [curatorMenuOpen, setCuratorMenuOpen] = useState(false)
   const tileMenuRef = useRef<HTMLDivElement>(null)
   const envMenuRef = useRef<HTMLDivElement>(null)
+  const curatorMenuRef = useRef<HTMLDivElement>(null)
+
+  // Ground-truth agent status from the process monitor
+  const agentStates = useAgentStates()
+  const librarianAlive = useMemo(
+    () => agentStates.some((s) => s.label === 'librarian' && s.status === 'alive'),
+    [agentStates]
+  )
+  const curatorAlive = useMemo(
+    () => agentStates.some((s) => s.label === 'curator' && s.status === 'alive'),
+    [agentStates]
+  )
 
   useEffect(() => {
-    if (!tileMenuOpen && !envMenuOpen) return
+    if (!tileMenuOpen && !envMenuOpen && !curatorMenuOpen) return
 
     const handlePointerDown = (event: MouseEvent) => {
       if (tileMenuRef.current && !tileMenuRef.current.contains(event.target as Node)) {
@@ -66,12 +128,16 @@ export function CanvasToolbar({
       if (envMenuRef.current && !envMenuRef.current.contains(event.target as Node)) {
         setEnvMenuOpen(false)
       }
+      if (curatorMenuRef.current && !curatorMenuRef.current.contains(event.target as Node)) {
+        setCuratorMenuOpen(false)
+      }
     }
 
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setTileMenuOpen(false)
         setEnvMenuOpen(false)
+        setCuratorMenuOpen(false)
       }
     }
 
@@ -81,7 +147,7 @@ export function CanvasToolbar({
       document.removeEventListener('mousedown', handlePointerDown)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [tileMenuOpen, envMenuOpen])
+  }, [tileMenuOpen, envMenuOpen, curatorMenuOpen])
 
   const zoomIn = () => setViewport({ ...viewport, zoom: Math.min(3.0, viewport.zoom * 1.2) })
   const zoomOut = () => setViewport({ ...viewport, zoom: Math.max(0.1, viewport.zoom / 1.2) })
@@ -341,6 +407,109 @@ export function CanvasToolbar({
           </svg>
         </button>
         <Tip label={showAllEdges ? 'Hide edges' : 'Show edges'} />
+      </div>
+
+      <div className="canvas-toolbtn-wrap" style={{ position: 'relative' }}>
+        <button
+          onClick={onLibrarian}
+          className={`canvas-toolbtn${librarianActive || librarianAlive ? ' canvas-toolbtn--active' : ''}`}
+          data-testid="canvas-librarian"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={librarianAlive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
+          >
+            {/* Open book icon */}
+            <path d="M8 3C6.5 2 4.5 1.5 2 2v10c2.5-.5 4.5 0 6 1" />
+            <path d="M8 3c1.5-1 3.5-1.5 6-1v10c-2.5-.5-4.5 0-6 1" />
+            <line x1="8" y1="3" x2="8" y2="13" />
+          </svg>
+        </button>
+        <Tip label={librarianAlive ? 'Stop Librarian' : 'Librarian'} />
+        {librarianAlive && <AgentStatusLabel onClick={onLibrarian} />}
+      </div>
+
+      <div ref={curatorMenuRef} style={{ position: 'relative' }}>
+        <div className="canvas-toolbtn-wrap">
+          <button
+            onClick={() => {
+              if (curatorActive) return
+              setCuratorMenuOpen((prev) => !prev)
+            }}
+            className={`canvas-toolbtn${curatorActive || curatorAlive ? ' canvas-toolbtn--active' : ''}`}
+            data-testid="canvas-curator"
+          >
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={curatorAlive ? { animation: 'te-pulse 2s ease-in-out infinite' } : undefined}
+            >
+              {/* Stamp/seal icon */}
+              <rect x="4" y="1" width="8" height="4" rx="1" />
+              <line x1="8" y1="5" x2="8" y2="9" />
+              <rect x="2" y="9" width="12" height="5" rx="1" />
+            </svg>
+          </button>
+          <Tip label={curatorAlive ? 'Curator running\u2026' : 'Curator'} />
+        </div>
+        {curatorMenuOpen && (
+          <div
+            className="sidebar-popover absolute flex flex-col gap-1 p-2"
+            style={{
+              top: 0,
+              left: '100%',
+              marginLeft: 8,
+              minWidth: 160,
+              zIndex: 100
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--color-text-tertiary)',
+                padding: '2px 8px',
+                marginBottom: 2
+              }}
+            >
+              Select mode
+            </div>
+            {(
+              [
+                { id: 'challenge', label: 'Challenge', desc: 'Stress-test ideas' },
+                { id: 'emerge', label: 'Emerge', desc: 'Surface connections' },
+                { id: 'research', label: 'Research', desc: 'Address gaps' },
+                { id: 'learn', label: 'Learn', desc: 'Extract learnings' }
+              ] as const
+            ).map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => {
+                  onCurator(mode.id)
+                  setCuratorMenuOpen(false)
+                }}
+                className="sidebar-popover__item"
+                style={{ textAlign: 'left', padding: '4px 8px', borderRadius: 4 }}
+              >
+                <div style={{ fontSize: 12, color: 'var(--color-text-primary)' }}>{mode.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{mode.desc}</div>
+              </button>
+            ))}
+          </div>
+        )}
+        {curatorAlive && <AgentStatusLabel onClick={() => onCurator('')} />}
       </div>
 
       <div className="canvas-toolrail__divider" />

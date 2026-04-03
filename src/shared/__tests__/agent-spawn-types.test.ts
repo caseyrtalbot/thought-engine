@@ -59,4 +59,14 @@ describe('AgentSpawnRequest', () => {
 
     expect(request.prompt).toBe('Refactor the store')
   })
+
+  it('accepts optional type field for librarian', () => {
+    const request: AgentSpawnRequest = { cwd: '/vault', type: 'librarian' }
+    expect(request.type).toBe('librarian')
+  })
+
+  it('defaults type to undefined for regular agents', () => {
+    const request: AgentSpawnRequest = { cwd: '/vault' }
+    expect(request.type).toBeUndefined()
+  })
 })

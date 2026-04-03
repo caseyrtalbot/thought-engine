@@ -50,9 +50,10 @@ export function useAgentOrchestrator(
   // Ref mirrors state.phase so the trigger guard is never stale
   const phaseRef = useRef<AgentPhase>('idle')
 
-  // Track spawned librarian session ID so the action bar can show running state.
+  // Track spawned librarian/curator session IDs so the toolbar can show running state.
   // Set on spawn, cleared when the session exits (via agent:states-changed).
   const [librarianSessionId, setLibrarianSessionId] = useState<string | null>(null)
+  const [curatorSessionId, setCuratorSessionId] = useState<string | null>(null)
 
   const setPhase = useCallback((next: AgentOrchestratorState) => {
     phaseRef.current = next.phase
@@ -61,34 +62,6 @@ export function useAgentOrchestrator(
 
   const trigger = useCallback(
     async (action: AgentActionName) => {
-      // Librarian is a long-running tmux session, not a single-shot action.
-      // Bypasses the phase machine — can spawn even while a canvas action is in preview/error.
-      if (action === 'librarian') {
-        const vaultPath = useVaultStore.getState().vaultPath
-        if (!vaultPath) return
-        try {
-          const result = await window.api.agent.spawn({ cwd: vaultPath, prompt: '/librarian' })
-          if ('sessionId' in result) {
-            setLibrarianSessionId(result.sessionId)
-          } else if ('error' in result) {
-            setPhase({
-              phase: 'error',
-              activeAction: 'librarian',
-              pendingPlan: null,
-              errorMessage: result.error
-            })
-          }
-        } catch (err) {
-          setPhase({
-            phase: 'error',
-            activeAction: 'librarian',
-            pendingPlan: null,
-            errorMessage: (err as Error).message
-          })
-        }
-        return
-      }
-
       // Single agent lock — ref is always current, no stale closure risk
       if (phaseRef.current !== 'idle') return
 
@@ -180,6 +153,8 @@ export function useAgentOrchestrator(
     ...state,
     librarianSessionId,
     setLibrarianSessionId,
+    curatorSessionId,
+    setCuratorSessionId,
     trigger,
     apply,
     cancel

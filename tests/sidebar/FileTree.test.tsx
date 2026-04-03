@@ -132,7 +132,7 @@ describe('FileTree', () => {
       />
     )
     fireEvent.click(screen.getByText('note'))
-    expect(onFileSelect).toHaveBeenCalledWith('/vault/note.md')
+    expect(onFileSelect).toHaveBeenCalledWith('/vault/note.md', expect.anything())
   })
 
   it('calls onToggleDirectory when folder clicked', () => {

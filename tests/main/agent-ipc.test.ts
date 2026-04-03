@@ -122,7 +122,8 @@ describe('registerAgentIpc', () => {
     const window = createMockWindow()
 
     const mockSpawner = {
-      spawn: vi.fn().mockReturnValue('spawned-session-123')
+      spawn: vi.fn().mockReturnValue('spawned-session-123'),
+      setLibrarianMonitor: vi.fn()
     } as unknown as import('../../src/main/services/agent-spawner').AgentSpawner
 
     registerAgentIpc(window)

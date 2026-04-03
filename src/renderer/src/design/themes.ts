@@ -16,14 +16,14 @@ export interface EnvironmentSettings {
 }
 
 export const ENV_DEFAULTS: EnvironmentSettings = {
-  canvasTranslucency: 40,
+  canvasTranslucency: 0,
   cardOpacity: 94,
   cardHeaderDarkness: 45,
-  cardBlur: 12,
+  cardBlur: 9,
   gridDotVisibility: 20,
-  panelLightness: 5,
+  panelLightness: 56,
   activityBarOpacity: 55,
-  cardTitleFontSize: 12,
+  cardTitleFontSize: 13,
   sidebarFontSize: 13
 }
 
