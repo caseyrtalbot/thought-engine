@@ -35,11 +35,22 @@ Full markdown editor with live preview, slash commands, callouts, mermaid diagra
 
 ## Getting started
 
+### Platform support
+
+| Platform | Status |
+|---|---|
+| macOS (Apple Silicon) | Supported, tested |
+| macOS (Intel) | Untested |
+| Windows | Not supported |
+| Linux | Not supported |
+
+The agent system depends on a bundled tmux binary compiled for macOS ARM64. Windows and Linux would require platform-specific binaries and additional code changes. Contributions welcome.
+
 ### Prerequisites
 
+- **macOS** on Apple Silicon (M1/M2/M3/M4)
 - **Node.js** >= 20
 - **npm** >= 10
-- **macOS** (primary platform; Linux and Windows builds are available but less tested)
 
 ### Build from source
 
@@ -58,20 +69,14 @@ npm run dev
 **Build the app**:
 
 ```bash
-# macOS
-npm run build:mac
-
 # Package a local .app (fastest for testing)
 npm run package
 
-# Linux
-npm run build:linux
-
-# Windows
-npm run build:win
+# Full macOS build with DMG
+npm run build:mac
 ```
 
-On macOS, `npm run package` produces `dist/mac-arm64/Machina.app` which you can drag to `/Applications`.
+`npm run package` produces `dist/mac-arm64/Machina.app` which you can drag to `/Applications`.
 
 ### Open a vault
 
