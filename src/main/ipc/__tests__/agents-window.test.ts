@@ -60,7 +60,7 @@ describe('registerAgentIpc', () => {
     ])
   })
 
-  it('merges librarian states with tmux states in callback', () => {
+  it('merges librarian states with pty monitor states in callback', () => {
     registerAgentIpc()
 
     const mockMonitor = {
@@ -73,13 +73,13 @@ describe('registerAgentIpc', () => {
 
     setAgentServices(mockMonitor as never, createMockSpawner())
 
-    // Simulate a tmux callback while no librarian sessions exist
-    state.monitorCallback?.([{ id: 'tmux-1' }])
+    // Simulate a pty monitor callback while no librarian sessions exist
+    state.monitorCallback?.([{ id: 'pty-1' }])
 
     expect(state.sent.length).toBe(1)
-    // With no librarian sessions, states should be just the tmux states
+    // With no librarian sessions, states should be just the pty states
     const payload = state.sent[0].data as { states: unknown[] }
-    expect(payload.states).toEqual([{ id: 'tmux-1' }])
+    expect(payload.states).toEqual([{ id: 'pty-1' }])
   })
 
   it('calls killAll on librarianMonitor during stopAgentServices', () => {

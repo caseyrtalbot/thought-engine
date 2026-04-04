@@ -1,51 +1,58 @@
+import { execFileSync } from 'child_process'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type { AgentSidecarState, AgentSidecar } from '@shared/agent-types'
-import { tmuxExec, SESSION_PREFIX, readSessionMeta, verifyTmuxAvailable } from './tmux-paths'
+import { readSessionMeta } from './session-paths'
+import type { PtyService } from './pty-service'
 
 /** Shell commands that indicate an idle (waiting for input) session. */
 const KNOWN_SHELLS = new Set(['bash', 'zsh', 'fish', 'sh', '-bash', '-zsh', '-fish', '-sh'])
 
-/**
- * Polls tmux sessions on the machina socket and builds AgentSidecarState snapshots.
- * Designed to be non-destructive: read-only observation of tmux + sidecar files.
- */
 const DEFAULT_POLL_INTERVAL_MS = 3000
 
-export class TmuxMonitor {
+/**
+ * Polls PTY sessions and builds AgentSidecarState snapshots.
+ * Uses PtyService for session info and batched ps for process detection.
+ */
+export class PtyMonitor {
   private readonly vaultRoot: string
+  private readonly ptyService: PtyService
   private readonly pollIntervalMs: number
   private pollTimer: ReturnType<typeof setInterval> | null = null
   private previousSnapshot: string | null = null
 
-  constructor(vaultRoot: string, pollIntervalMs?: number) {
+  constructor(vaultRoot: string, ptyService: PtyService, pollIntervalMs?: number) {
     this.vaultRoot = vaultRoot
+    this.ptyService = ptyService
     this.pollIntervalMs = pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS
-  }
-
-  /**
-   * Factory: returns a TmuxMonitor if tmux >= 2.6 is available, otherwise null.
-   * Safe to call in CI or environments without tmux.
-   */
-  static tryCreate(vaultRoot: string, pollIntervalMs?: number): TmuxMonitor | null {
-    if (!verifyTmuxAvailable()) return null
-    return new TmuxMonitor(vaultRoot, pollIntervalMs)
   }
 
   /** Get current agent states (one-shot, no polling). */
   getAgentStates(): AgentSidecarState[] {
-    const sessions = this.listTeSessions()
-    return sessions.map((tmuxName) => {
-      const sessionId = tmuxName.slice(SESSION_PREFIX.length)
-      const paneInfo = this.getPaneInfo(tmuxName)
+    const sessionIds = this.ptyService.getActiveSessions()
+    if (sessionIds.length === 0) return []
+
+    // Batch-resolve process names in a single ps call
+    const pidMap = new Map<number, string>()
+    for (const id of sessionIds) {
+      const pid = this.ptyService.getPid(id)
+      if (pid !== undefined) pidMap.set(pid, id)
+    }
+    const commandMap = this.batchGetProcessNames([...pidMap.keys()])
+
+    return sessionIds.map((sessionId) => {
+      const pid = this.ptyService.getPid(sessionId)
+      const currentCommand = pid !== undefined ? commandMap.get(pid) : undefined
       const meta = readSessionMeta(sessionId)
       const sidecar = this.readSidecar(sessionId)
-      const status = this.deriveStatus(paneInfo.currentCommand)
+      const status = this.deriveStatus(currentCommand)
+
       return {
         sessionId,
-        tmuxName,
+        tmuxName: `te-${sessionId}`,
         status,
-        ...paneInfo,
+        ...(pid !== undefined ? { pid } : {}),
+        ...(currentCommand ? { currentCommand } : {}),
         ...(meta
           ? {
               startedAt: meta.createdAt,
@@ -86,20 +93,37 @@ export class TmuxMonitor {
   // Private helpers
   // -------------------------------------------------------------------------
 
-  /** Derive session status from the pane's current command. */
   private deriveStatus(currentCommand?: string): AgentSidecarState['status'] {
     if (!currentCommand) return 'alive'
     return KNOWN_SHELLS.has(currentCommand) ? 'idle' : 'alive'
   }
 
-  /** List tmux sessions that match the te- prefix. */
-  private listTeSessions(): string[] {
+  /** Batch-resolve process names for multiple PIDs in a single ps call. */
+  private batchGetProcessNames(pids: number[]): Map<number, string> {
+    const result = new Map<number, string>()
+    if (pids.length === 0) return result
+
     try {
-      const output = tmuxExec('list-sessions', '-F', '#{session_name}')
-      return output.split('\n').filter((name) => name.startsWith(SESSION_PREFIX))
+      const output = execFileSync('ps', ['-o', 'pid=,comm=', '-p', pids.join(',')], {
+        encoding: 'utf-8',
+        timeout: 2000,
+        stdio: ['ignore', 'pipe', 'pipe']
+      }).trim()
+
+      for (const line of output.split('\n')) {
+        const trimmed = line.trim()
+        if (!trimmed) continue
+        const spaceIdx = trimmed.indexOf(' ')
+        if (spaceIdx === -1) continue
+        const pid = parseInt(trimmed.slice(0, spaceIdx), 10)
+        const comm = trimmed.slice(spaceIdx + 1).trim()
+        if (!isNaN(pid) && comm) result.set(pid, comm)
+      }
     } catch {
-      return []
+      // All processes may have exited
     }
+
+    return result
   }
 
   /** Read optional sidecar file at <vaultRoot>/.te/agents/<sessionId>.json */
@@ -109,29 +133,6 @@ export class TmuxMonitor {
       return JSON.parse(raw) as AgentSidecar
     } catch {
       return null
-    }
-  }
-
-  /** Get pane PID and current command for a session. */
-  private getPaneInfo(tmuxName: string): { pid?: number; currentCommand?: string } {
-    try {
-      const output = tmuxExec(
-        'list-panes',
-        '-t',
-        tmuxName,
-        '-F',
-        '#{pane_pid} #{pane_current_command}'
-      )
-      const parts = output.split(' ')
-      if (parts.length >= 2) {
-        return {
-          pid: parseInt(parts[0], 10),
-          currentCommand: parts.slice(1).join(' ')
-        }
-      }
-      return {}
-    } catch {
-      return {}
     }
   }
 }

@@ -45,15 +45,15 @@ export interface AgentSidecar {
   readonly agentType?: string
 }
 
-/** Snapshot of one agent session as seen by TmuxMonitor. */
+/** Snapshot of one agent session as seen by PtyMonitor. */
 export interface AgentSidecarState {
   readonly sessionId: string
-  /** e.g. "te-abc123" */
+  /** e.g. "te-abc123" (legacy name, kept for interface stability) */
   readonly tmuxName: string
   readonly status: 'alive' | 'idle' | 'exited'
-  /** tmux pane PID */
+  /** PTY child PID */
   readonly pid?: number
-  /** from tmux pane_current_command */
+  /** Current foreground command (via ps) */
   readonly currentCommand?: string
   /** ISO from session metadata */
   readonly startedAt?: string

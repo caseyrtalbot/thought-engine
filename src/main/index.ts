@@ -17,7 +17,7 @@ import { registerAgentActionIpc } from './ipc/agent-actions'
 import { registerGhostEmergeIpc } from './ipc/ghost-emerge'
 import { registerClaudeStatusIpc } from './ipc/claude-status'
 import { McpLifecycle } from './services/mcp-lifecycle'
-import { TmuxMonitor } from './services/tmux-monitor'
+import { PtyMonitor } from './services/pty-monitor'
 import { AgentSpawner } from './services/agent-spawner'
 import { initVaultIndex } from './services/vault-indexing'
 import { ClaudeStatusService } from './services/claude-status-service'
@@ -173,7 +173,7 @@ app.whenReady().then(() => {
       documentManager: getDocumentManager()
     })
 
-    const monitor = TmuxMonitor.tryCreate(vaultPath)
+    const monitor = new PtyMonitor(vaultPath, getShellService().getPtyService())
     const spawner = new AgentSpawner(getShellService(), vaultPath, claudeStatus)
     setAgentServices(monitor, spawner)
   })

@@ -98,7 +98,7 @@ export function CanvasView(): React.ReactElement {
   useAgentPlanListener()
   const rawFileCount = useVaultStore((s) => s.rawFileCount)
 
-  // Track librarian running state via the tmux agent state system.
+  // Track librarian running state via the agent state system.
   // Only clear the tracked ID after the monitor has seen the session at least once,
   // to avoid a race where the IPC spawn response arrives before the 3s monitor poll.
   const agentStates = useAgentStates()

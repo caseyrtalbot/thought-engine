@@ -120,7 +120,7 @@ export function TerminalApp() {
       lineHeight: 1.2,
       cols: estimatedSize.cols,
       rows: estimatedSize.rows,
-      scrollback: 10000,
+      scrollback: 200000,
       cursorBlink: true,
       cursorStyle: 'bar',
       cursorWidth: 2,
@@ -334,11 +334,11 @@ export function TerminalApp() {
 
         if (result) {
           sessionIdRef.current = urlSessionId
-          // Canvas terminals render live TUI sessions like Claude in a small
-          // embedded viewport. Replaying capture-pane scrollback here exposes
-          // stale alternate-screen frames when the user scrolls, which reads
-          // as duplicated/glitchy UI. Let the live tmux redraw repopulate the
-          // viewport instead of restoring buffered scrollback.
+          // Ring buffer provides clean scrollback without alternate-screen
+          // artifacts (unlike tmux capture-pane which flattens alt-screen context).
+          if (result.scrollback) {
+            term.write(result.scrollback)
+          }
           return
         }
       }

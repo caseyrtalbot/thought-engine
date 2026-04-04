@@ -79,8 +79,8 @@ describe('TerminalApp component', () => {
       expect(src).toContain('lineHeight: 1.2')
     })
 
-    it('configures scrollback 10000', () => {
-      expect(src).toContain('scrollback: 10000')
+    it('configures scrollback 200000', () => {
+      expect(src).toContain('scrollback: 200000')
     })
 
     it('configures cursorBlink and bar style', () => {
@@ -161,9 +161,9 @@ describe('TerminalApp component', () => {
       expect(src).toContain("sendToHost('session-created'")
     })
 
-    it('does not replay scrollback on reconnect in the canvas webview', () => {
-      expect(src).toContain('stale alternate-screen frames')
-      expect(src).not.toContain('termRef.current?.write(result.scrollback)')
+    it('replays ring buffer scrollback on reconnect', () => {
+      expect(src).toContain('term.write(result.scrollback)')
+      expect(src).toContain('Ring buffer provides clean scrollback')
     })
 
     it('sends initial command after 500ms delay', () => {

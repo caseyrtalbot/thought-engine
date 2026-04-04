@@ -1,36 +1,29 @@
-import { spawn, type IPty } from 'node-pty'
 import { randomUUID } from 'crypto'
 import { type SessionId, sessionId } from '@shared/types'
-import { TmuxService, type ReconnectResult, type DiscoveredSession } from './tmux-service'
+import { PtyService, type ReconnectResult, type DiscoveredSession } from './pty-service'
 
 export type DataCallback = (id: SessionId, data: string) => void
 export type ExitCallback = (id: SessionId, code: number) => void
 
 // ---------------------------------------------------------------------------
-// ShellService: dual-path facade.
-// Delegates to TmuxService when tmux >= 2.6 is available, otherwise falls
-// back to ephemeral node-pty sessions that die with the app.
+// ShellService: thin facade over PtyService.
+// Provides branded SessionId and a stable public API for IPC consumers.
 // ---------------------------------------------------------------------------
 
 export class ShellService {
-  private readonly tmux: TmuxService | null
-  private readonly ephemeralSessions = new Map<SessionId, IPty>()
-  private onData: DataCallback = () => {}
-  private onExit: ExitCallback = () => {}
+  private readonly pty: PtyService
 
   constructor() {
-    this.tmux = TmuxService.tryCreate()
+    this.pty = new PtyService()
   }
 
-  /** Whether persistent tmux sessions are available. */
-  get tmuxAvailable(): boolean {
-    return this.tmux !== null
+  /** Expose PtyService for monitoring (PtyMonitor needs direct access). */
+  getPtyService(): PtyService {
+    return this.pty
   }
 
   setCallbacks(onData: DataCallback, onExit: ExitCallback): void {
-    this.onData = onData
-    this.onExit = onExit
-    this.tmux?.setCallbacks(
+    this.pty.setCallbacks(
       (id, data) => onData(sessionId(id), data),
       (id, code) => onExit(sessionId(id), code)
     )
@@ -49,32 +42,24 @@ export class ShellService {
     vaultPath?: string
   ): SessionId {
     const id = sessionId(randomUUID())
-
-    if (this.tmux) {
-      this.tmux.create(id, cwd, cols, rows, shell, label, vaultPath)
-      return id
-    }
-
-    // Ephemeral fallback
-    return this.createEphemeral(id, cwd, cols, rows, shell)
+    this.pty.create(id, cwd, cols, rows, shell, label, vaultPath)
+    return id
   }
 
   // -----------------------------------------------------------------------
-  // Reconnect (tmux only)
+  // Reconnect
   // -----------------------------------------------------------------------
 
   reconnect(id: SessionId, cols: number, rows: number): ReconnectResult | null {
-    if (!this.tmux) return null
-    return this.tmux.reconnect(id, cols, rows)
+    return this.pty.reconnect(id, cols, rows)
   }
 
   // -----------------------------------------------------------------------
-  // Discover (tmux only)
+  // Discover
   // -----------------------------------------------------------------------
 
   discover(): DiscoveredSession[] {
-    if (!this.tmux) return []
-    return this.tmux.discover()
+    return this.pty.discover()
   }
 
   // -----------------------------------------------------------------------
@@ -82,43 +67,23 @@ export class ShellService {
   // -----------------------------------------------------------------------
 
   write(id: SessionId, data: string): void {
-    if (this.tmux) {
-      this.tmux.write(id, data)
-    } else {
-      this.ephemeralSessions.get(id)?.write(data)
-    }
+    this.pty.write(id, data)
   }
 
   sendRawKeys(id: SessionId, data: string): void {
-    if (this.tmux) {
-      this.tmux.sendRawKeys(id, data)
-    } else {
-      this.ephemeralSessions.get(id)?.write(data)
-    }
+    this.pty.write(id, data)
   }
 
   resize(id: SessionId, cols: number, rows: number): void {
-    if (this.tmux) {
-      this.tmux.resize(id, cols, rows)
-    } else {
-      this.ephemeralSessions.get(id)?.resize(cols, rows)
-    }
+    this.pty.resize(id, cols, rows)
   }
 
   kill(id: SessionId): void {
-    if (this.tmux) {
-      this.tmux.kill(id)
-    } else {
-      this.ephemeralSessions.get(id)?.kill()
-      this.ephemeralSessions.delete(id)
-    }
+    this.pty.kill(id)
   }
 
   getProcessName(id: SessionId): string | null {
-    if (this.tmux) {
-      return this.tmux.getProcessName(id)
-    }
-    return this.ephemeralSessions.get(id)?.process ?? null
+    return this.pty.getProcessName(id)
   }
 
   // -----------------------------------------------------------------------
@@ -127,66 +92,20 @@ export class ShellService {
 
   /**
    * Graceful shutdown on app quit.
-   * - Tmux: detach clients, sessions survive for reconnection.
-   * - Ephemeral: kill all PTY sessions (nothing to reconnect to).
+   * Marks all sessions as disconnected. PTY processes are cleaned up
+   * when the main Electron process exits.
    */
   shutdown(): void {
-    if (this.tmux) {
-      this.tmux.detachAll()
-    } else {
-      this.killAllEphemeral()
-    }
+    this.pty.detachAll()
   }
 
   /**
    * Destroy everything. User-initiated "kill all sessions".
-   * Kills both tmux sessions and ephemeral sessions.
    */
   killAll(): void {
-    if (this.tmux) {
-      this.tmux.killAll()
-    }
-    this.killAllEphemeral()
-  }
-
-  // -----------------------------------------------------------------------
-  // Private: ephemeral node-pty
-  // -----------------------------------------------------------------------
-
-  private createEphemeral(
-    id: SessionId,
-    cwd: string,
-    cols?: number,
-    rows?: number,
-    shell?: string
-  ): SessionId {
-    const defaultShell = shell || process.env.SHELL || '/bin/zsh'
-
-    const pty = spawn(defaultShell, [], {
-      name: 'xterm-256color',
-      cols: cols ?? 80,
-      rows: rows ?? 24,
-      cwd,
-      env: {
-        ...(process.env as Record<string, string>),
-        PROMPT_EOL_MARK: ''
-      }
-    })
-
-    pty.onData((data) => this.onData(id, data))
-    pty.onExit(({ exitCode }) => {
-      this.onExit(id, exitCode)
-      this.ephemeralSessions.delete(id)
-    })
-
-    this.ephemeralSessions.set(id, pty)
-    return id
-  }
-
-  private killAllEphemeral(): void {
-    for (const [id, pty] of this.ephemeralSessions) {
-      pty.kill()
-      this.ephemeralSessions.delete(id)
-    }
+    this.pty.killAll()
   }
 }
+
+// Re-export types for consumers that import from shell-service
+export type { ReconnectResult, DiscoveredSession }

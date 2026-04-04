@@ -7,10 +7,10 @@ import type { AgentSidecarState } from '@shared/agent-types'
 
 /**
  * Map AgentSidecarState status to AgentSessionStatus for card display.
- * tmux reports 'alive' | 'idle' | 'exited', cards show 'active' | 'idle' | 'completed'.
+ * Monitor reports 'alive' | 'idle' | 'exited', cards show 'active' | 'idle' | 'completed'.
  */
-function mapStatus(tmuxStatus: AgentSidecarState['status']): string {
-  switch (tmuxStatus) {
+function mapStatus(ptyStatus: AgentSidecarState['status']): string {
+  switch (ptyStatus) {
     case 'alive':
       return 'active'
     case 'exited':

@@ -1,18 +1,18 @@
-import type { TmuxMonitor } from '../services/tmux-monitor'
+import type { PtyMonitor } from '../services/pty-monitor'
 import type { AgentSpawner } from '../services/agent-spawner'
 import { LibrarianMonitor } from '../services/librarian-monitor'
 import { typedHandle, typedSend } from '../typed-ipc'
 import { getMainWindow } from '../window-registry'
 
-let activeMonitor: TmuxMonitor | null = null
+let activeMonitor: PtyMonitor | null = null
 let activeSpawner: AgentSpawner | null = null
 let librarianMonitor: LibrarianMonitor | null = null
 
 export function registerAgentIpc(): void {
   typedHandle('agent:get-states', async () => {
-    const tmuxStates = activeMonitor ? activeMonitor.getAgentStates() : []
+    const ptyStates = activeMonitor ? activeMonitor.getAgentStates() : []
     const librarianStates = librarianMonitor ? librarianMonitor.getStates() : []
-    return [...tmuxStates, ...librarianStates]
+    return [...ptyStates, ...librarianStates]
   })
 
   typedHandle('agent:spawn', async (request) => {
@@ -41,7 +41,7 @@ export function registerAgentIpc(): void {
   })
 }
 
-export function setAgentServices(monitor: TmuxMonitor | null, spawner: AgentSpawner | null): void {
+export function setAgentServices(monitor: PtyMonitor | null, spawner: AgentSpawner | null): void {
   activeMonitor?.stop()
 
   activeMonitor = monitor
@@ -55,20 +55,20 @@ export function setAgentServices(monitor: TmuxMonitor | null, spawner: AgentSpaw
   librarianMonitor.setOnChange((librarianStates) => {
     const window = getMainWindow()
     if (window) {
-      const tmuxStates = activeMonitor ? activeMonitor.getAgentStates() : []
+      const ptyStates = activeMonitor ? activeMonitor.getAgentStates() : []
       typedSend(window, 'agent:states-changed', {
-        states: [...tmuxStates, ...librarianStates]
+        states: [...ptyStates, ...librarianStates]
       })
     }
   })
 
   if (monitor) {
-    monitor.start((tmuxStates) => {
+    monitor.start((ptyStates) => {
       const window = getMainWindow()
       if (window) {
         const ls = librarianMonitor ? librarianMonitor.getStates() : []
         typedSend(window, 'agent:states-changed', {
-          states: [...tmuxStates, ...ls]
+          states: [...ptyStates, ...ls]
         })
       }
     })

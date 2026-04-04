@@ -1,19 +1,27 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockSpawn, mockTryCreate } = vi.hoisted(() => ({
-  mockSpawn: vi.fn(),
-  mockTryCreate: vi.fn(() => null)
+const { mockSpawn } = vi.hoisted(() => ({
+  mockSpawn: vi.fn()
 }))
 
 vi.mock('node-pty', () => ({
   spawn: mockSpawn
 }))
 
-vi.mock('../tmux-service', () => ({
-  TmuxService: {
-    tryCreate: mockTryCreate
-  }
+vi.mock('../session-paths', () => ({
+  getTerminfoDir: vi.fn(() => undefined),
+  writeSessionMeta: vi.fn(),
+  readSessionMeta: vi.fn(() => null),
+  deleteSessionMeta: vi.fn(),
+  ensureSessionDir: vi.fn(),
+  getSessionDir: vi.fn(() => '/tmp/test-sessions')
 }))
+
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>()
+  return { ...actual, readdirSync: vi.fn(() => []) }
+})
 
 import { ShellService } from '../shell-service'
 
@@ -24,18 +32,18 @@ function makePty() {
     write: vi.fn(),
     resize: vi.fn(),
     kill: vi.fn(),
+    pid: 12345,
     process: '/bin/zsh'
   }
 }
 
-describe('ShellService ephemeral sessions', () => {
+describe('ShellService', () => {
   beforeEach(() => {
-    mockTryCreate.mockReturnValue(null)
     mockSpawn.mockReset()
     mockSpawn.mockReturnValue(makePty())
   })
 
-  it('passes requested cols and rows to non-tmux sessions', () => {
+  it('passes requested cols and rows to sessions', () => {
     const service = new ShellService()
 
     service.create('/tmp/project', 132, 44, '/bin/zsh')
@@ -51,7 +59,7 @@ describe('ShellService ephemeral sessions', () => {
     )
   })
 
-  it('defaults non-tmux sessions to 80x24 only when no geometry is provided', () => {
+  it('defaults sessions to 80x24 only when no geometry is provided', () => {
     const service = new ShellService()
 
     service.create('/tmp/project')
@@ -65,5 +73,10 @@ describe('ShellService ephemeral sessions', () => {
         rows: 24
       })
     )
+  })
+
+  it('exposes PtyService for monitoring', () => {
+    const service = new ShellService()
+    expect(service.getPtyService()).toBeDefined()
   })
 })
