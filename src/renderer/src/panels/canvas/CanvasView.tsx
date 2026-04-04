@@ -641,24 +641,38 @@ export function CanvasView(): React.ReactElement {
       await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
     }
 
-    // 5. Write prompt to a file so the terminal command stays clean
+    // 5. Write prompt + launcher script to files for a clean terminal experience
     const promptId = Date.now().toString(36)
     const promptPath = `${vp}/${TE_DIR}/action-prompt-${promptId}.txt`
+    const scriptPath = `${vp}/${TE_DIR}/action-launch-${promptId}.sh`
     await window.api.fs.writeFile(promptPath, assembledPrompt)
 
-    // 6. Spawn terminal card with a shell command that reads the prompt file
+    // Build a scope summary for the header line
+    const scopeFiles = [...selectedPaths].map((p) =>
+      p.startsWith(vp) ? p.slice(vp.length + 1) : p
+    )
+    const scopeSummary =
+      scopeFiles.length > 0 ? scopeFiles.map((f) => f.split('/').pop()).join(', ') : 'entire vault'
+
+    const script = [
+      '#!/bin/bash',
+      'clear',
+      `printf "\\033[1m${actionResult.definition.name}\\033[0m  ${scopeSummary}\\n\\n"`,
+      `exec claude --append-system-prompt "$(cat '${promptPath}')" \\`,
+      '  --dangerously-skip-permissions \\',
+      '  --allowedTools Read,Write,Edit,Glob,Grep,Bash \\',
+      '  -p "Begin."'
+    ].join('\n')
+    await window.api.fs.writeFile(scriptPath, script)
+
+    // 6. Spawn terminal card that runs the launcher script
     const viewport = useCanvasStore.getState().viewport
-    const launchCmd =
-      `claude --append-system-prompt "$(cat '${promptPath}')"` +
-      ' --dangerously-skip-permissions' +
-      ' --allowedTools Read,Write,Edit,Glob,Grep,Bash' +
-      ' -p "Begin."'
     const node = createCanvasNode(
       'terminal',
       { x: -viewport.x + 200, y: -viewport.y + 100 },
       {
         metadata: {
-          initialCommand: launchCmd,
+          initialCommand: `bash '${scriptPath}'`,
           initialCwd: vp,
           actionId,
           actionName: actionResult.definition.name
