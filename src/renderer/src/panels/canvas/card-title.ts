@@ -16,6 +16,7 @@ export function getCanvasNodeTitle(
       return (artifact?.title ?? node.content?.split('/').pop()?.replace('.md', '')) || 'Note'
     }
     case 'terminal':
+      if (node.metadata?.actionName) return String(node.metadata.actionName)
       return node.metadata?.initialCommand === 'claude' ? 'Claude Live' : 'Terminal'
     case 'text':
       return (

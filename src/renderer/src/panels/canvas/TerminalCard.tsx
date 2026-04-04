@@ -103,10 +103,18 @@ export function TerminalCard({ node }: TerminalCardProps) {
 
     // For Claude cards, build context in the host (has access to canvas store)
     if (node.metadata?.initialCommand === 'claude') {
-      const nodes = useCanvasStore.getState().nodes
-      const contextFilePath = vaultPath ? `${vaultPath}/.machina/context-${node.id}.txt` : undefined
-      const { text } = buildCanvasContext(node.id, nodes, { contextFilePath })
-      if (text) params.set('systemPrompt', text)
+      if (node.metadata?.actionPrompt) {
+        // Action terminal: prompt pre-assembled by handleAction
+        params.set('systemPrompt', String(node.metadata.actionPrompt))
+      } else {
+        // Regular Claude live card: canvas context
+        const nodes = useCanvasStore.getState().nodes
+        const contextFilePath = vaultPath
+          ? `${vaultPath}/.machina/context-${node.id}.txt`
+          : undefined
+        const { text } = buildCanvasContext(node.id, nodes, { contextFilePath })
+        if (text) params.set('systemPrompt', text)
+      }
     }
 
     // Dev vs prod URL construction.
