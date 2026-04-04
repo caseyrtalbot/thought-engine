@@ -23,6 +23,7 @@ CLAUDE.md
 *.png
 !resources/icon.png
 !build/icon.png
+!docs/assets/*.png
 
 # Working documents (specs, plans, research)
 docs/working/

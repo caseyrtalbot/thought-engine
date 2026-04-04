@@ -2,19 +2,33 @@
 
 Local-first knowledge engine for spatial thinking. Point it at a folder of markdown files and get an explorable knowledge graph with connections, clusters, and tensions -- all running on your machine, no cloud required.
 
-<!-- TODO: Add screenshot here -->
-<!-- ![Machina screenshot](docs/assets/screenshot.png) -->
+![Machina canvas view](docs/assets/canvas.png)
 
 ## What it does
 
 Machina parses your markdown vault, extracts relationships from wikilinks, tags, and frontmatter, and renders everything as an interactive spatial canvas. You can see how your ideas connect, where the gaps are, and what's worth exploring next.
 
-- **Knowledge graph**: Automatic relationship extraction (wikilinks, tags, co-occurrence, frontmatter sources) with force-directed layout
-- **Infinite canvas**: Pan-zoom workspace with 12 card types (notes, code, terminals, PDFs, images, system artifacts, and more) powered by PixiJS 8
-- **Rich editor**: Tiptap 3 with markdown round-tripping, slash commands, callouts, mermaid diagrams, and wikilink navigation
+### Infinite canvas
+
+Lay out your notes as cards on a pan-zoom workspace. Drag connections between ideas, embed terminals, view PDFs and images, and run AI agents -- all in one surface. Twelve card types, powered by PixiJS 8.
+
+### Knowledge graph
+
+Automatic relationship extraction from wikilinks, tags, co-occurrence, and frontmatter sources. Force-directed layout with 885+ nodes and thousands of edges, rendered in real time.
+
+![Machina graph view](docs/assets/graph.png)
+
+### Rich editor
+
+Full markdown editor with live preview, slash commands, callouts, mermaid diagrams, wikilink navigation, and backlink tracking. What you write stays as plain `.md` files on disk.
+
+![Machina editor view](docs/assets/editor.png)
+
+### More features
+
 - **Ghost detection**: Surfaces unresolved wikilinks -- ideas you've referenced but haven't written yet, ranked by how many notes point to them
 - **Ontology grouping**: Automatically organizes canvas cards into semantic regions based on shared tags and link structure
-- **MCP server**: Exposes your vault to AI agents via Model Context Protocol with read/write tools and HITL approval gates
+- **MCP server**: Exposes your vault to AI agents via Model Context Protocol with read/write tools and human-in-the-loop approval gates
 - **Agent system**: Spawn Claude Code sessions as managed tmux processes with live session monitoring and milestone tracking
 - **Terminal cards**: Embedded terminal sessions on the canvas via xterm.js in isolated webview processes
 - **Vault agents**: Built-in librarian (audits vault quality) and curator (acts on audit findings) agents
