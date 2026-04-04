@@ -80,6 +80,7 @@ const api = {
   shell: {
     showInFolder: (path: string) => typedInvoke('shell:show-in-folder', { path }),
     openPath: (path: string) => typedInvoke('shell:open-path', { path }),
+    openExternal: (url: string) => typedInvoke('shell:open-external', { url }),
     trashItem: (path: string) => typedInvoke('shell:trash-item', { path })
   },
 

@@ -268,6 +268,10 @@ export function registerFilesystemIpc(): void {
     return shell.openPath(args.path)
   })
 
+  typedHandle('shell:open-external', async (args) => {
+    await shell.openExternal(args.url)
+  })
+
   typedHandle('shell:trash-item', async (args) => {
     const { rm } = await import('fs/promises')
     await rm(args.path, { recursive: true })

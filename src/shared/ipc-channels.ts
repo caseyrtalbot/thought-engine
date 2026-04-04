@@ -92,6 +92,7 @@ export interface IpcChannels {
   // --- Shell ---
   'shell:show-in-folder': { request: { path: string }; response: void }
   'shell:open-path': { request: { path: string }; response: string }
+  'shell:open-external': { request: { url: string }; response: void }
   'shell:trash-item': { request: { path: string }; response: void }
 
   // --- Terminal ---
