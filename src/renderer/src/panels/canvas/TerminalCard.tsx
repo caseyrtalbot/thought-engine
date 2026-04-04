@@ -106,6 +106,7 @@ export function TerminalCard({ node }: TerminalCardProps) {
       if (node.metadata?.actionPrompt) {
         // Action terminal: prompt pre-assembled by handleAction
         params.set('systemPrompt', String(node.metadata.actionPrompt))
+        params.set('actionPrompt', '1') // Signal to TerminalApp for autonomous mode
       } else {
         // Regular Claude live card: canvas context
         const nodes = useCanvasStore.getState().nodes

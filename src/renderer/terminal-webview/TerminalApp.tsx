@@ -361,7 +361,13 @@ export function TerminalApp() {
 
           if (systemPrompt) {
             const escaped = escapeForBashDollarQuote(systemPrompt)
-            const cmd = `claude --append-system-prompt $'${escaped}'`
+            // Action terminals (actionPrompt in URL) run autonomously with tool permissions.
+            // Regular Claude live cards open in interactive mode.
+            const isAction = new URLSearchParams(window.location.search).has('actionPrompt')
+            const flags = isAction
+              ? ' --dangerously-skip-permissions --allowedTools Read,Write,Edit,Glob,Grep,Bash -p "Begin."'
+              : ''
+            const cmd = `claude --append-system-prompt $'${escaped}'${flags}`
             window.terminalApi.write({ sessionId: sessionIdRef.current, data: cmd + '\r' })
           } else {
             window.terminalApi.write({
