@@ -52,35 +52,31 @@ The agent system depends on a bundled tmux binary compiled for macOS ARM64. Wind
 - **Node.js** >= 20
 - **npm** >= 10
 
-### Build from source
+### Install
 
 ```bash
 git clone https://github.com/caseyrtalbot/Machina.git
 cd Machina
 npm install
+npm run package:install
 ```
 
-**Run in development** (with hot reload):
-
-```bash
-npm run dev
-```
-
-**Build the app**:
-
-```bash
-# Package a local .app (fastest for testing)
-npm run package
-
-# Full macOS build with DMG
-npm run build:mac
-```
-
-`npm run package` produces `dist/mac-arm64/Machina.app` which you can drag to `/Applications`.
+This clones the repo, installs dependencies, builds the app, and installs it to `/Applications`. Once complete, open **Machina** from your Applications folder or Spotlight.
 
 ### Open a vault
 
 Launch Machina and point it at any folder containing markdown files. It will index the vault and build a knowledge graph from the relationships it finds. The vault stays on disk as plain markdown -- Machina stores its own state in a `.machina/` directory alongside your files.
+
+### Development
+
+If you want to work on the source code instead of just running the app:
+
+```bash
+npm run dev          # Start with hot reload
+npm run check        # Lint + typecheck + tests (quality gate)
+npm run package      # Build .app without installing
+npm run build:mac    # Full macOS build with DMG
+```
 
 ## Architecture
 
@@ -97,16 +93,6 @@ Main Process (Node.js)          Preload (Bridge)           Renderer (Browser)
 Heavy computation runs off the main thread in Web Workers: vault parsing, graph physics (D3-force), ontology grouping, and project map analysis.
 
 **Key technologies**: Electron 39, React 19, PixiJS 8, Tiptap 3, Zustand, D3-force, Tailwind v4, Vitest, Playwright
-
-## Development
-
-```bash
-npm run dev          # Start with HMR
-npm run check        # Lint + typecheck + tests (quality gate)
-npm test             # Unit tests (Vitest)
-npm run typecheck    # TypeScript check (node + web configs)
-npm run lint         # ESLint
-```
 
 ### Project structure
 
