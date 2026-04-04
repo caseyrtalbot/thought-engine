@@ -66,7 +66,7 @@ function prepareSimData(graph: KnowledgeGraph) {
       signal: n.signal,
       connectionCount: n.connectionCount,
       origin: n.origin,
-      isGhost: !n.path
+      isGhost: !n.origin
     }
   })
 

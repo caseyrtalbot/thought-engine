@@ -361,9 +361,9 @@ export class GraphRenderer {
         // Ghost nodes: dashed hollow circle
         drawDashedCircle(g, radius, color, 0.8)
       } else {
+        // Solid filled circle with origin-based stroke
         g.circle(0, 0, radius)
         g.fill({ color })
-        // Origin-based stroke: source gets blue, agent gets green, human gets default
         const strokeColor =
           node.origin === 'source'
             ? ORIGIN_SOURCE_STROKE
