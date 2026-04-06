@@ -194,6 +194,8 @@ body {
   --chrome-rail-bg: rgba(18, 18, 20, 0.55);
   --env-card-blur: 12px;
   --env-card-title-font-size: 12px;
+  --env-card-body-font-size: 16px;
+  --env-card-code-font-size: 12px;
   --env-sidebar-font-size: 13px;
   --env-sidebar-secondary-font-size: 12px;
   --env-sidebar-tertiary-font-size: 10px;
@@ -1547,7 +1549,7 @@ body {
  */
 .canvas-prose .ProseMirror {
   font-family: inherit;
-  font-size: 16px;
+  font-size: var(--env-card-body-font-size, 16px);
   line-height: 1.75;
   color: var(--color-text-primary);
   max-width: none;
@@ -1611,7 +1613,7 @@ body {
 }
 
 .canvas-prose .ProseMirror pre {
-  font-size: 12px;
+  font-size: var(--env-card-code-font-size, 12px);
   padding: 0.75em 1em;
   border-radius: 4px;
 }

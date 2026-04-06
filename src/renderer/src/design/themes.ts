@@ -12,6 +12,7 @@ export interface EnvironmentSettings {
   readonly panelLightness: number
   readonly activityBarOpacity: number
   readonly cardTitleFontSize: number
+  readonly cardBodyFontSize: number
   readonly sidebarFontSize: number
 }
 
@@ -24,6 +25,7 @@ export const ENV_DEFAULTS: EnvironmentSettings = {
   panelLightness: 56,
   activityBarOpacity: 55,
   cardTitleFontSize: 13,
+  cardBodyFontSize: 16,
   sidebarFontSize: 13
 }
 

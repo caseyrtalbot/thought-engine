@@ -82,6 +82,11 @@ function applyEnvCssVars(env: EnvironmentSettings): void {
   )
   root.style.setProperty('--env-card-blur', `${env.cardBlur}px`)
   root.style.setProperty('--env-card-title-font-size', `${env.cardTitleFontSize}px`)
+  root.style.setProperty('--env-card-body-font-size', `${env.cardBodyFontSize}px`)
+  root.style.setProperty(
+    '--env-card-code-font-size',
+    `${Math.max(Math.round(env.cardBodyFontSize * 0.75), 10)}px`
+  )
   root.style.setProperty('--env-sidebar-font-size', `${env.sidebarFontSize}px`)
   root.style.setProperty(
     '--env-sidebar-secondary-font-size',

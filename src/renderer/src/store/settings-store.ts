@@ -55,7 +55,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'machina-settings',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
@@ -95,6 +95,14 @@ export const useSettingsStore = create<SettingsStore>()(
           // v4 → v5: add graph brightness defaults
           if (typeof state.edgeBrightness !== 'number') state.edgeBrightness = 1.0
           if (typeof state.nodeBrightness !== 'number') state.nodeBrightness = 1.0
+        }
+
+        if (version < 6) {
+          // v5 → v6: add card body font size default
+          const existingEnv = state.env as Record<string, unknown> | undefined
+          if (existingEnv && typeof existingEnv.cardBodyFontSize !== 'number') {
+            existingEnv.cardBodyFontSize = 16
+          }
         }
 
         return state as unknown as SettingsState & SettingsActions

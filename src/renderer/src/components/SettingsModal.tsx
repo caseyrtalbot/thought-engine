@@ -226,6 +226,16 @@ export function SettingsModal({ isOpen, onClose, onChangeVault }: SettingsModalP
               onChange={(v) => setEnv('cardTitleFontSize', v)}
             />
           </SettingRow>
+          <SettingRow label="Card Text">
+            <SliderInput
+              value={env.cardBodyFontSize}
+              min={10}
+              max={20}
+              step={1}
+              unit="px"
+              onChange={(v) => setEnv('cardBodyFontSize', v)}
+            />
+          </SettingRow>
           <SettingRow label="Sidebar">
             <SliderInput
               value={env.sidebarFontSize}
