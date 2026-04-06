@@ -436,11 +436,12 @@ export const FileTree = memo(function FileTree({
             ) as HTMLElement | null
             if (prev) prev.dataset.dropTarget = 'false'
           }
-          // Set new highlight
-          const next = tree.querySelector(
-            `[data-node-path="${CSS.escape(targetPath)}"]`
-          ) as HTMLElement | null
-          if (next) next.dataset.dropTarget = 'true'
+          // Only highlight the folder row when the cursor is directly over it.
+          // Hovering over child files updates the tooltip but does not highlight
+          // a distant folder row — the tooltip is the real-time feedback.
+          if (isDir) {
+            rowEl.dataset.dropTarget = 'true'
+          }
 
           drag.current.targetPath = targetPath
           drag.current.targetName = targetName
