@@ -58,6 +58,8 @@ interface SidebarProps {
   onNewFile?: () => void
   onSortChange?: (mode: SortMode) => void
   onFileAction?: (action: FileAction) => void
+  onMoveToFolder?: (sourcePath: string, targetFolderPath: string) => void
+  onExternalFileDrop?: (filePaths: readonly string[], targetFolderPath?: string) => void
   onSelectVault?: (path: string) => void
   onOpenVaultPicker?: () => void
   onRemoveFromHistory?: (path: string) => void
@@ -313,6 +315,8 @@ export function Sidebar({
   onNewFile,
   onSortChange,
   onFileAction,
+  onMoveToFolder,
+  onExternalFileDrop,
   onSelectVault,
   onOpenVaultPicker,
   onRemoveFromHistory,
@@ -322,6 +326,7 @@ export function Sidebar({
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const [filesCollapsed, setFilesCollapsed] = useState(false)
   const fileCount = nodes.filter((node) => !node.isDirectory).length
+  const actionedPaths = useSidebarSelectionStore((s) => s.actionedPaths)
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, path: string, isDirectory: boolean) => {
@@ -433,6 +438,7 @@ export function Sidebar({
               sortMode={sortMode}
               artifactTypes={artifactTypes}
               artifactOrigins={artifactOrigins}
+              actionedPaths={actionedPaths}
               onCanvasPaths={onCanvasPaths}
               canvasConnectionCounts={canvasConnectionCounts}
               selectedPaths={selectedPaths}
@@ -441,6 +447,8 @@ export function Sidebar({
               onFileDoubleClick={onFileDoubleClick}
               onToggleDirectory={onToggleDirectory}
               onContextMenu={handleContextMenu}
+              onMoveToFolder={onMoveToFolder}
+              onExternalFileDrop={onExternalFileDrop}
               renamingPath={renamingPath}
               onRenameConfirm={handleRenameConfirm}
               onRenameCancel={() => setRenamingPath(null)}

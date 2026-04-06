@@ -1,11 +1,19 @@
 import type { CanvasNodeType } from '@shared/canvas-types'
 
-/** MIME type used for intra-app file drag data */
+/** MIME type used for intra-app file drag data (sidebar → canvas) */
 export const TE_FILE_MIME = 'application/x-te-file'
+
+/** MIME type used for intra-vault file/folder moves (sidebar → sidebar folder) */
+export const TE_MOVE_MIME = 'application/x-te-move'
 
 export interface DragFileData {
   readonly path: string
   readonly type: CanvasNodeType
+}
+
+export interface DragMoveData {
+  readonly path: string
+  readonly isDirectory: boolean
 }
 
 const CODE_EXTENSIONS = new Set([

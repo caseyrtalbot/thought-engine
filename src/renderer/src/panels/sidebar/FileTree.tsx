@@ -1,5 +1,11 @@
-import { Fragment, memo, useMemo } from 'react'
-import { TE_FILE_MIME, inferCardType, type DragFileData } from '../canvas/file-drop-utils'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import {
+  TE_FILE_MIME,
+  TE_MOVE_MIME,
+  inferCardType,
+  type DragFileData,
+  type DragMoveData
+} from '../canvas/file-drop-utils'
 import { colors } from '../../design/tokens'
 import { useSettingsStore } from '../../store/settings-store'
 import { useSidebarSelectionStore } from '../../store/sidebar-selection-store'
@@ -77,6 +83,7 @@ interface FileTreeProps {
   sortMode?: TreeSortMode
   artifactTypes?: Map<string, ArtifactType>
   artifactOrigins?: Map<string, ArtifactOrigin>
+  actionedPaths?: ReadonlyMap<string, string>
   onCanvasPaths?: ReadonlySet<string>
   canvasConnectionCounts?: ReadonlyMap<string, number>
   selectedPaths?: ReadonlySet<string>
@@ -85,6 +92,8 @@ interface FileTreeProps {
   onFileDoubleClick?: (path: string) => void
   onToggleDirectory: (path: string) => void
   onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
+  onMoveToFolder?: (sourcePath: string, targetFolderPath: string) => void
+  onExternalFileDrop?: (filePaths: readonly string[], targetFolderPath?: string) => void
   renamingPath?: string | null
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
@@ -249,6 +258,89 @@ function Chevron({ isExpanded }: { isExpanded: boolean }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Imperative drag system — zero React state changes during drag = smooth
+// ---------------------------------------------------------------------------
+
+/** Shared 1x1 invisible ghost to suppress the browser's default drag image. */
+let ghostEl: HTMLDivElement | null = null
+function getGhost(): HTMLDivElement {
+  if (!ghostEl) {
+    ghostEl = document.createElement('div')
+    ghostEl.style.cssText = 'width:1px;height:1px;position:fixed;top:-9999px;opacity:0;'
+    document.body.appendChild(ghostEl)
+  }
+  return ghostEl
+}
+
+/** Shared tooltip element — created once, positioned imperatively. */
+let tooltipEl: HTMLDivElement | null = null
+function getTooltip(): HTMLDivElement {
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div')
+    tooltipEl.className = 'te-drag-tooltip'
+    tooltipEl.innerHTML =
+      '<span class="te-drag-tooltip__icon"></span>' +
+      '<span class="te-drag-tooltip__copy">' +
+      '<span class="te-drag-tooltip__name"></span>' +
+      '<span class="te-drag-tooltip__action"></span>' +
+      '</span>'
+    document.body.appendChild(tooltipEl)
+  }
+  return tooltipEl
+}
+
+interface DragState {
+  active: boolean
+  sourcePath: string
+  sourceName: string
+  sourceIsDir: boolean
+  targetPath: string | null
+  targetName: string | null
+}
+
+const EMPTY_DRAG: DragState = {
+  active: false,
+  sourcePath: '',
+  sourceName: '',
+  sourceIsDir: false,
+  targetPath: null,
+  targetName: null
+}
+
+function showTooltip(name: string, isDir: boolean) {
+  const tip = getTooltip()
+  tip.querySelector('.te-drag-tooltip__icon')!.textContent = isDir ? '📁' : '📄'
+  tip.querySelector('.te-drag-tooltip__name')!.textContent = name
+  tip.querySelector('.te-drag-tooltip__action')!.textContent = ''
+  tip.style.display = 'flex'
+}
+
+function updateTooltipTarget(targetName: string | null) {
+  const action = getTooltip().querySelector('.te-drag-tooltip__action')!
+  action.textContent = targetName ? `Move into \u201c${targetName}\u201d` : ''
+}
+
+/** Position via translate3d — stays on GPU compositor, no layout thrash. */
+function positionTooltip(x: number, y: number) {
+  getTooltip().style.transform = `translate3d(${x + 16}px, ${y + 4}px, 0)`
+}
+
+function hideTooltip() {
+  getTooltip().style.display = 'none'
+}
+
+function clearHighlights(treeEl: HTMLElement) {
+  for (const el of treeEl.querySelectorAll('[data-drop-target="true"]')) {
+    ;(el as HTMLElement).dataset.dropTarget = 'false'
+  }
+  for (const el of treeEl.querySelectorAll('[data-dragging="true"]')) {
+    ;(el as HTMLElement).dataset.dragging = 'false'
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 export const FileTree = memo(function FileTree({
   nodes,
   activeFilePath,
@@ -256,6 +348,7 @@ export const FileTree = memo(function FileTree({
   sortMode,
   artifactTypes,
   artifactOrigins,
+  actionedPaths,
   onCanvasPaths,
   canvasConnectionCounts,
   selectedPaths,
@@ -264,6 +357,8 @@ export const FileTree = memo(function FileTree({
   onFileDoubleClick,
   onToggleDirectory,
   onContextMenu,
+  onMoveToFolder,
+  onExternalFileDrop,
   renamingPath,
   onRenameConfirm,
   onRenameCancel
@@ -278,8 +373,183 @@ export const FileTree = memo(function FileTree({
   const resolvedFont = 'var(--font-body)'
   const showDateHeaders = sortMode === 'modified' || sortMode === 'modified-asc'
 
+  // --- Imperative drag management ---
+  const treeRef = useRef<HTMLDivElement>(null)
+  const drag = useRef<DragState>({ ...EMPTY_DRAG })
+
+  // Stable refs for callbacks used in native event handlers
+  const onMoveRef = useRef(onMoveToFolder)
+  const onExtDropRef = useRef(onExternalFileDrop)
+
+  // Sync refs with latest callback values
+  useEffect(() => {
+    onMoveRef.current = onMoveToFolder
+  }, [onMoveToFolder])
+  useEffect(() => {
+    onExtDropRef.current = onExternalFileDrop
+  }, [onExternalFileDrop])
+
+  // Clean up tooltip on unmount
+  useEffect(() => {
+    return () => hideTooltip()
+  }, [])
+
+  // Document-level tooltip positioning — follows the cursor everywhere, even outside the sidebar.
+  // Attaches on mount, but only does work when a drag is active (cheap guard).
+  useEffect(() => {
+    const handleGlobalDragOver = (e: DragEvent) => {
+      if (!drag.current.active) return
+      positionTooltip(e.clientX, e.clientY)
+    }
+    document.addEventListener('dragover', handleGlobalDragOver)
+    return () => document.removeEventListener('dragover', handleGlobalDragOver)
+  }, [])
+
+  // Tree-level listeners: folder target detection + drop acceptance.
+  // Separate from tooltip so the tooltip stays visible outside the tree.
+  useEffect(() => {
+    const tree = treeRef.current
+    if (!tree) return
+
+    const handleDragOver = (e: DragEvent) => {
+      // --- Intra-vault move ---
+      if (drag.current.active) {
+        e.preventDefault()
+        e.dataTransfer!.dropEffect = 'move'
+
+        // Find the row under the cursor
+        const rowEl = (e.target as HTMLElement).closest('[data-node-path]') as HTMLElement | null
+        if (!rowEl) return
+
+        // Determine target folder: if hovering a directory use it, otherwise use the file's parent
+        const isDir = rowEl.dataset.nodeDir === 'true'
+        const targetPath = isDir ? rowEl.dataset.nodePath! : rowEl.dataset.nodeParent!
+        const targetName = isDir
+          ? rowEl.dataset.nodeName!
+          : (rowEl.dataset.nodeParentName ?? targetPath.split('/').pop() ?? '')
+
+        if (targetPath !== drag.current.targetPath) {
+          // Clear previous highlight
+          if (drag.current.targetPath) {
+            const prev = tree.querySelector(
+              `[data-node-path="${CSS.escape(drag.current.targetPath)}"]`
+            ) as HTMLElement | null
+            if (prev) prev.dataset.dropTarget = 'false'
+          }
+          // Set new highlight
+          const next = tree.querySelector(
+            `[data-node-path="${CSS.escape(targetPath)}"]`
+          ) as HTMLElement | null
+          if (next) next.dataset.dropTarget = 'true'
+
+          drag.current.targetPath = targetPath
+          drag.current.targetName = targetName
+          updateTooltipTarget(targetName)
+        }
+        return
+      }
+
+      // --- External file drop from desktop ---
+      if (e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+        tree.dataset.dropActive = 'true'
+      }
+    }
+
+    const handleDragLeave = (e: DragEvent) => {
+      if (tree.contains(e.relatedTarget as Node)) return
+      tree.dataset.dropActive = 'false'
+
+      // Cursor left the tree — clear folder highlight but keep tooltip visible.
+      // The tooltip hides on dragend, not on leave.
+      if (drag.current.active && drag.current.targetPath) {
+        const prev = tree.querySelector(
+          `[data-node-path="${CSS.escape(drag.current.targetPath)}"]`
+        ) as HTMLElement | null
+        if (prev) prev.dataset.dropTarget = 'false'
+        drag.current.targetPath = null
+        drag.current.targetName = null
+        updateTooltipTarget(null)
+      }
+    }
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault()
+      tree.dataset.dropActive = 'false'
+
+      if (drag.current.active && drag.current.targetPath) {
+        const src = drag.current.sourcePath
+        const dst = drag.current.targetPath
+        // Validate: no self-drop, no drop into own children, no same-parent no-op
+        if (src !== dst && !dst.startsWith(src + '/')) {
+          const parentOfSource = src.split('/').slice(0, -1).join('/')
+          if (parentOfSource !== dst) {
+            onMoveRef.current?.(src, dst)
+          }
+        }
+        return
+      }
+
+      // External files
+      if (e.dataTransfer?.files.length) {
+        const paths = Array.from(e.dataTransfer.files)
+          .map((f) => (f as File & { path: string }).path)
+          .filter(Boolean)
+        if (paths.length > 0) {
+          const rowEl = (e.target as HTMLElement).closest('[data-node-path]') as HTMLElement | null
+          const targetFolder =
+            rowEl?.dataset.nodeDir === 'true' ? rowEl.dataset.nodePath : undefined
+          onExtDropRef.current?.(paths, targetFolder)
+        }
+      }
+    }
+
+    tree.addEventListener('dragover', handleDragOver)
+    tree.addEventListener('dragleave', handleDragLeave)
+    tree.addEventListener('drop', handleDrop)
+    return () => {
+      tree.removeEventListener('dragover', handleDragOver)
+      tree.removeEventListener('dragleave', handleDragLeave)
+      tree.removeEventListener('drop', handleDrop)
+    }
+  }, [])
+
+  // Called by individual rows on dragStart
+  const handleRowDragStart = useCallback((e: React.DragEvent, node: FlatTreeNode) => {
+    // Set MIME data
+    const moveData: DragMoveData = { path: node.path, isDirectory: node.isDirectory }
+    e.dataTransfer.setData(TE_MOVE_MIME, JSON.stringify(moveData))
+    if (!node.isDirectory) {
+      const fileData: DragFileData = { path: node.path, type: inferCardType(node.path) }
+      e.dataTransfer.setData(TE_FILE_MIME, JSON.stringify(fileData))
+    }
+    e.dataTransfer.effectAllowed = node.isDirectory ? 'move' : 'copyMove'
+    e.dataTransfer.setDragImage(getGhost(), 0, 0)
+
+    // Mark source
+    ;(e.currentTarget as HTMLElement).dataset.dragging = 'true'
+    drag.current = {
+      active: true,
+      sourcePath: node.path,
+      sourceName: node.name,
+      sourceIsDir: node.isDirectory,
+      targetPath: null,
+      targetName: null
+    }
+    showTooltip(node.name, node.isDirectory)
+  }, [])
+
+  const handleRowDragEnd = useCallback((e: React.DragEvent) => {
+    ;(e.currentTarget as HTMLElement).dataset.dragging = 'false'
+    e.currentTarget.removeAttribute('draggable')
+    if (treeRef.current) clearHighlights(treeRef.current)
+    hideTooltip()
+    drag.current = { ...EMPTY_DRAG }
+  }, [])
+
   return (
-    <div data-testid="file-tree" className="file-tree text-sm select-none px-1 py-1">
+    <div ref={treeRef} data-testid="file-tree" className="file-tree text-sm select-none px-1 py-1">
       {visibleNodes.map((node, i) => {
         // Insert date separator when sorted by modified and the date bucket changes
         let dateHeader: React.ReactNode = null
@@ -301,6 +571,9 @@ export const FileTree = memo(function FileTree({
           }
         }
 
+        // Parent folder name for file rows (used by container-level target detection)
+        const parentName = !node.isDirectory ? (node.parentPath.split('/').pop() ?? '') : undefined
+
         return (
           <Fragment key={node.path}>
             {dateHeader}
@@ -311,6 +584,8 @@ export const FileTree = memo(function FileTree({
                 folderOriginColor={getFolderOriginColor(node.path, artifactOrigins, nodes)}
                 onToggleDirectory={onToggleDirectory}
                 onContextMenu={onContextMenu}
+                onDragStart={handleRowDragStart}
+                onDragEnd={handleRowDragEnd}
                 isRenaming={renamingPath === node.path}
                 onRenameConfirm={onRenameConfirm}
                 onRenameCancel={onRenameCancel}
@@ -320,16 +595,20 @@ export const FileTree = memo(function FileTree({
             ) : (
               <FileRow
                 node={node}
+                parentName={parentName}
                 isActive={node.path === activeFilePath}
                 isSelected={selectedPaths?.has(node.path) ?? false}
                 isProcessing={(selectedPaths?.has(node.path) ?? false) && (agentActive ?? false)}
                 artifactType={artifactTypes?.get(node.path)}
                 origin={artifactOrigins?.get(node.path)}
+                actionName={actionedPaths?.get(node.path)}
                 isOnCanvas={onCanvasPaths?.has(node.path) ?? false}
                 canvasConnectionCount={canvasConnectionCounts?.get(node.path) ?? 0}
                 onFileSelect={onFileSelect}
                 onFileDoubleClick={onFileDoubleClick}
                 onContextMenu={onContextMenu}
+                onDragStart={handleRowDragStart}
+                onDragEnd={handleRowDragEnd}
                 isRenaming={renamingPath === node.path}
                 onRenameConfirm={onRenameConfirm}
                 onRenameCancel={onRenameCancel}
@@ -350,6 +629,8 @@ function DirectoryRow({
   folderOriginColor,
   onToggleDirectory,
   onContextMenu,
+  onDragStart,
+  onDragEnd,
   isRenaming,
   onRenameConfirm,
   onRenameCancel,
@@ -361,6 +642,8 @@ function DirectoryRow({
   folderOriginColor?: string
   onToggleDirectory: (path: string) => void
   onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
+  onDragStart: (e: React.DragEvent, node: FlatTreeNode) => void
+  onDragEnd: (e: React.DragEvent) => void
   isRenaming?: boolean
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
@@ -369,8 +652,17 @@ function DirectoryRow({
 }) {
   return (
     <div
+      data-node-path={node.path}
+      data-node-dir="true"
+      data-node-name={node.name}
       onClick={() => onToggleDirectory(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, true)}
+      onMouseDown={(e) => {
+        if (e.button === 0) e.currentTarget.setAttribute('draggable', 'true')
+      }}
+      onDragStart={(e) => onDragStart(e, node)}
+      onDragEnd={onDragEnd}
+      onMouseUp={(e) => e.currentTarget.removeAttribute('draggable')}
       className="tree-directory-row flex items-center py-[2px] transition-colors"
       style={{
         paddingLeft: node.depth === 0 ? 8 : undefined,
@@ -381,7 +673,6 @@ function DirectoryRow({
         fontWeight: 500,
         fontSize: treeFontSize,
         letterSpacing: '0.02em',
-        transition: 'color 120ms ease-out',
         ...indentBorderStyle(node.depth)
       }}
     >
@@ -416,18 +707,38 @@ function DirectoryRow({
   )
 }
 
+/** Action-specific colors for the icon dot indicator */
+const ACTION_ICON_COLORS: Record<string, string> = {
+  challenge: '#ff847d', // red — stress-testing
+  emerge: '#ad9cff', // purple — synthesis
+  organize: '#00befa', // sky — grouping
+  tidy: '#4ec983', // green — cleanup
+  compile: '#dfa11a', // amber — compilation
+  librarian: '#60b8d6', // cyan — indexing
+  curator: '#4ade80' // green — curation
+}
+
+function getActionColor(actionName: string | undefined): string | undefined {
+  if (!actionName) return undefined
+  return ACTION_ICON_COLORS[actionName]
+}
+
 function FileRow({
   node,
+  parentName,
   isActive,
   isSelected,
   isProcessing,
   artifactType: _artifactType,
   origin,
+  actionName,
   isOnCanvas,
   canvasConnectionCount,
   onFileSelect,
   onFileDoubleClick,
   onContextMenu,
+  onDragStart,
+  onDragEnd,
   isRenaming,
   onRenameConfirm,
   onRenameCancel,
@@ -435,16 +746,20 @@ function FileRow({
   treeFontFamily
 }: {
   node: FlatTreeNode
+  parentName?: string
   isActive: boolean
   isSelected: boolean
   isProcessing: boolean
   artifactType?: ArtifactType
   origin?: ArtifactOrigin
+  actionName?: string
   isOnCanvas: boolean
   canvasConnectionCount: number
   onFileSelect: (path: string, e?: React.MouseEvent) => void
   onFileDoubleClick?: (path: string) => void
   onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
+  onDragStart: (e: React.DragEvent, node: FlatTreeNode) => void
+  onDragEnd: (e: React.DragEvent) => void
   isRenaming?: boolean
   onRenameConfirm?: (newName: string) => void
   onRenameCancel?: () => void
@@ -453,28 +768,24 @@ function FileRow({
 }) {
   const { base, ext } = splitName(node.name)
   const isAgentModified = useSidebarSelectionStore((s) => s.agentModifiedPaths.has(node.path))
+  const actionColor = getActionColor(actionName)
 
   return (
     <div
+      data-node-path={node.path}
+      data-node-dir="false"
+      data-node-name={node.name}
+      data-node-parent={node.parentPath}
+      data-node-parent-name={parentName}
       data-active={isActive ? 'true' : 'false'}
       data-selected={isSelected ? 'true' : 'false'}
       data-processing={isProcessing ? 'true' : 'false'}
       onMouseDown={(e) => {
-        if (e.button === 0) {
-          e.currentTarget.setAttribute('draggable', 'true')
-        }
+        if (e.button === 0) e.currentTarget.setAttribute('draggable', 'true')
       }}
-      onDragStart={(e) => {
-        const data: DragFileData = { path: node.path, type: inferCardType(node.path) }
-        e.dataTransfer.setData(TE_FILE_MIME, JSON.stringify(data))
-        e.dataTransfer.effectAllowed = 'copy'
-      }}
-      onDragEnd={(e) => {
-        e.currentTarget.setAttribute('draggable', 'false')
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.setAttribute('draggable', 'false')
-      }}
+      onDragStart={(e) => onDragStart(e, node)}
+      onDragEnd={onDragEnd}
+      onMouseUp={(e) => e.currentTarget.removeAttribute('draggable')}
       onClick={(e) => onFileSelect(node.path, e)}
       onDoubleClick={() => (onFileDoubleClick ?? onFileSelect)(node.path)}
       onContextMenu={(e) => onContextMenu?.(e, node.path, false)}
@@ -489,9 +800,24 @@ function FileRow({
     >
       <span
         className="mr-1.5 flex items-center shrink-0 relative"
-        style={{ opacity: isActive ? 1 : isOnCanvas ? 0.8 : 0.5 }}
+        style={{ opacity: isActive ? 1 : isOnCanvas ? 0.8 : actionColor ? 0.9 : 0.5 }}
       >
         <FileIcon filename={node.name} origin={origin} />
+        {/* Action color dot — shows which action last touched this file */}
+        {actionColor && (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: -1,
+              left: -2,
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              backgroundColor: actionColor,
+              opacity: 0.9
+            }}
+          />
+        )}
         {isOnCanvas && (
           <span
             style={{
@@ -517,11 +843,13 @@ function FileRow({
         <span
           className="truncate flex-1 file-name-text"
           style={{
-            color: isAgentModified
-              ? '#4ade80'
-              : isActive
-                ? colors.text.primary
-                : colors.text.secondary
+            color: actionColor
+              ? actionColor
+              : isAgentModified
+                ? '#4ade80'
+                : isActive
+                  ? colors.text.primary
+                  : colors.text.secondary
           }}
         >
           {base}

@@ -506,6 +506,17 @@ function ConnectedSidebar({
           await openArtifactInEditorOnDemand(filePath, title)
           break
         }
+        case 'new-folder': {
+          const dir = action.path
+          let folderName = 'New Folder'
+          let counter = 1
+          while (await window.api.fs.fileExists(`${dir}/${folderName}`).catch(() => false)) {
+            folderName = `New Folder ${counter}`
+            counter++
+          }
+          await window.api.fs.mkdir(`${dir}/${folderName}`)
+          break
+        }
         case 'copy-path': {
           await navigator.clipboard.writeText(action.path)
           break
@@ -558,6 +569,46 @@ function ConnectedSidebar({
     [allAgentStates]
   )
 
+  // Sync active agent label into the selection store so markAgentModified can tag files
+  const activeVaultAgent = useMemo(
+    () =>
+      allAgentStates.find(
+        (s) => (s.label === 'librarian' || s.label === 'curator') && s.status === 'alive'
+      ),
+    [allAgentStates]
+  )
+  const prevAgentRef = useRef<string | null>(null)
+  if ((activeVaultAgent?.label ?? null) !== prevAgentRef.current) {
+    prevAgentRef.current = activeVaultAgent?.label ?? null
+    useSidebarSelectionStore.getState().setAgentActive(!!activeVaultAgent, activeVaultAgent?.label)
+  }
+
+  const handleMoveToFolder = useCallback(async (sourcePath: string, targetFolderPath: string) => {
+    const filename = sourcePath.split('/').pop()!
+    const newPath = `${targetFolderPath}/${filename}`
+    try {
+      await window.api.fs.renameFile(sourcePath, newPath)
+    } catch {
+      /* watcher will reconcile state */
+    }
+  }, [])
+
+  const handleExternalFileDrop = useCallback(
+    async (filePaths: readonly string[], targetFolderPath?: string) => {
+      const destDir = targetFolderPath ?? vaultPath
+      for (const srcPath of filePaths) {
+        const filename = srcPath.split('/').pop()!
+        const destPath = `${destDir}/${filename}`
+        try {
+          await window.api.fs.copyFile(srcPath, destPath)
+        } catch {
+          /* watcher will reconcile state */
+        }
+      }
+    },
+    [vaultPath]
+  )
+
   return (
     <Sidebar
       nodes={treeNodes}
@@ -587,6 +638,8 @@ function ConnectedSidebar({
       onNewFile={handleNewFile}
       onSortChange={setSortMode}
       onFileAction={handleFileAction}
+      onMoveToFolder={handleMoveToFolder}
+      onExternalFileDrop={handleExternalFileDrop}
       onSelectVault={handleSelectVault}
       onOpenVaultPicker={handleOpenVaultPicker}
       onRemoveFromHistory={handleRemoveFromHistory}
@@ -1456,11 +1509,13 @@ export default function App() {
       // Single state update for all file list changes
       setFiles(Array.from(fileMap.values()))
 
-      // Mark files changed during an active agent run
+      // Mark files changed during an active agent run (with action label for icon coloring)
       const sel = useSidebarSelectionStore.getState()
       if (sel.agentActive) {
         const agentTouched = [...mdToUpdate, ...touchedPaths.filter((p) => !p.endsWith('.md'))]
-        if (agentTouched.length > 0) sel.markAgentModified(agentTouched)
+        if (agentTouched.length > 0) {
+          sel.markAgentModified(agentTouched, sel.activeAgentLabel ?? undefined)
+        }
       }
 
       // Batch vault worker updates
