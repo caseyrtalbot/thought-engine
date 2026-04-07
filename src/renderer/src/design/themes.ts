@@ -1,7 +1,7 @@
 // src/renderer/src/design/themes.ts
 
-/** Hardcoded accent color -- neutral white (matches text-primary) */
-export const ACCENT_HEX = '#d9d9d9'
+/** Hardcoded accent color -- near-white for high contrast against dark base */
+export const ACCENT_HEX = '#ebebeb'
 
 export interface EnvironmentSettings {
   readonly canvasTranslucency: number
@@ -22,8 +22,8 @@ export const ENV_DEFAULTS: EnvironmentSettings = {
   cardHeaderDarkness: 45,
   cardBlur: 9,
   gridDotVisibility: 20,
-  panelLightness: 56,
-  activityBarOpacity: 55,
+  panelLightness: 42,
+  activityBarOpacity: 40,
   cardTitleFontSize: 13,
   cardBodyFontSize: 16,
   sidebarFontSize: 13
@@ -41,8 +41,8 @@ export interface ThemeBaseColors {
 }
 
 export const BASE_COLORS: ThemeBaseColors = {
-  canvasSurface: { r: 18, g: 18, b: 20 },
-  cardBody: { r: 16, g: 16, b: 20 }
+  canvasSurface: { r: 8, g: 8, b: 10 },
+  cardBody: { r: 10, g: 10, b: 14 }
 }
 
 export interface StructuralColors {
@@ -57,14 +57,14 @@ export interface StructuralColors {
 
 export const STRUCTURAL_COLORS: StructuralColors = {
   border: {
-    default: 'rgba(255, 255, 255, 0.10)',
-    subtle: 'rgba(255, 255, 255, 0.05)'
+    default: 'rgba(255, 255, 255, 0.20)',
+    subtle: 'rgba(255, 255, 255, 0.14)'
   },
-  text: { primary: '#d9d9d9', secondary: '#8a8a8a', muted: '#636363' },
+  text: { primary: '#ebebeb', secondary: '#9a9a9a', muted: '#585858' },
   canvas: {
-    cardBorder: 'rgba(255, 255, 255, 0.06)',
-    textHeading: '#e8e8e8',
-    blockquoteBar: '#4a4a4a'
+    cardBorder: 'rgba(255, 255, 255, 0.18)',
+    textHeading: '#f2f2f2',
+    blockquoteBar: '#555555'
   }
 }
 

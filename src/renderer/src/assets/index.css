@@ -25,7 +25,18 @@ h6 {
 
 .workspace-activity-rail {
   position: relative;
-  border-right: 1px solid var(--chrome-panel-border);
+  border-right: none;
+}
+
+.workspace-activity-rail::after {
+  content: '';
+  position: absolute;
+  top: 40px;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--chrome-panel-border);
+  pointer-events: none;
 }
 
 .activity-btn {
@@ -108,7 +119,7 @@ h6 {
   scrollbar-color: transparent transparent;
 }
 .scrollbar-hover:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.20) transparent;
 }
 
 html,
@@ -162,14 +173,14 @@ body {
   --transition-settings-slide: 250ms ease-out;
   --transition-modal-fade: 200ms ease-in;
   --transition-command-palette: 150ms ease-out;
-  --color-bg-base: hsl(0, 0%, 5%);
-  --color-bg-surface: hsl(0, 0%, 12%);
-  --color-bg-elevated: hsl(0, 0%, 18%);
-  --color-border-default: rgba(255, 255, 255, 0.08);
-  --color-text-primary: #d9d9d9;
-  --color-text-secondary: #808080;
-  --color-text-muted: #525252;
-  --color-accent-default: #d9d9d9;
+  --color-bg-base: hsl(0, 0%, 3%);
+  --color-bg-surface: hsl(0, 0%, 8%);
+  --color-bg-elevated: hsl(0, 0%, 14%);
+  --color-border-default: rgba(255, 255, 255, 0.20);
+  --color-text-primary: #ebebeb;
+  --color-text-secondary: #9a9a9a;
+  --color-text-muted: #585858;
+  --color-accent-default: #ebebeb;
   --color-accent-hover: #ffffff;
   --color-accent-muted: color-mix(in srgb, var(--color-accent-default) 10%, transparent);
 
@@ -177,21 +188,21 @@ body {
   --panel-gap: 0;
   --panel-radius: 0;
   --panel-padding: 12px 16px;
-  --border-subtle: color-mix(in srgb, white 4%, transparent);
+  --border-subtle: color-mix(in srgb, white 14%, transparent);
   --neon-glow: 0 0 8px color-mix(in srgb, var(--color-accent-default) 15%, transparent);
   --color-accent-focus: color-mix(in srgb, var(--color-accent-default) 30%, transparent);
   --color-accent-subtle: color-mix(in srgb, var(--color-accent-default) 15%, transparent);
   --chrome-panel-bg: color-mix(in srgb, var(--color-bg-base) 86%, transparent);
   --chrome-panel-bg-strong: color-mix(in srgb, var(--color-bg-surface) 92%, var(--color-bg-base));
   --chrome-panel-elevated: color-mix(in srgb, var(--color-bg-elevated) 78%, var(--color-bg-base));
-  --chrome-panel-border: color-mix(in srgb, var(--color-text-primary) 9%, transparent);
-  --chrome-panel-border-strong: rgba(255, 255, 255, 0.14);
+  --chrome-panel-border: color-mix(in srgb, var(--color-text-primary) 20%, transparent);
+  --chrome-panel-border-strong: rgba(255, 255, 255, 0.30);
   --chrome-panel-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
-  --chrome-panel-inset: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
-  --chrome-gridline: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
-  --chrome-gridline-strong: rgba(255, 255, 255, 0.06);
+  --chrome-panel-inset: inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  --chrome-gridline: color-mix(in srgb, var(--color-text-primary) 6%, transparent);
+  --chrome-gridline-strong: rgba(255, 255, 255, 0.10);
   --canvas-hud-bg: color-mix(in srgb, var(--color-bg-base) 72%, transparent);
-  --chrome-rail-bg: rgba(18, 18, 20, 0.55);
+  --chrome-rail-bg: rgba(8, 8, 10, 0.40);
   --env-card-blur: 12px;
   --env-card-title-font-size: 12px;
   --env-card-body-font-size: 16px;
@@ -201,8 +212,8 @@ body {
   --env-sidebar-tertiary-font-size: 10px;
 
   /* ── Canvas FOUC fallbacks (ThemeProvider overrides on mount) ── */
-  --canvas-surface-bg: rgba(18, 18, 20, 0.6);
-  --canvas-card-bg: rgba(16, 16, 20, 0.94);
+  --canvas-surface-bg: rgba(8, 8, 10, 0.6);
+  --canvas-card-bg: rgba(10, 10, 14, 0.94);
   --canvas-card-title-bg: rgba(0, 0, 0, 0.45);
   --canvas-link-cyan: #5cb8c4;
 }
@@ -248,7 +259,19 @@ body {
 
 .workspace-sidebar-panel {
   position: relative;
-  border-right: 1px solid var(--chrome-panel-border);
+  border-right: none;
+}
+
+.workspace-sidebar-panel::after {
+  content: '';
+  position: absolute;
+  top: 40px;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--chrome-panel-border);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .workspace-sidebar-shell {
@@ -280,7 +303,7 @@ body {
   gap: 8px;
   min-height: 34px;
   padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.06);
   transition:
@@ -289,7 +312,7 @@ body {
 }
 
 .sidebar-search-shell[data-focused='true'] {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.30);
   background: rgba(255, 255, 255, 0.09);
 }
 
@@ -346,8 +369,8 @@ body {
 
 .sidebar-vault-button:hover,
 .sidebar-vault-button[data-open='true'] {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .sidebar-vault-copy {
@@ -383,17 +406,17 @@ body {
 }
 
 .sidebar-popover {
-  background: rgba(22, 24, 30, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 6, 10, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 
 .sidebar-popover-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .sidebar-popover-item {
@@ -414,13 +437,13 @@ body {
 }
 
 .sidebar-popover-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.09);
   color: var(--color-text-primary);
 }
 
 .sidebar-popover-item[data-current='true'] {
   color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .sidebar-action-bar {
@@ -460,7 +483,7 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 500;
-  color: color-mix(in srgb, var(--color-text-secondary) 84%, transparent);
+  color: var(--color-text-secondary);
 }
 
 .sidebar-section-count {
@@ -472,7 +495,7 @@ body {
   font-size: var(--env-sidebar-tertiary-font-size);
   line-height: 1;
   letter-spacing: 0.02em;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .sidebar-icon-button {
@@ -757,7 +780,7 @@ body {
   text-transform: none;
   letter-spacing: 0.01em;
   background: rgba(255, 255, 255, 0.03);
-  border-bottom: 2px solid var(--color-border-default, rgba(255, 255, 255, 0.12));
+  border-bottom: 2px solid var(--color-border-default, rgba(255, 255, 255, 0.16));
 }
 
 .ProseMirror .te-table-cell p,
@@ -963,7 +986,7 @@ body {
   width: 1px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.12),
     var(--chrome-panel-border)
   );
   cursor: col-resize;
@@ -1371,7 +1394,7 @@ body {
   background: var(--canvas-hud-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.32);
   overflow: visible;
   font-family: var(--font-mono);
 }
@@ -1683,7 +1706,7 @@ body {
 }
 
 .canvas-card__badge {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.05);
   font-family: var(--font-mono);
   letter-spacing: 0.14em;
@@ -1734,7 +1757,7 @@ body {
 }
 
 .settings-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .settings-kicker {
@@ -1771,8 +1794,8 @@ body {
 }
 
 .settings-close-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
   color: var(--color-text-secondary);
 }
 
@@ -1802,7 +1825,7 @@ body {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .settings-row {
@@ -1840,7 +1863,7 @@ body {
 .settings-input,
 .settings-select {
   min-height: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--color-text-primary);
@@ -1857,11 +1880,11 @@ body {
 .settings-input:focus-visible,
 .settings-select:focus-visible {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 .settings-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .settings-vault-card {
@@ -1871,14 +1894,14 @@ body {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .settings-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .settings-button,
@@ -1900,21 +1923,21 @@ body {
 }
 
 .settings-button {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.04);
   color: var(--color-text-primary);
 }
 
 .settings-primary-button {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.06);
   color: var(--color-text-primary);
 }
 
 .settings-button:hover,
 .settings-primary-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.20);
 }
 
 /* ─── Entrance Utilities ─── */

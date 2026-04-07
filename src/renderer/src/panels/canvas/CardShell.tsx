@@ -281,26 +281,26 @@ export function CardShell({
         width: node.size.width,
         height: node.size.height,
         background: isTerminalCard
-          ? '#070809'
+          ? '#050607'
           : `linear-gradient(180deg, color-mix(in srgb, var(--canvas-card-bg) 96%, white 4%), var(--canvas-card-bg))`,
         borderRadius: 10,
         border:
           isFocused || isLocked
-            ? '1px solid color-mix(in srgb, var(--color-accent-default) 24%, var(--canvas-card-border))'
+            ? '1px solid color-mix(in srgb, var(--color-accent-default) 36%, var(--canvas-card-border))'
             : `1px solid ${canvasTokens.cardBorder}`,
         boxShadow: isLocked
-          ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 22%, transparent), 0 28px 48px rgba(0, 0, 0, 0.28)'
+          ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 28%, transparent), 0 28px 48px rgba(0, 0, 0, 0.36)'
           : isFocused
-            ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 18%, transparent), 0 24px 44px rgba(0, 0, 0, 0.24)'
+            ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 24%, transparent), 0 24px 44px rgba(0, 0, 0, 0.32)'
             : isSelected
-              ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 32%, transparent), 0 22px 40px rgba(0, 0, 0, 0.22)'
-              : '0 18px 36px rgba(0, 0, 0, 0.2)',
+              ? '0 0 0 1px color-mix(in srgb, var(--color-accent-default) 38%, transparent), 0 22px 40px rgba(0, 0, 0, 0.28)'
+              : '0 18px 36px rgba(0, 0, 0, 0.26)',
         overflow: 'hidden',
         contain: isTerminalCard ? undefined : 'layout style',
         backdropFilter:
-          isTerminalCard || isInteracting ? undefined : `blur(${cardBlur}px) saturate(1.2)`,
+          isTerminalCard || isInteracting ? undefined : `blur(${cardBlur}px) saturate(1.4)`,
         WebkitBackdropFilter:
-          isTerminalCard || isInteracting ? undefined : `blur(${cardBlur}px) saturate(1.2)`,
+          isTerminalCard || isInteracting ? undefined : `blur(${cardBlur}px) saturate(1.4)`,
         ...(isActive
           ? ({
               '--activity-color': 'rgba(167, 139, 250, 0.3)',
@@ -327,7 +327,7 @@ export function CardShell({
         style={{
           padding: '8px 11px',
           background: isTerminalCard
-            ? 'linear-gradient(180deg, rgba(5, 6, 7, 0.96), rgba(5, 6, 7, 0.9))'
+            ? 'linear-gradient(180deg, rgba(3, 3, 5, 0.96), rgba(3, 3, 5, 0.9))'
             : `linear-gradient(180deg, color-mix(in srgb, var(--canvas-card-title-bg) 86%, var(--color-bg-base)), color-mix(in srgb, var(--canvas-card-title-bg) 58%, transparent))`,
           borderBottom: `1px solid ${canvasTokens.cardBorder}`,
           borderRadius: '9px 9px 0 0',

@@ -166,15 +166,15 @@ export const canvasTokens = {
 
 export const floatingPanel = {
   borderRadius: 12,
-  shadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
-  shadowCompact: '0 4px 16px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)',
+  shadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.4)',
+  shadowCompact: '0 4px 16px rgba(0,0,0,0.4), 0 1px 4px rgba(0,0,0,0.25)',
   glass: {
-    bg: 'rgba(8, 8, 12, 0.88)',
-    blur: 'blur(24px) saturate(1.3)',
-    inputBg: 'rgba(255, 255, 255, 0.04)',
-    inputBgFocus: 'rgba(255, 255, 255, 0.07)',
-    popoverBg: 'rgba(8, 8, 12, 0.95)',
-    popoverBlur: 'blur(16px) saturate(1.2)',
+    bg: 'rgba(4, 4, 8, 0.90)',
+    blur: 'blur(24px) saturate(1.4)',
+    inputBg: 'rgba(255, 255, 255, 0.05)',
+    inputBgFocus: 'rgba(255, 255, 255, 0.09)',
+    popoverBg: 'rgba(4, 4, 8, 0.95)',
+    popoverBlur: 'blur(16px) saturate(1.3)',
     sectionLabel: {
       fontSize: '10px',
       fontWeight: '600',

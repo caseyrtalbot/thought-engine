@@ -64,7 +64,7 @@ function TagNode({
         <span
           className="shrink-0"
           style={{
-            color: colors.text.muted,
+            color: colors.text.secondary,
             fontSize: 'var(--env-sidebar-secondary-font-size)'
           }}
         >
@@ -122,18 +122,27 @@ export function TagBrowser() {
       >
         <div className="flex items-center gap-1.5">
           <span
-            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+            style={{
+              color: colors.text.secondary,
+              fontSize: 'var(--env-sidebar-tertiary-font-size)'
+            }}
           >
             {expanded ? '\u25BE' : '\u25B8'}
           </span>
           <span
             className="uppercase font-medium tracking-[0.04em]"
-            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+            style={{
+              color: colors.text.secondary,
+              fontSize: 'var(--env-sidebar-tertiary-font-size)'
+            }}
           >
             Tags
           </span>
           <span
-            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+            style={{
+              color: colors.text.secondary,
+              fontSize: 'var(--env-sidebar-tertiary-font-size)'
+            }}
           >
             {tagTree.length}
           </span>
@@ -141,7 +150,10 @@ export function TagBrowser() {
         {expanded && (
           <span
             className="uppercase px-1 rounded"
-            style={{ color: colors.text.muted, fontSize: 'var(--env-sidebar-tertiary-font-size)' }}
+            style={{
+              color: colors.text.secondary,
+              fontSize: 'var(--env-sidebar-tertiary-font-size)'
+            }}
             onClick={(e) => {
               e.stopPropagation()
               setTagOperator(tagOperator === 'and' ? 'or' : 'and')

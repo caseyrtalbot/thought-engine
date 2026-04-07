@@ -166,14 +166,14 @@ export function DailyNoteSection({ onOpenDate }: DailyNoteSectionProps) {
                   key={dateStr}
                   onClick={() => handleDayClick(day)}
                   style={{
-                    background: isToday ? 'var(--color-accent-default)' : 'none',
+                    background: isToday ? '#ffffff' : 'none',
                     border: 'none',
                     borderRadius: '4px',
                     color: isToday
-                      ? '#fff'
+                      ? '#0a0a0c'
                       : hasNote
-                        ? 'var(--color-accent-default)'
-                        : colors.text.muted,
+                        ? 'var(--color-text-primary)'
+                        : colors.text.secondary,
                     cursor: 'pointer',
                     fontSize: '10px',
                     fontWeight: hasNote || isToday ? 600 : 400,

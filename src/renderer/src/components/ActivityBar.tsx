@@ -126,7 +126,7 @@ export function ActivityBar({
 
   return (
     <div
-      className="workspace-activity-rail flex flex-col items-center shrink-0 pt-12 gap-1 relative"
+      className="workspace-activity-rail flex flex-col items-center shrink-0 pt-10 gap-1 relative"
       style={{
         width: 48,
         backgroundColor: 'var(--chrome-rail-bg)',
