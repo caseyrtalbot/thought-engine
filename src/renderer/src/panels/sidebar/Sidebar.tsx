@@ -15,6 +15,7 @@ import type { SystemArtifactKind } from '@shared/system-artifacts'
 import type { FlatTreeNode } from './buildFileTree'
 import type { FileContextMenuState } from './FileContextMenu'
 import { TagBrowser } from './TagBrowser'
+import { DailyNoteSection } from './DailyNoteSection'
 
 type SortMode = 'modified' | 'modified-asc' | 'name' | 'name-desc' | 'type'
 
@@ -64,6 +65,7 @@ interface SidebarProps {
   onOpenVaultPicker?: () => void
   onRemoveFromHistory?: (path: string) => void
   onOpenSettings?: () => void
+  onOpenDailyNote?: (dateStr: string) => void
 }
 
 /** Cycle through sort modes on click instead of using a native <select> */
@@ -320,7 +322,8 @@ export function Sidebar({
   onSelectVault,
   onOpenVaultPicker,
   onRemoveFromHistory,
-  onOpenSettings
+  onOpenSettings,
+  onOpenDailyNote
 }: SidebarProps) {
   const [contextMenu, setContextMenu] = useState<FileContextMenuState | null>(null)
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
@@ -427,6 +430,7 @@ export function Sidebar({
           onSelect={onSystemArtifactSelect}
         />
       </div>
+      {onOpenDailyNote && <DailyNoteSection onOpenDate={onOpenDailyNote} />}
       {!filesCollapsed && (
         <>
           <TagBrowser />

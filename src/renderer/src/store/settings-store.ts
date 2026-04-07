@@ -12,6 +12,11 @@ interface SettingsState {
   readonly spellCheck: boolean
   readonly edgeBrightness: number
   readonly nodeBrightness: number
+  // Templates
+  readonly templateFolder: string
+  // Daily notes
+  readonly dailyNoteFolder: string
+  readonly dailyNoteTemplate: string
 }
 
 interface SettingsActions {
@@ -25,6 +30,9 @@ interface SettingsActions {
   setSpellCheck: (value: boolean) => void
   setEdgeBrightness: (value: number) => void
   setNodeBrightness: (value: number) => void
+  setTemplateFolder: (value: string) => void
+  setDailyNoteFolder: (value: string) => void
+  setDailyNoteTemplate: (value: string) => void
 }
 
 type SettingsStore = SettingsState & SettingsActions
@@ -41,6 +49,9 @@ export const useSettingsStore = create<SettingsStore>()(
       spellCheck: false,
       edgeBrightness: 1.0,
       nodeBrightness: 1.0,
+      templateFolder: 'templates',
+      dailyNoteFolder: 'daily',
+      dailyNoteTemplate: '',
 
       setEnv: (key, value) => set((state) => ({ env: { ...state.env, [key]: value } })),
       resetEnv: () => set({ env: { ...ENV_DEFAULTS } }),
@@ -51,11 +62,14 @@ export const useSettingsStore = create<SettingsStore>()(
       setAutosaveInterval: (value) => set({ autosaveInterval: value }),
       setSpellCheck: (value) => set({ spellCheck: value }),
       setEdgeBrightness: (value) => set({ edgeBrightness: value }),
-      setNodeBrightness: (value) => set({ nodeBrightness: value })
+      setNodeBrightness: (value) => set({ nodeBrightness: value }),
+      setTemplateFolder: (value) => set({ templateFolder: value }),
+      setDailyNoteFolder: (value) => set({ dailyNoteFolder: value }),
+      setDailyNoteTemplate: (value) => set({ dailyNoteTemplate: value })
     }),
     {
       name: 'machina-settings',
-      version: 6,
+      version: 7,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
@@ -103,6 +117,13 @@ export const useSettingsStore = create<SettingsStore>()(
           if (existingEnv && typeof existingEnv.cardBodyFontSize !== 'number') {
             existingEnv.cardBodyFontSize = 16
           }
+        }
+
+        if (version < 7) {
+          // v6 → v7: add template and daily note settings
+          if (typeof state.templateFolder !== 'string') state.templateFolder = 'templates'
+          if (typeof state.dailyNoteFolder !== 'string') state.dailyNoteFolder = 'daily'
+          if (typeof state.dailyNoteTemplate !== 'string') state.dailyNoteTemplate = ''
         }
 
         return state as unknown as SettingsState & SettingsActions

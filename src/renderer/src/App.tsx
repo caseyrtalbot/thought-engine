@@ -53,6 +53,7 @@ import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
 import { useCanvasStore } from './store/canvas-store'
+import { useSettingsStore } from './store/settings-store'
 import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
 import { getCanvasNodeTitle } from './panels/canvas/card-title'
 
@@ -591,6 +592,38 @@ function ConnectedSidebar({
     }
   }, [])
 
+  const handleOpenDailyNote = useCallback(
+    async (dateStr: string) => {
+      if (!vaultPath) return
+      const { dailyNoteFolder, dailyNoteTemplate } = useSettingsStore.getState()
+      const path = `${vaultPath}/${dailyNoteFolder}/${dateStr}.md`
+      const exists = await window.api.fs.fileExists(path)
+      if (!exists) {
+        const folderPath = `${vaultPath}/${dailyNoteFolder}`
+        const folderExists = await window.api.fs.fileExists(folderPath)
+        if (!folderExists) await window.api.fs.mkdir(folderPath)
+
+        let content: string
+        if (dailyNoteTemplate) {
+          try {
+            const templatePath = `${vaultPath}/${dailyNoteTemplate}`
+            const raw = await window.api.fs.readFile(templatePath)
+            const { expandTemplateVariables, buildTemplateContext } =
+              await import('./utils/template-engine')
+            content = expandTemplateVariables(raw, buildTemplateContext(dateStr))
+          } catch {
+            content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
+          }
+        } else {
+          content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
+        }
+        await window.api.fs.writeFile(path, content)
+      }
+      await openArtifactInEditorOnDemand(path, dateStr)
+    },
+    [vaultPath]
+  )
+
   const handleExternalFileDrop = useCallback(
     async (filePaths: readonly string[], targetFolderPath?: string) => {
       const destDir = targetFolderPath ?? vaultPath
@@ -642,6 +675,7 @@ function ConnectedSidebar({
       onOpenVaultPicker={handleOpenVaultPicker}
       onRemoveFromHistory={handleRemoveFromHistory}
       onOpenSettings={onOpenSettings}
+      onOpenDailyNote={handleOpenDailyNote}
     />
   )
 }
@@ -654,6 +688,14 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     shortcut: '\u2318N',
     description: 'Create a blank markdown note in the current vault.',
     keywords: ['create', 'markdown', 'file']
+  },
+  {
+    id: 'cmd:daily-note',
+    label: "Open Today's Note",
+    category: 'command',
+    shortcut: '\u2318D',
+    description: 'Open or create a daily note for today.',
+    keywords: ['daily', 'journal', 'today', 'date']
   },
   {
     id: 'cmd:toggle-view',
@@ -924,6 +966,36 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const goBack = useEditorStore((s) => s.goBack)
   const goForward = useEditorStore((s) => s.goForward)
 
+  const handleOpenDailyNote = useCallback(async () => {
+    if (!vaultPath) return
+    const { dailyNoteFolder, dailyNoteTemplate } = useSettingsStore.getState()
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const path = `${vaultPath}/${dailyNoteFolder}/${dateStr}.md`
+    const exists = await window.api.fs.fileExists(path)
+    if (!exists) {
+      const folderPath = `${vaultPath}/${dailyNoteFolder}`
+      const folderExists = await window.api.fs.fileExists(folderPath)
+      if (!folderExists) await window.api.fs.mkdir(folderPath)
+
+      let content: string
+      if (dailyNoteTemplate) {
+        try {
+          const templatePath = `${vaultPath}/${dailyNoteTemplate}`
+          const raw = await window.api.fs.readFile(templatePath)
+          const { expandTemplateVariables, buildTemplateContext } =
+            await import('./utils/template-engine')
+          content = expandTemplateVariables(raw, buildTemplateContext(dateStr))
+        } catch {
+          content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
+        }
+      } else {
+        content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
+      }
+      await window.api.fs.writeFile(path, content)
+    }
+    await openArtifactInEditorOnDemand(path, dateStr)
+  }, [vaultPath])
+
   const handleSplitEditor = useCallback(() => {
     const { splitNotePath, closeSplit, openSplit, activeNotePath } = useEditorStore.getState()
     if (splitNotePath) {
@@ -939,6 +1011,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
     onToggleSidebar: toggleSidebar,
+    onOpenDailyNote: handleOpenDailyNote,
     onCloseTab: handleCloseTab,
     onGoBack: goBack,
     onGoForward: goForward,
@@ -1150,6 +1223,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:new-note':
           await handleNewNote()
           break
+        case 'cmd:daily-note':
+          await handleOpenDailyNote()
+          break
         case 'cmd:toggle-view':
           toggleView()
           break
@@ -1236,6 +1312,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       paletteFiles,
       setContentView,
       handleNewNote,
+      handleOpenDailyNote,
       toggleView,
       toggleSourceMode,
       toggleSidebar,
