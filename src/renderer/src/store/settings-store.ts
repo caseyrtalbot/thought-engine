@@ -69,7 +69,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'machina-settings',
-      version: 7,
+      version: 8,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
@@ -124,6 +124,14 @@ export const useSettingsStore = create<SettingsStore>()(
           if (typeof state.templateFolder !== 'string') state.templateFolder = 'templates'
           if (typeof state.dailyNoteFolder !== 'string') state.dailyNoteFolder = 'daily'
           if (typeof state.dailyNoteTemplate !== 'string') state.dailyNoteTemplate = ''
+        }
+
+        if (version < 8) {
+          // v7 → v8: remove dead env fields no longer used by the live theme model
+          const existingEnv = state.env as Record<string, unknown> | undefined
+          if (existingEnv) {
+            delete existingEnv.panelLightness
+          }
         }
 
         return state as unknown as SettingsState & SettingsActions

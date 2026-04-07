@@ -4,6 +4,7 @@ import {
   STRUCTURAL_COLORS,
   BASE_COLORS,
   ACCENT_HEX,
+  ENV_DEFAULTS,
   computeAccentVariants,
   type EnvironmentSettings
 } from './themes'
@@ -29,11 +30,11 @@ const ThemeContext = createContext<ThemeContextType>({
   typography,
   transitions,
   env: {
-    cardBlur: 12,
-    gridDotVisibility: 20,
-    activityBarOpacity: 55,
-    cardTitleFontSize: 12,
-    sidebarFontSize: 13
+    cardBlur: ENV_DEFAULTS.cardBlur,
+    gridDotVisibility: ENV_DEFAULTS.gridDotVisibility,
+    activityBarOpacity: ENV_DEFAULTS.activityBarOpacity,
+    cardTitleFontSize: ENV_DEFAULTS.cardTitleFontSize,
+    sidebarFontSize: ENV_DEFAULTS.sidebarFontSize
   }
 })
 

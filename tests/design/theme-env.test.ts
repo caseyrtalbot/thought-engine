@@ -24,14 +24,14 @@ describe('ENV_DEFAULTS', () => {
     'cardHeaderDarkness',
     'cardBlur',
     'gridDotVisibility',
-    'panelLightness',
     'activityBarOpacity',
     'cardTitleFontSize',
+    'cardBodyFontSize',
     'sidebarFontSize'
   ]
 
-  it('dark defaults have panelLightness of 56', () => {
-    expect(ENV_DEFAULTS.panelLightness).toBe(56)
+  it('dark defaults keep activity rail opacity at 40', () => {
+    expect(ENV_DEFAULTS.activityBarOpacity).toBe(40)
   })
 
   it('all env keys are present in defaults', () => {
@@ -73,9 +73,10 @@ describe('ThemeProvider environment CSS vars', () => {
     render(createElement(ThemeProvider, null, createElement('div', null, 'themed')))
 
     const rootStyle = document.documentElement.style
-    expect(rootStyle.getPropertyValue('--chrome-rail-bg')).toBe('rgba(18, 18, 20, 0.34)')
+    expect(rootStyle.getPropertyValue('--chrome-rail-bg')).toBe('rgba(8, 8, 10, 0.34)')
     expect(rootStyle.getPropertyValue('--env-card-blur')).toBe('18px')
     expect(rootStyle.getPropertyValue('--env-card-title-font-size')).toBe('14px')
+    expect(rootStyle.getPropertyValue('--env-card-body-font-size')).toBe('16px')
     expect(rootStyle.getPropertyValue('--env-sidebar-font-size')).toBe('15px')
     expect(rootStyle.getPropertyValue('--env-sidebar-secondary-font-size')).toBe('14px')
     expect(rootStyle.getPropertyValue('--env-sidebar-tertiary-font-size')).toBe('12px')

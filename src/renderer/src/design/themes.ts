@@ -9,7 +9,6 @@ export interface EnvironmentSettings {
   readonly cardHeaderDarkness: number
   readonly cardBlur: number
   readonly gridDotVisibility: number
-  readonly panelLightness: number
   readonly activityBarOpacity: number
   readonly cardTitleFontSize: number
   readonly cardBodyFontSize: number
@@ -22,7 +21,6 @@ export const ENV_DEFAULTS: EnvironmentSettings = {
   cardHeaderDarkness: 45,
   cardBlur: 9,
   gridDotVisibility: 20,
-  panelLightness: 42,
   activityBarOpacity: 40,
   cardTitleFontSize: 13,
   cardBodyFontSize: 16,

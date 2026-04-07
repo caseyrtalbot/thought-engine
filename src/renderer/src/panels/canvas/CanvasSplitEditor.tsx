@@ -129,7 +129,8 @@ export function CanvasSplitEditor({ filePath }: CanvasSplitEditorProps) {
       )}
       {/* Header bar */}
       <div
-        className="flex items-center justify-between px-3 shrink-0"
+        className="canvas-split-editor__header flex items-center justify-between px-3 shrink-0"
+        data-testid="canvas-split-editor-header"
         style={
           {
             height: 34,
@@ -137,7 +138,7 @@ export function CanvasSplitEditor({ filePath }: CanvasSplitEditorProps) {
             backgroundColor: 'rgba(0, 0, 0, 0.15)',
             position: 'relative',
             zIndex: 60,
-            WebkitAppRegion: 'no-drag'
+            WebkitAppRegion: 'drag'
           } as React.CSSProperties
         }
       >
@@ -155,11 +156,12 @@ export function CanvasSplitEditor({ filePath }: CanvasSplitEditorProps) {
           </span>
         </div>
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation()
             closeSplit()
           }}
-          className="flex items-center justify-center rounded cursor-pointer shrink-0"
+          className="canvas-split-editor__close flex items-center justify-center rounded cursor-pointer shrink-0"
           style={{
             width: 24,
             height: 24,

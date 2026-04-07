@@ -50,6 +50,14 @@ async function setRangeValue(locator: ReturnType<Page['locator']>, value: number
   }, value)
 }
 
+async function getWindowPosition(app: ElectronApplication): Promise<{ x: number; y: number }> {
+  return await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    const [x, y] = win?.getPosition() ?? [0, 0]
+    return { x, y }
+  })
+}
+
 // ─────────────────────────────────────────────────────────
 // 1. APP LAUNCH — one Electron instance for all launch tests
 // ─────────────────────────────────────────────────────────
@@ -192,7 +200,57 @@ test.describe.serial('Workspace', () => {
 })
 
 // ─────────────────────────────────────────────────────────
-// 4. CANVAS — shared vault instance
+// 4. WINDOW CHROME — shared vault instance
+// ─────────────────────────────────────────────────────────
+test.describe.serial('Window Chrome', () => {
+  let app: ElectronApplication
+  let page: Page
+
+  test.beforeAll(async () => {
+    ;({ app, page } = await launchWithVault())
+  })
+
+  test.afterAll(async () => {
+    if (app) await app.close()
+  })
+
+  test('tab bar remains draggable when multiple tabs are open', async () => {
+    await page.locator('[data-node-name="feedback-loops.md"]').dblclick()
+    await page.locator('[data-node-name="category-creation.md"]').dblclick()
+
+    await expect(page.locator('.editor-file-tab')).toHaveCount(2)
+    const dragSpacer = page.locator('[data-testid="editor-tab-bar-drag-spacer"]')
+    await expect(dragSpacer).toBeVisible()
+
+    await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (!win) return
+      win.unmaximize()
+      win.setPosition(240, 180)
+    })
+    await page.waitForTimeout(150)
+
+    const before = await getWindowPosition(app)
+    const box = await dragSpacer.boundingBox()
+    expect(box).not.toBeNull()
+    if (!box) return
+
+    const startX = box.x + box.width / 2
+    const startY = box.y + box.height / 2
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX + 120, startY + 24, { steps: 16 })
+    await page.mouse.up()
+    await page.waitForTimeout(250)
+
+    const after = await getWindowPosition(app)
+    expect(after.x !== before.x || after.y !== before.y).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────
+// 5. CANVAS — shared vault instance
 // ─────────────────────────────────────────────────────────
 test.describe.serial('Canvas', () => {
   let app: ElectronApplication

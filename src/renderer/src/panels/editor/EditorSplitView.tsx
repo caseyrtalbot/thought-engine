@@ -62,6 +62,7 @@ export function EditorSplitView({ onNavigate }: EditorSplitViewProps) {
                   {tab.title}
                 </span>
                 <button
+                  type="button"
                   className="editor-file-tab__close"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -88,6 +89,7 @@ export function EditorSplitView({ onNavigate }: EditorSplitViewProps) {
 
           {/* New file button: inline after last tab */}
           <button
+            type="button"
             className="editor-tab-bar__btn editor-tab-bar__add"
             onClick={handleNewFile}
             aria-label="New file"
@@ -106,9 +108,16 @@ export function EditorSplitView({ onNavigate }: EditorSplitViewProps) {
             </svg>
           </button>
 
+          <div
+            className="editor-tab-bar__drag-spacer"
+            data-testid="editor-tab-bar-drag-spacer"
+            aria-hidden="true"
+          />
+
           {/* Close all pinned right */}
           <div className="editor-tab-bar__actions">
             <button
+              type="button"
               className="editor-tab-bar__btn"
               onClick={handleCloseAll}
               aria-label="Close all tabs"
