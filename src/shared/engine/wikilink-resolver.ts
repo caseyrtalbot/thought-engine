@@ -121,10 +121,14 @@ export function buildResolutionMaps(artifacts: readonly ResolvableArtifact[]): {
   for (const a of artifacts) {
     byLowerId.set(a.id.toLowerCase(), a.id)
     byLowerTitle.set(a.title.toLowerCase(), a.id)
-    // Stem from the ID (which is typically the filename stem)
-    const stem = stemFromTarget(a.id)
-    if (!byLowerStem.has(stem)) {
-      byLowerStem.set(stem, a.id)
+
+    // Index stems from both ID and title so bulk body-link resolution matches
+    // editor navigation even when artifact IDs are slugs and titles are note names.
+    const stems = [stemFromTarget(a.id), stemFromTarget(a.title)]
+    for (const stem of stems) {
+      if (!byLowerStem.has(stem)) {
+        byLowerStem.set(stem, a.id)
+      }
     }
   }
 

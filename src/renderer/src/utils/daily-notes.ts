@@ -13,6 +13,22 @@ import {
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
+function localMomentFromDateStr(dateStr: string, timeSource: Date = new Date()): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr)
+  if (!match) return new Date(timeSource)
+
+  const [, year, month, day] = match
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    timeSource.getHours(),
+    timeSource.getMinutes(),
+    timeSource.getSeconds(),
+    timeSource.getMilliseconds()
+  )
+}
+
 /** Format a Date as YYYY-MM-DD in local time. Never use toISOString() for dates the user sees. */
 export function localDateStr(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -49,6 +65,7 @@ export async function createOrOpenDailyNote(
 ): Promise<{ path: string; title: string }> {
   const path = dailyNotePath(vaultPath, folder, dateStr)
   const title = dateStr
+  const noteMoment = localMomentFromDateStr(dateStr)
 
   const exists = await window.api.fs.fileExists(path)
   if (exists) return { path, title }
@@ -65,14 +82,14 @@ export async function createOrOpenDailyNote(
   if (templatePath) {
     try {
       const templateContent = await window.api.fs.readFile(templatePath)
-      const ctx = buildTemplateContext(title)
+      const ctx = buildTemplateContext(title, noteMoment)
       content = expandTemplateVariables(templateContent, ctx)
     } catch {
       // Template not found — fall back to defaults
-      content = defaultNoteFrontmatter(title, ['daily'])
+      content = defaultNoteFrontmatter(title, ['daily'], noteMoment)
     }
   } else {
-    content = defaultNoteFrontmatter(title, ['daily'])
+    content = defaultNoteFrontmatter(title, ['daily'], noteMoment)
   }
 
   await window.api.fs.writeFile(path, content)

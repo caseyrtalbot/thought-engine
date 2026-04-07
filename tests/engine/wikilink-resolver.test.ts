@@ -101,6 +101,10 @@ describe('buildResolutionMaps + resolveBodyLink', () => {
     expect(resolveBodyLink('caseys-claude-code/claude-code moc', maps)).toBe('Claude-Code MOC')
   })
 
+  test('resolves path-style target by title stem when id differs from title', () => {
+    expect(resolveBodyLink('daily/2026-04-06', maps)).toBe('daily-2026-04-06')
+  })
+
   test('returns null for unresolved', () => {
     expect(resolveBodyLink('nonexistent', maps)).toBeNull()
   })

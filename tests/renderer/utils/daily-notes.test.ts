@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import {
+  createOrOpenDailyNote,
   dailyNotePath,
   todayNotePath,
   localDateStr,
@@ -95,5 +96,89 @@ describe('findAdjacentDailyNotes', () => {
     const { prev, next } = findAdjacentDailyNotes(empty, VAULT, FOLDER, current)
     expect(prev).toBeNull()
     expect(next).toBeNull()
+  })
+})
+
+describe('createOrOpenDailyNote', () => {
+  test('uses the requested daily-note date for template expansion and frontmatter', async () => {
+    const calls: { path: string; content: string }[] = []
+    const originalWindow = globalThis.window
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        api: {
+          fs: {
+            fileExists: async (path: string) => path === `${VAULT}/${FOLDER}`,
+            mkdir: async () => undefined,
+            readFile: async () => '---\ndate: {{date}}\ntime: {{time}}\n---\n# {{title}}\n',
+            writeFile: async (path: string, content: string) => {
+              calls.push({ path, content })
+            }
+          }
+        }
+      }
+    })
+
+    try {
+      const result = await createOrOpenDailyNote(
+        VAULT,
+        FOLDER,
+        '2026-04-03',
+        `${VAULT}/template.md`
+      )
+
+      expect(result).toEqual({
+        path: '/Users/test/vault/daily/2026-04-03.md',
+        title: '2026-04-03'
+      })
+      expect(calls).toHaveLength(1)
+      expect(calls[0].path).toBe('/Users/test/vault/daily/2026-04-03.md')
+      expect(calls[0].content).toContain('date: 2026-04-03')
+      expect(calls[0].content).toContain('# 2026-04-03')
+      expect(calls[0].content).toMatch(/time: \d{2}:\d{2}/)
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow
+      })
+    }
+  })
+
+  test('uses the requested daily-note date when falling back to default frontmatter', async () => {
+    const calls: { path: string; content: string }[] = []
+    const originalWindow = globalThis.window
+
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        api: {
+          fs: {
+            fileExists: async () => false,
+            mkdir: async () => undefined,
+            readFile: async () => {
+              throw new Error('template missing')
+            },
+            writeFile: async (path: string, content: string) => {
+              calls.push({ path, content })
+            }
+          }
+        }
+      }
+    })
+
+    try {
+      await createOrOpenDailyNote(VAULT, FOLDER, '2026-04-03', `${VAULT}/missing-template.md`)
+
+      expect(calls).toHaveLength(1)
+      expect(calls[0].content).toContain('title: 2026-04-03')
+      expect(calls[0].content).toContain('created: 2026-04-03')
+      expect(calls[0].content).toContain('tags: [daily]')
+    } finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow
+      })
+    }
   })
 })

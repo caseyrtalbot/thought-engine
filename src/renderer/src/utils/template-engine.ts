@@ -71,10 +71,13 @@ export function buildTemplateContext(title: string, date: Date = new Date()): Te
 }
 
 /** Generate default frontmatter for a new note. Uses local date for 'created'. */
-export function defaultNoteFrontmatter(title: string, tags: readonly string[] = []): string {
+export function defaultNoteFrontmatter(
+  title: string,
+  tags: readonly string[] = [],
+  date: Date = new Date()
+): string {
   const pad = (n: number): string => String(n).padStart(2, '0')
-  const d = new Date()
-  const created = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const created = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
   const tagList = tags.length > 0 ? `[${tags.join(', ')}]` : '[]'
   return `---\ntitle: ${title}\ncreated: ${created}\ntags: ${tagList}\n---\n\n`
 }
