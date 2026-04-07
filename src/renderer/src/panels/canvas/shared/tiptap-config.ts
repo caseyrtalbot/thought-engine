@@ -8,6 +8,7 @@ import { MermaidCodeBlock } from '../../editor/extensions/mermaid-code-block'
 import { CalloutBlock } from '../../editor/extensions/callout-block'
 import { HighlightMark } from '../../editor/extensions/highlight-mark'
 import { WikilinkNode } from '../../editor/extensions/wikilink-node'
+import { MachinaTableKit } from '../../editor/extensions/table-kit'
 
 export interface TiptapConfigOptions {
   onWikilinkNavigate?: (target: string) => void
@@ -23,6 +24,7 @@ export function getCanvasEditorExtensions(options?: TiptapConfigOptions): AnyExt
     ConceptNodeMark,
     CalloutBlock,
     HighlightMark,
-    WikilinkNode.configure({ onNavigate: options?.onWikilinkNavigate })
+    WikilinkNode.configure({ onNavigate: options?.onWikilinkNavigate }),
+    MachinaTableKit
   ]
 }
