@@ -49,6 +49,28 @@ export function rehydrateUiState(): void {
  */
 const PERSISTABLE_VIEWS = new Set(['editor', 'canvas'])
 
+const MAX_RECENT_FILES = 50
+
+function buildRecentFiles(historyStack: readonly string[], existing: readonly string[]): string[] {
+  // Walk history newest-first, then append persisted entries not already seen
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (let i = historyStack.length - 1; i >= 0; i--) {
+    const path = historyStack[i]
+    if (!seen.has(path)) {
+      seen.add(path)
+      result.push(path)
+    }
+  }
+  for (const path of existing) {
+    if (!seen.has(path)) {
+      seen.add(path)
+      result.push(path)
+    }
+  }
+  return result.slice(0, MAX_RECENT_FILES)
+}
+
 function gatherVaultState(): VaultState {
   const vault = useVaultStore.getState()
   const editor = useEditorStore.getState()
@@ -65,7 +87,7 @@ function gatherVaultState(): VaultState {
     contentView,
     fileTreeCollapseState: existing?.fileTreeCollapseState ?? {},
     selectedNodeId: existing?.selectedNodeId ?? null,
-    recentFiles: existing?.recentFiles ?? [],
+    recentFiles: buildRecentFiles(editor.historyStack, existing?.recentFiles ?? []),
     ui: uiState
   }
 }

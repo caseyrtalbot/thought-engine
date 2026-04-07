@@ -7,6 +7,7 @@ interface KeyboardConfig {
   onCycleView?: () => void
   onToggleSourceMode?: () => void
   onCommandPalette?: () => void
+  onQuickSwitcher?: () => void
   onSave?: () => void
   onNewTerminalTab?: () => void
   onCloseTab?: () => void
@@ -23,6 +24,7 @@ const META_KEY_BINDINGS = [
   { key: 'g', handler: 'onCycleView' },
   { key: '/', handler: 'onToggleSourceMode' },
   { key: 'k', handler: 'onCommandPalette' },
+  { key: 'o', handler: 'onQuickSwitcher' },
   { key: 's', handler: 'onSave' },
   { key: 't', handler: 'onNewTerminalTab' },
   { key: 'w', handler: 'onCloseTab' },
@@ -30,6 +32,17 @@ const META_KEY_BINDINGS = [
   { key: ']', handler: 'onGoForward' },
   { key: '\\', handler: 'onSplitEditor' }
 ] as const satisfies ReadonlyArray<{ key: string; handler: keyof KeyboardConfig }>
+
+/** Bindings that should be suppressed when focus is inside an editable surface. */
+const EDITABLE_GUARDED = new Set<string>(['onQuickSwitcher'])
+
+function isEditableTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false
+  const tag = el.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return true
+  if (el.isContentEditable) return true
+  return false
+}
 
 export function useKeyboard(config: KeyboardConfig): void {
   useEffect(() => {
@@ -44,6 +57,7 @@ export function useKeyboard(config: KeyboardConfig): void {
 
       for (const binding of META_KEY_BINDINGS) {
         if (e.key === binding.key) {
+          if (EDITABLE_GUARDED.has(binding.handler) && isEditableTarget(e.target)) return
           const handler = config[binding.handler]
           if (handler) {
             e.preventDefault()

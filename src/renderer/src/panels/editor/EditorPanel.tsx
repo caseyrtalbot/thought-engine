@@ -20,6 +20,7 @@ import { CalloutBlock } from './extensions/callout-block'
 import { HighlightMark } from './extensions/highlight-mark'
 import { WikilinkNode } from './extensions/wikilink-node'
 import DragHandle from '@tiptap/extension-drag-handle'
+import { MachinaTableKit } from './extensions/table-kit'
 import { EditorBubbleMenu } from './EditorBubbleMenu'
 import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
@@ -104,6 +105,7 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
       CalloutBlock,
       HighlightMark,
       WikilinkNode.configure({ onNavigate: handleWikilinkNavigate }),
+      MachinaTableKit,
       DragHandle.configure({
         render() {
           const el = document.createElement('div')

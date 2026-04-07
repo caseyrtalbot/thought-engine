@@ -27,6 +27,7 @@ import { ActivityBar } from './components/ActivityBar'
 import { useTabStore, TAB_DEFINITIONS } from './store/tab-store'
 import type { TabType } from './store/tab-store'
 import { CommandPalette, type CommandItem } from './design/components/CommandPalette'
+import { QuickSwitcher, type QuickSwitcherItem } from './design/components/QuickSwitcher'
 import { AGENT_ACTIONS, type AgentActionName } from '@shared/agent-action-types'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useCanvasFilePaths, useCanvasConnectionCounts } from './hooks/useCanvasAwareness'
@@ -211,7 +212,7 @@ function ConnectedSidebar({
   const [collapsedPaths, setCollapsedPaths] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<
     'modified' | 'modified-asc' | 'name' | 'name-desc' | 'type'
-  >('modified')
+  >('name')
   const [searchQuery, setSearchQuery] = useState('')
   const [vaultHistory, setVaultHistory] = useState<string[]>([])
 
@@ -720,6 +721,14 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     keywords: ['bookmark', 'star', 'pin', 'favorite']
   },
   {
+    id: 'cmd:quick-switcher',
+    label: 'Quick Switcher',
+    category: 'command',
+    shortcut: '\u2318O',
+    description: 'Jump to a note with fuzzy search.',
+    keywords: ['open', 'find', 'switch', 'jump', 'go to']
+  },
+  {
     id: 'cmd:open-settings',
     label: 'Open Settings',
     category: 'command',
@@ -845,6 +854,7 @@ function ResizableSidebar({
 
 function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promise<void> }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showSidebar, setShowSidebar] = useState(true)
   const files = useVaultStore((s) => s.files)
@@ -994,6 +1004,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   useKeyboard({
     onCommandPalette: () => setPaletteOpen(true),
+    onQuickSwitcher: () => setQuickSwitcherOpen(true),
     onCycleView: toggleView,
     onToggleSourceMode: toggleSourceMode,
     onToggleSidebar: toggleSidebar,
@@ -1002,7 +1013,10 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     onGoBack: goBack,
     onGoForward: goForward,
     onSplitEditor: handleSplitEditor,
-    onEscape: () => setPaletteOpen(false)
+    onEscape: () => {
+      setPaletteOpen(false)
+      setQuickSwitcherOpen(false)
+    }
   })
 
   // Cmd+Shift+P: toggle Workbench tab
@@ -1175,6 +1189,46 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
     workbenchToggleThread
   ])
 
+  const bookmarkedPaths = useUiStore((s) => s.bookmarkedPaths)
+  const openTabPaths = useMemo(
+    () => useEditorStore.getState().openTabs.map((t) => t.path),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeNotePath change signals tab list may have changed
+    [activeNotePath]
+  )
+  const vaultState = useVaultStore((s) => s.state)
+  const recentPaths = useMemo(() => vaultState?.recentFiles ?? [], [vaultState])
+
+  const quickSwitcherItems = useMemo<QuickSwitcherItem[]>(() => {
+    return paletteFiles
+      .filter((f) => f.path.endsWith('.md'))
+      .map((file) => {
+        const artifactId = fileToId[file.path]
+        const artifact = artifactId ? artifactById.get(artifactId) : undefined
+        const relativePath =
+          vaultPath && file.path.startsWith(`${vaultPath}/`)
+            ? file.path.slice(vaultPath.length + 1)
+            : file.path
+        const directory = relativePath.includes('/')
+          ? relativePath.split('/').slice(0, -1).join('/')
+          : undefined
+        return {
+          path: file.path,
+          title: file.title,
+          relativePath,
+          folderPath: directory,
+          artifactType: artifact?.type
+        }
+      })
+  }, [paletteFiles, fileToId, artifactById, vaultPath])
+
+  const handleQuickSwitcherSelect = useCallback(
+    async (path: string) => {
+      const file = paletteFiles.find((f) => f.path === path)
+      await openArtifactInEditorOnDemand(path, file?.title)
+    },
+    [paletteFiles]
+  )
+
   const handlePaletteSearch = useCallback((query: string): CommandItem[] => {
     const hits = searchEngineRef.current.search(query)
     return hits.map((hit) => ({
@@ -1234,6 +1288,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
           break
         case 'cmd:toggle-bookmark':
           if (activeNotePath) toggleBookmark(activeNotePath)
+          break
+        case 'cmd:quick-switcher':
+          setQuickSwitcherOpen(true)
           break
         case 'cmd:open-settings':
           setSettingsOpen(true)
@@ -1378,6 +1435,15 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         items={paletteItems}
         onSelect={handlePaletteSelect}
         onSearch={handlePaletteSearch}
+      />
+      <QuickSwitcher
+        isOpen={quickSwitcherOpen}
+        onClose={() => setQuickSwitcherOpen(false)}
+        items={quickSwitcherItems}
+        recentPaths={recentPaths}
+        bookmarkedPaths={bookmarkedPaths}
+        openTabPaths={openTabPaths}
+        onSelect={handleQuickSwitcherSelect}
       />
       <SettingsModal
         isOpen={settingsOpen}

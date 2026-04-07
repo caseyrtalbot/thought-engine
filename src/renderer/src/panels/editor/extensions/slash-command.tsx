@@ -85,6 +85,19 @@ const SLASH_COMMAND_ITEMS: SlashCommandItem[] = [
     command: ({ editor, range }: { editor: Editor; range: Range }) => {
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     }
+  },
+  {
+    title: 'Table',
+    description: 'Insert a table',
+    icon: '\u25A6',
+    command: ({ editor, range }: { editor: Editor; range: Range }) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run()
+    }
   }
 ]
 
