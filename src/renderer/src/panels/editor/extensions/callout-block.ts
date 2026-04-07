@@ -1,28 +1,63 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { MarkdownTokenizer, MarkdownToken } from '@tiptap/core'
 
-type CalloutType = 'note' | 'warning' | 'tip' | 'important'
-
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     callout: {
-      setCallout: (calloutType?: CalloutType) => ReturnType
-      toggleCallout: (calloutType?: CalloutType) => ReturnType
+      setCallout: (calloutType?: string) => ReturnType
+      toggleCallout: (calloutType?: string) => ReturnType
     }
   }
 }
 
-const CALLOUT_TYPES: readonly CalloutType[] = ['note', 'warning', 'tip', 'important']
-
-const CALLOUT_COLORS: Record<CalloutType, { bg: string; border: string }> = {
-  note: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
-  warning: { bg: 'rgba(234, 179, 8, 0.08)', border: '#eab308' },
-  tip: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
-  important: { bg: 'rgba(168, 85, 247, 0.08)', border: '#a855f7' }
+interface CalloutStyle {
+  readonly bg: string
+  readonly border: string
 }
 
-function isCalloutType(value: string): value is CalloutType {
-  return CALLOUT_TYPES.includes(value as CalloutType)
+const CALLOUT_COLORS: Record<string, CalloutStyle> = {
+  // Info (blue)
+  note: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
+  info: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
+  abstract: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
+  summary: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
+  tldr: { bg: 'rgba(56, 189, 248, 0.08)', border: '#38bdf8' },
+  // Success (green)
+  tip: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
+  success: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
+  check: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
+  done: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
+  hint: { bg: 'rgba(52, 211, 153, 0.08)', border: '#34d399' },
+  // Warning (amber)
+  warning: { bg: 'rgba(234, 179, 8, 0.08)', border: '#eab308' },
+  caution: { bg: 'rgba(234, 179, 8, 0.08)', border: '#eab308' },
+  attention: { bg: 'rgba(234, 179, 8, 0.08)', border: '#eab308' },
+  // Danger (red)
+  danger: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  error: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  fail: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  failure: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  missing: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  bug: { bg: 'rgba(239, 68, 68, 0.08)', border: '#ef4444' },
+  // Important (purple)
+  important: { bg: 'rgba(168, 85, 247, 0.08)', border: '#a855f7' },
+  question: { bg: 'rgba(168, 85, 247, 0.08)', border: '#a855f7' },
+  help: { bg: 'rgba(168, 85, 247, 0.08)', border: '#a855f7' },
+  faq: { bg: 'rgba(168, 85, 247, 0.08)', border: '#a855f7' },
+  // Neutral (gray)
+  example: { bg: 'rgba(148, 163, 184, 0.08)', border: '#94a3b8' },
+  quote: { bg: 'rgba(148, 163, 184, 0.08)', border: '#94a3b8' },
+  cite: { bg: 'rgba(148, 163, 184, 0.08)', border: '#94a3b8' },
+  todo: { bg: 'rgba(148, 163, 184, 0.08)', border: '#94a3b8' }
+}
+
+const DEFAULT_CALLOUT_STYLE: CalloutStyle = {
+  bg: 'rgba(148, 163, 184, 0.08)',
+  border: '#94a3b8'
+}
+
+function getCalloutStyle(type: string): CalloutStyle {
+  return CALLOUT_COLORS[type] ?? DEFAULT_CALLOUT_STYLE
 }
 
 export const CalloutBlock = Node.create({
@@ -35,7 +70,7 @@ export const CalloutBlock = Node.create({
   addAttributes() {
     return {
       calloutType: {
-        default: 'note' as CalloutType,
+        default: 'note',
         parseHTML: (element) => element.getAttribute('data-callout-type') || 'note',
         renderHTML: (attributes) => ({ 'data-callout-type': attributes.calloutType })
       }
@@ -47,8 +82,8 @@ export const CalloutBlock = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const type = (HTMLAttributes['data-callout-type'] as CalloutType) || 'note'
-    const colors = CALLOUT_COLORS[type] || CALLOUT_COLORS.note
+    const type = (HTMLAttributes['data-callout-type'] as string) || 'note'
+    const colors = getCalloutStyle(type)
 
     return [
       'div',
@@ -83,11 +118,11 @@ export const CalloutBlock = Node.create({
   addCommands() {
     return {
       setCallout:
-        (calloutType: CalloutType = 'note') =>
+        (calloutType = 'note') =>
         ({ commands }) =>
           commands.wrapIn(this.name, { calloutType }),
       toggleCallout:
-        (calloutType: CalloutType = 'note') =>
+        (calloutType = 'note') =>
         ({ commands }) => {
           if (this.editor.isActive(this.name)) {
             return commands.lift(this.name)
@@ -115,7 +150,6 @@ export const CalloutBlock = Node.create({
       if (!match) return undefined
 
       const rawType = match[1].toLowerCase()
-      if (!isCalloutType(rawType)) return undefined
 
       // Strip the > prefix from each content line
       const contentLines = match[2]

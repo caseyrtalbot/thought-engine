@@ -37,7 +37,8 @@ describe('WikilinkNode markdown tokenizer', () => {
     expect(result).toEqual({
       type: 'wikilink',
       raw: '[[My Note]]',
-      content: 'My Note'
+      content: 'My Note',
+      alias: null
     })
   })
 
@@ -46,7 +47,8 @@ describe('WikilinkNode markdown tokenizer', () => {
     expect(result).toEqual({
       type: 'wikilink',
       raw: '[[My Note|display text]]',
-      content: 'My Note'
+      content: 'My Note',
+      alias: 'display text'
     })
   })
 
@@ -68,6 +70,16 @@ describe('WikilinkNode renderMarkdown', () => {
     expect(renderMarkdown({ attrs: { target: 'My Note' } })).toBe('[[My Note]]')
   })
 
+  test('renders [[target|alias]] when alias is present', () => {
+    expect(renderMarkdown({ attrs: { target: 'My Note', alias: 'display' } })).toBe(
+      '[[My Note|display]]'
+    )
+  })
+
+  test('renders [[target]] when alias is null', () => {
+    expect(renderMarkdown({ attrs: { target: 'My Note', alias: null } })).toBe('[[My Note]]')
+  })
+
   test('renders empty target', () => {
     expect(renderMarkdown({ attrs: { target: '' } })).toBe('[[]]')
   })
@@ -83,7 +95,15 @@ describe('WikilinkNode parseMarkdown', () => {
     const result = parseMarkdown({ content: 'My Note' })
     expect(result).toEqual({
       type: 'wikilink',
-      attrs: { target: 'My Note' }
+      attrs: { target: 'My Note', alias: null }
+    })
+  })
+
+  test('creates node with alias from token', () => {
+    const result = parseMarkdown({ content: 'My Note', alias: 'display' })
+    expect(result).toEqual({
+      type: 'wikilink',
+      attrs: { target: 'My Note', alias: 'display' }
     })
   })
 })

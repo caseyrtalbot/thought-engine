@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core'
-import type { MarkdownTokenizer } from '@tiptap/core'
+import type { MarkdownTokenizer, MarkdownToken } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 interface WikilinkNodeOptions {
@@ -10,7 +10,7 @@ interface WikilinkNodeOptions {
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     wikilinkNode: {
-      insertWikilink: (target: string) => ReturnType
+      insertWikilink: (target: string, alias?: string) => ReturnType
     }
   }
 }
@@ -34,6 +34,14 @@ export const WikilinkNode = Node.create<WikilinkNodeOptions>({
         default: '',
         parseHTML: (element) => element.getAttribute('data-wikilink-target') ?? element.textContent,
         renderHTML: (attributes) => ({ 'data-wikilink-target': attributes.target as string })
+      },
+      alias: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-wikilink-alias') || null,
+        renderHTML: (attributes) => {
+          if (!attributes.alias) return {}
+          return { 'data-wikilink-alias': attributes.alias as string }
+        }
       }
     }
   },
@@ -44,6 +52,7 @@ export const WikilinkNode = Node.create<WikilinkNodeOptions>({
 
   renderHTML({ node, HTMLAttributes }) {
     const target = node.attrs.target as string
+    const alias = node.attrs.alias as string | null
     return [
       'span',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
@@ -52,23 +61,24 @@ export const WikilinkNode = Node.create<WikilinkNodeOptions>({
         style:
           'color: var(--color-accent-default); cursor: pointer; background: rgba(255,255,255,0.04); padding: 1px 4px; border-radius: 3px;'
       }),
-      target
+      alias ?? target
     ]
   },
 
   renderText({ node }) {
-    return `[[${node.attrs.target}]]`
+    const alias = node.attrs.alias as string | null
+    return alias ? `[[${node.attrs.target}|${alias}]]` : `[[${node.attrs.target}]]`
   },
 
   addCommands() {
     return {
       insertWikilink:
-        (target: string) =>
+        (target: string, alias?: string) =>
         ({ chain }) =>
           chain()
             .insertContent({
               type: this.name,
-              attrs: { target }
+              attrs: { target, alias: alias ?? null }
             })
             .run()
     }
@@ -108,12 +118,13 @@ export const WikilinkNode = Node.create<WikilinkNodeOptions>({
       return idx >= 0 ? idx : -1
     },
     tokenize(src: string) {
-      const match = src.match(/^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/)
+      const match = src.match(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/)
       if (!match) return undefined
       return {
         type: 'wikilink',
         raw: match[0],
-        content: match[1]
+        content: match[1],
+        alias: match[2] || null
       }
     }
   } satisfies MarkdownTokenizer,
@@ -121,11 +132,16 @@ export const WikilinkNode = Node.create<WikilinkNodeOptions>({
   parseMarkdown(token) {
     return {
       type: 'wikilink',
-      attrs: { target: token.content || '' }
+      attrs: {
+        target: token.content || '',
+        alias: (token as MarkdownToken & { alias?: string | null }).alias ?? null
+      }
     }
   },
 
   renderMarkdown(node) {
-    return `[[${node.attrs?.target ?? ''}]]`
+    const target = node.attrs?.target ?? ''
+    const alias = node.attrs?.alias as string | null
+    return alias ? `[[${target}|${alias}]]` : `[[${target}]]`
   }
 })

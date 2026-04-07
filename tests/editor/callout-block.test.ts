@@ -72,10 +72,11 @@ describe('CalloutBlock markdown', () => {
       expect(result!.calloutType).toBe('important')
     })
 
-    it('rejects unknown callout types', async () => {
+    it('accepts unknown callout types with neutral styling', async () => {
       const tokenizer = await getTokenizer()
       const result = tokenizer.tokenize('> [!unknown]\n> Content', {}, mockLexer)
-      expect(result).toBeUndefined()
+      expect(result).toBeDefined()
+      expect(result!.calloutType).toBe('unknown')
     })
 
     it('does not match regular blockquotes', async () => {

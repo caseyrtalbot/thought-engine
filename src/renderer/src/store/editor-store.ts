@@ -27,6 +27,9 @@ interface EditorStore {
   readonly historyStack: readonly string[]
   readonly historyIndex: number
 
+  // Pending scroll target for [[Note#heading]] navigation
+  readonly pendingScrollTarget: string | null
+
   setActiveNote: (path: string | null) => void
   setMode: (mode: EditorMode) => void
   setContent: (content: string) => void
@@ -34,6 +37,8 @@ interface EditorStore {
   setDirty: (dirty: boolean) => void
   markSaved: () => void
   setCursorPosition: (line: number, col: number) => void
+
+  setPendingScrollTarget: (heading: string | null) => void
 
   openSplit: (path: string) => void
   closeSplit: () => void
@@ -120,6 +125,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   openTabs: [],
   historyStack: [],
   historyIndex: -1,
+  pendingScrollTarget: null,
 
   setActiveNote: (path) => {
     if (!path) {
@@ -150,6 +156,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setDirty: (dirty) => set({ isDirty: dirty }),
   markSaved: () => set({ isDirty: false }),
   setCursorPosition: (line, col) => set({ cursorLine: line, cursorCol: col }),
+
+  setPendingScrollTarget: (heading) => set({ pendingScrollTarget: heading }),
 
   openSplit: (path) => set({ splitNotePath: path }),
   closeSplit: () => set({ splitNotePath: null }),

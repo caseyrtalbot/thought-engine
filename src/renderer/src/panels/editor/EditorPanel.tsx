@@ -24,6 +24,7 @@ import { EditorBubbleMenu } from './EditorBubbleMenu'
 import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
 import { useDocument } from '../../hooks/useDocument'
+import { resolveWikilinkTarget, parseWikilinkTarget } from '@shared/engine/wikilink-resolver'
 
 interface EditorPanelProps {
   onNavigate: (id: string) => void
@@ -73,12 +74,16 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
     actions: ContextMenuAction[]
   } | null>(null)
 
-  // Resolve a wikilink target title to an artifact and navigate
+  // Resolve a wikilink target to an artifact and navigate, with optional heading scroll
   const handleWikilinkNavigate = useCallback(
     (target: string) => {
-      const artifacts = useVaultStore.getState().artifacts
-      const match = artifacts.find((a) => a.title.toLowerCase() === target.toLowerCase())
-      if (match) onNavigate(match.id)
+      const { artifacts, artifactPathById } = useVaultStore.getState()
+      const { heading } = parseWikilinkTarget(target)
+      const resolved = resolveWikilinkTarget(target, artifacts, artifactPathById)
+      if (resolved) {
+        useEditorStore.getState().setPendingScrollTarget(heading)
+        onNavigate(resolved)
+      }
     },
     [onNavigate]
   )
@@ -250,6 +255,32 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
       editor.commands.setContent(json)
     } else {
       editor.commands.setContent(parsed.body)
+    }
+
+    // Scroll to heading if navigated via [[Note#heading]]
+    const scrollTarget = useEditorStore.getState().pendingScrollTarget
+    if (scrollTarget) {
+      useEditorStore.getState().setPendingScrollTarget(null)
+      const lowerTarget = scrollTarget.toLowerCase().replace(/-/g, ' ')
+      let targetPos: number | null = null
+      editor.state.doc.descendants((node, pos) => {
+        if (targetPos !== null) return false
+        if (node.type.name === 'heading') {
+          const headingText = node.textContent.toLowerCase().replace(/-/g, ' ')
+          if (headingText === lowerTarget) {
+            targetPos = pos
+            return false
+          }
+        }
+        return true
+      })
+      if (targetPos !== null) {
+        editor.commands.setTextSelection(targetPos)
+        // Defer scroll to next frame so the editor layout is settled
+        requestAnimationFrame(() => {
+          editor.commands.scrollIntoView()
+        })
+      }
     }
   }, [activeNotePath, doc.content, doc.loading, loadContent, editor, isSplitPane])
 

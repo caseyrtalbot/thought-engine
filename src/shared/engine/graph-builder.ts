@@ -6,6 +6,7 @@ import type {
   KnowledgeGraph,
   RelationshipKind
 } from '@shared/types'
+import { buildResolutionMaps, resolveBodyLink } from './wikilink-resolver'
 
 /** Hard cap: terms appearing in this many files or more are skipped. */
 const TERM_FREQ_CAP = 20
@@ -98,14 +99,10 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     return false
   }
 
-  // Build a lowercase-to-id lookup for case-insensitive bodyLink resolution
-  const lowerToId = new Map<string, string>()
-  // Title-to-id lookup for sources (wikilinks reference by title)
-  const lowerTitleToId = new Map<string, string>()
-  for (const a of artifacts) {
-    lowerToId.set(a.id.toLowerCase(), a.id)
-    lowerTitleToId.set(a.title.toLowerCase(), a.id)
-  }
+  // Build lookup maps for case-insensitive bodyLink + source resolution
+  const maps = buildResolutionMaps(artifacts)
+  const lowerToId = maps.byLowerId
+  const lowerTitleToId = maps.byLowerTitle
 
   // Phase 1: Explicit frontmatter edges
   const frontmatterProvenance: EdgeProvenance = {
@@ -124,7 +121,7 @@ export function buildGraph(artifacts: readonly Artifact[]): KnowledgeGraph {
     for (const id of a.appears_in) addEdge(a.id, id, 'appears_in', frontmatterProvenance)
     for (const id of a.related) addEdge(a.id, id, 'related', frontmatterProvenance)
     for (const link of a.bodyLinks) {
-      const resolvedTarget = lowerToId.get(link.toLowerCase()) ?? link
+      const resolvedTarget = resolveBodyLink(link.toLowerCase(), maps) ?? link
       addEdge(a.id, resolvedTarget, 'related', wikilinkProvenance)
     }
     for (const sourceTitle of a.sources ?? []) {
