@@ -367,12 +367,13 @@ describe('vault-persist integration', () => {
 
       expect(getUiState()).toEqual({
         backlinkCollapsed: { 'note-A': true, 'note-B': false },
-        dismissedGhosts: []
+        dismissedGhosts: [],
+        outlineVisible: false
       })
     })
 
     it('resets to defaults when vault state has no ui field', () => {
-      setUiState({ backlinkCollapsed: { stale: true } })
+      setUiState({ backlinkCollapsed: { stale: true }, dismissedGhosts: [], outlineVisible: false })
       vi.runAllTimers()
       writeStateMock.mockClear()
 
@@ -391,11 +392,15 @@ describe('vault-persist integration', () => {
 
       rehydrateUiState()
 
-      expect(getUiState()).toEqual({ backlinkCollapsed: {}, dismissedGhosts: [] })
+      expect(getUiState()).toEqual({
+        backlinkCollapsed: {},
+        dismissedGhosts: [],
+        outlineVisible: false
+      })
     })
 
     it('resets to defaults when vault state is null', () => {
-      setUiState({ backlinkCollapsed: { stale: true } })
+      setUiState({ backlinkCollapsed: { stale: true }, dismissedGhosts: [], outlineVisible: false })
       vi.runAllTimers()
       writeStateMock.mockClear()
 
@@ -403,7 +408,11 @@ describe('vault-persist integration', () => {
 
       rehydrateUiState()
 
-      expect(getUiState()).toEqual({ backlinkCollapsed: {}, dismissedGhosts: [] })
+      expect(getUiState()).toEqual({
+        backlinkCollapsed: {},
+        dismissedGhosts: [],
+        outlineVisible: false
+      })
     })
 
     it('merges with defaults (fills missing keys)', () => {

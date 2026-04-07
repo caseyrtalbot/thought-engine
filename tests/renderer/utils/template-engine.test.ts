@@ -6,7 +6,8 @@ import {
 } from '../../../src/renderer/src/utils/template-engine'
 
 describe('expandTemplateVariables', () => {
-  const ctx = { title: 'My Note', date: '2026-04-06', time: '14:30' }
+  const moment = new Date(2026, 3, 6, 14, 30) // April 6 2026, 14:30 local
+  const ctx = { title: 'My Note', date: '2026-04-06', time: '14:30', _moment: moment }
 
   test('replaces {{date}}', () => {
     expect(expandTemplateVariables('Today is {{date}}', ctx)).toBe('Today is 2026-04-06')
@@ -26,10 +27,13 @@ describe('expandTemplateVariables', () => {
     expect(expandTemplateVariables(template, ctx)).toBe(expected)
   })
 
-  test('replaces {{date:FORMAT}} with custom format', () => {
+  test('replaces {{date:FORMAT}} using same moment as {{date}}', () => {
     const result = expandTemplateVariables('{{date:YYYY-MM-DD}}', ctx)
-    // The custom format uses the current date, not ctx.date
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(result).toBe('2026-04-06')
+  })
+
+  test('{{date:FORMAT}} supports named month', () => {
+    expect(expandTemplateVariables('{{date:MMMM D, YYYY}}', ctx)).toBe('April 6, 2026')
   })
 
   test('leaves unknown variables untouched', () => {
@@ -47,6 +51,24 @@ describe('buildTemplateContext', () => {
     expect(ctx.title).toBe('Test Note')
     expect(ctx.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     expect(ctx.time).toMatch(/^\d{2}:\d{2}$/)
+    expect(ctx._moment).toBeInstanceOf(Date)
+  })
+
+  test('uses provided date instead of current time', () => {
+    const d = new Date(2026, 3, 6, 9, 5) // April 6, 09:05 local
+    const ctx = buildTemplateContext('Note', d)
+    expect(ctx.date).toBe('2026-04-06')
+    expect(ctx.time).toBe('09:05')
+    expect(ctx._moment).toBe(d)
+  })
+
+  test('date and _moment are consistent (both local time)', () => {
+    const d = new Date(2025, 11, 31, 23, 59) // Dec 31, 23:59 local
+    const ctx = buildTemplateContext('NYE', d)
+    expect(ctx.date).toBe('2025-12-31')
+    expect(ctx._moment.getFullYear()).toBe(2025)
+    expect(ctx._moment.getMonth()).toBe(11)
+    expect(ctx._moment.getDate()).toBe(31)
   })
 })
 

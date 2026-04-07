@@ -4,21 +4,25 @@ import { getUiState, updateUiState } from './vault-persist'
 interface UiStore {
   readonly backlinkCollapsed: Readonly<Record<string, boolean>>
   readonly dismissedGhosts: readonly string[]
+  readonly outlineVisible: boolean
 
   getBacklinkCollapsed: (notePath: string) => boolean
   toggleBacklinkCollapsed: (notePath: string) => void
+  toggleOutline: () => void
   dismissGhost: (id: string) => void
   undismissGhost: (id: string) => void
   isGhostDismissed: (id: string) => boolean
   rehydrate: (
     backlinkCollapsed: Record<string, boolean>,
-    dismissedGhosts: readonly string[]
+    dismissedGhosts: readonly string[],
+    outlineVisible: boolean
   ) => void
 }
 
 export const useUiStore = create<UiStore>((set, get) => ({
   backlinkCollapsed: {},
   dismissedGhosts: [],
+  outlineVisible: false,
 
   getBacklinkCollapsed: (notePath) => get().backlinkCollapsed[notePath] ?? true,
 
@@ -27,6 +31,12 @@ export const useUiStore = create<UiStore>((set, get) => ({
     const next = { ...get().backlinkCollapsed, [notePath]: !current }
     set({ backlinkCollapsed: next })
     updateUiState({ backlinkCollapsed: next })
+  },
+
+  toggleOutline: () => {
+    const next = !get().outlineVisible
+    set({ outlineVisible: next })
+    updateUiState({ outlineVisible: next })
   },
 
   dismissGhost: (id) => {
@@ -45,8 +55,8 @@ export const useUiStore = create<UiStore>((set, get) => ({
 
   isGhostDismissed: (id) => get().dismissedGhosts.includes(id),
 
-  rehydrate: (backlinkCollapsed, dismissedGhosts) => {
-    set({ backlinkCollapsed, dismissedGhosts: [...dismissedGhosts] })
+  rehydrate: (backlinkCollapsed, dismissedGhosts, outlineVisible) => {
+    set({ backlinkCollapsed, dismissedGhosts: [...dismissedGhosts], outlineVisible })
   }
 }))
 
@@ -58,5 +68,9 @@ export function rehydrateUiStore(): void {
   const persisted = getUiState()
   useUiStore
     .getState()
-    .rehydrate(persisted.backlinkCollapsed ?? {}, persisted.dismissedGhosts ?? [])
+    .rehydrate(
+      persisted.backlinkCollapsed ?? {},
+      persisted.dismissedGhosts ?? [],
+      persisted.outlineVisible ?? false
+    )
 }

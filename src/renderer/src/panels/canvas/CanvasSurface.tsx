@@ -129,7 +129,7 @@ export function CanvasSurface({
     [onBackgroundClick, wasSelectionDrag]
   )
 
-  // Drag-over state for file drops from sidebar
+  // Drag-over state — only for OS-level file drops (Finder), not intra-app drags
   const [dragOver, setDragOver] = useState(false)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -138,8 +138,14 @@ export function CanvasSurface({
     if (!hasTeMime && !hasFiles) return
     e.preventDefault()
     e.stopPropagation()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOver(true)
+    if (hasTeMime) {
+      // Intra-app drag — native drag preview provides feedback, clean cursor
+      e.dataTransfer.dropEffect = 'move'
+    } else {
+      // OS-level file drop (Finder) — show overlay
+      e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
   }, [])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {

@@ -47,7 +47,7 @@ import {
   subscribeVaultPersist,
   registerQuitHandler
 } from './store/vault-persist'
-import { rehydrateUiStore } from './store/ui-store'
+import { rehydrateUiStore, useUiStore } from './store/ui-store'
 import { subscribeCanvasAutosave } from './store/canvas-autosave'
 import { GoogleFontLoader } from './components/GoogleFontLoader'
 import type { ArtifactType } from '@shared/types'
@@ -596,30 +596,15 @@ function ConnectedSidebar({
     async (dateStr: string) => {
       if (!vaultPath) return
       const { dailyNoteFolder, dailyNoteTemplate } = useSettingsStore.getState()
-      const path = `${vaultPath}/${dailyNoteFolder}/${dateStr}.md`
-      const exists = await window.api.fs.fileExists(path)
-      if (!exists) {
-        const folderPath = `${vaultPath}/${dailyNoteFolder}`
-        const folderExists = await window.api.fs.fileExists(folderPath)
-        if (!folderExists) await window.api.fs.mkdir(folderPath)
-
-        let content: string
-        if (dailyNoteTemplate) {
-          try {
-            const templatePath = `${vaultPath}/${dailyNoteTemplate}`
-            const raw = await window.api.fs.readFile(templatePath)
-            const { expandTemplateVariables, buildTemplateContext } =
-              await import('./utils/template-engine')
-            content = expandTemplateVariables(raw, buildTemplateContext(dateStr))
-          } catch {
-            content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
-          }
-        } else {
-          content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
-        }
-        await window.api.fs.writeFile(path, content)
-      }
-      await openArtifactInEditorOnDemand(path, dateStr)
+      const templatePath = dailyNoteTemplate ? `${vaultPath}/${dailyNoteTemplate}` : undefined
+      const { createOrOpenDailyNote } = await import('./utils/daily-notes')
+      const { path, title } = await createOrOpenDailyNote(
+        vaultPath,
+        dailyNoteFolder,
+        dateStr,
+        templatePath
+      )
+      await openArtifactInEditorOnDemand(path, title)
     },
     [vaultPath]
   )
@@ -717,6 +702,14 @@ const BUILT_IN_COMMANDS: CommandItem[] = [
     category: 'command',
     shortcut: '\u2318/',
     description: 'Switch the editor between markdown source and rich text.'
+  },
+  {
+    id: 'cmd:toggle-outline',
+    label: 'Toggle Outline Panel',
+    category: 'command',
+    shortcut: '\u21e7\u2318O',
+    description: 'Show or hide the document heading outline.',
+    keywords: ['outline', 'headings', 'toc', 'table of contents']
   },
   {
     id: 'cmd:open-settings',
@@ -969,31 +962,15 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
   const handleOpenDailyNote = useCallback(async () => {
     if (!vaultPath) return
     const { dailyNoteFolder, dailyNoteTemplate } = useSettingsStore.getState()
-    const dateStr = new Date().toISOString().slice(0, 10)
-    const path = `${vaultPath}/${dailyNoteFolder}/${dateStr}.md`
-    const exists = await window.api.fs.fileExists(path)
-    if (!exists) {
-      const folderPath = `${vaultPath}/${dailyNoteFolder}`
-      const folderExists = await window.api.fs.fileExists(folderPath)
-      if (!folderExists) await window.api.fs.mkdir(folderPath)
-
-      let content: string
-      if (dailyNoteTemplate) {
-        try {
-          const templatePath = `${vaultPath}/${dailyNoteTemplate}`
-          const raw = await window.api.fs.readFile(templatePath)
-          const { expandTemplateVariables, buildTemplateContext } =
-            await import('./utils/template-engine')
-          content = expandTemplateVariables(raw, buildTemplateContext(dateStr))
-        } catch {
-          content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
-        }
-      } else {
-        content = `---\ntitle: ${dateStr}\ncreated: ${dateStr}\ntags: [daily]\n---\n\n`
-      }
-      await window.api.fs.writeFile(path, content)
-    }
-    await openArtifactInEditorOnDemand(path, dateStr)
+    const { createOrOpenDailyNote, localDateStr } = await import('./utils/daily-notes')
+    const templatePath = dailyNoteTemplate ? `${vaultPath}/${dailyNoteTemplate}` : undefined
+    const { path, title } = await createOrOpenDailyNote(
+      vaultPath,
+      dailyNoteFolder,
+      localDateStr(),
+      templatePath
+    )
+    await openArtifactInEditorOnDemand(path, title)
   }, [vaultPath])
 
   const handleSplitEditor = useCallback(() => {
@@ -1021,20 +998,26 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
 
   // Cmd+Shift+P: toggle Workbench tab
   // Cmd+Shift+G: toggle Graph tab
+  // Cmd+Shift+O: toggle Outline panel
+  const toggleOutline = useUiStore((s) => s.toggleOutline)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'p') {
+      if (!e.metaKey || !e.shiftKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'p') {
         e.preventDefault()
         toggleTabView('workbench')
-      }
-      if (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+      } else if (key === 'g') {
         e.preventDefault()
         toggleTabView('graph')
+      } else if (key === 'o') {
+        e.preventDefault()
+        toggleOutline()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [toggleTabView])
+  }, [toggleTabView, toggleOutline])
 
   const artifactById = useMemo(
     () => new Map(artifacts.map((artifact) => [artifact.id, artifact])),
@@ -1232,6 +1215,9 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
         case 'cmd:toggle-mode':
           toggleSourceMode()
           break
+        case 'cmd:toggle-outline':
+          toggleOutline()
+          break
         case 'cmd:open-settings':
           setSettingsOpen(true)
           break
@@ -1315,6 +1301,7 @@ function WorkspaceShell({ onLoadVault }: { onLoadVault: (path: string) => Promis
       handleOpenDailyNote,
       toggleView,
       toggleSourceMode,
+      toggleOutline,
       toggleSidebar,
       setSettingsOpen,
       vaultPath,

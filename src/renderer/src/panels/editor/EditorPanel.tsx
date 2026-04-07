@@ -25,6 +25,8 @@ import { EditorContextMenu, type ContextMenuAction } from './EditorContextMenu'
 import { colors } from '../../design/tokens'
 import { useDocument } from '../../hooks/useDocument'
 import { resolveWikilinkTarget, parseWikilinkTarget } from '@shared/engine/wikilink-resolver'
+import { OutlinePanel } from './OutlinePanel'
+import { useUiStore } from '../../store/ui-store'
 
 interface EditorPanelProps {
   onNavigate: (id: string) => void
@@ -40,6 +42,8 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
   const setContent = useEditorStore((s) => s.setContent)
   const loadContent = useEditorStore((s) => s.loadContent)
   const setCursorPosition = useEditorStore((s) => s.setCursorPosition)
+
+  const outlineVisible = useUiStore((s) => s.outlineVisible)
 
   const fileToId = useVaultStore((s) => s.fileToId)
   const activeNoteId = activeNotePath ? (fileToId[activeNotePath] ?? null) : null
@@ -360,32 +364,45 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
           </span>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto">
-        <FrontmatterHeader
-          artifact={artifact}
-          frontmatter={frontmatterData}
-          mode={mode}
-          onNavigate={onNavigate}
-          onFrontmatterChange={(newRaw) => {
-            frontmatterRawRef.current = newRaw
-            const parsed = parseFrontmatter(newRaw)
-            setFrontmatterData(parsed.data as Record<string, string | readonly string[]>)
-            const currentParsed = parseFrontmatter(content ?? '')
-            const fullContent = newRaw + currentParsed.body
-            if (!isSplitPane) setContent(fullContent)
-            // Push directly to DocumentManager from user action (not via effect)
-            if (activeNotePath && prevLoadedPathRef.current === activeNotePath) {
-              doc.update(fullContent)
-            }
-          }}
-        />
-        {mode === 'rich' ? (
-          <>
-            <RichEditor editor={editor} />
-            {editor && <EditorBubbleMenu editor={editor} />}
-          </>
-        ) : (
-          <SourceEditor content={content} onChange={setContent} />
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1 overflow-y-auto">
+          <FrontmatterHeader
+            artifact={artifact}
+            frontmatter={frontmatterData}
+            mode={mode}
+            onNavigate={onNavigate}
+            onFrontmatterChange={(newRaw) => {
+              frontmatterRawRef.current = newRaw
+              const parsed = parseFrontmatter(newRaw)
+              setFrontmatterData(parsed.data as Record<string, string | readonly string[]>)
+              const currentParsed = parseFrontmatter(content ?? '')
+              const fullContent = newRaw + currentParsed.body
+              if (!isSplitPane) setContent(fullContent)
+              // Push directly to DocumentManager from user action (not via effect)
+              if (activeNotePath && prevLoadedPathRef.current === activeNotePath) {
+                doc.update(fullContent)
+              }
+            }}
+          />
+          {mode === 'rich' ? (
+            <>
+              <RichEditor editor={editor} />
+              {editor && <EditorBubbleMenu editor={editor} />}
+            </>
+          ) : (
+            <SourceEditor content={content} onChange={setContent} />
+          )}
+        </div>
+        {outlineVisible && editor && mode === 'rich' && (
+          <div
+            className="shrink-0 overflow-hidden"
+            style={{
+              width: 200,
+              borderLeft: `1px solid ${colors.border.subtle}`
+            }}
+          >
+            <OutlinePanel editor={editor} />
+          </div>
         )}
       </div>
 

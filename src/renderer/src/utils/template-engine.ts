@@ -7,8 +7,10 @@
 
 export interface TemplateContext {
   readonly title: string
-  readonly date: string // YYYY-MM-DD
-  readonly time: string // HH:mm
+  readonly date: string // YYYY-MM-DD (local time)
+  readonly time: string // HH:mm (local time)
+  /** Source Date for custom format substitution. Internal — use buildTemplateContext(). */
+  readonly _moment: Date
 }
 
 /** Simple date formatting. Supports YYYY, MM, DD, MMMM, M, D, HH, mm. */
@@ -50,28 +52,29 @@ function formatDate(date: Date, format: string): string {
  * - {{date:FORMAT}} — date with custom format (e.g., {{date:MMMM D, YYYY}})
  */
 export function expandTemplateVariables(content: string, ctx: TemplateContext): string {
-  const now = new Date()
-
   return content
-    .replace(/\{\{date:([^}]+)\}\}/g, (_match, fmt: string) => formatDate(now, fmt))
+    .replace(/\{\{date:([^}]+)\}\}/g, (_match, fmt: string) => formatDate(ctx._moment, fmt))
     .replace(/\{\{date\}\}/g, ctx.date)
     .replace(/\{\{time\}\}/g, ctx.time)
     .replace(/\{\{title\}\}/g, ctx.title)
 }
 
-/** Build a TemplateContext for the current moment. */
-export function buildTemplateContext(title: string): TemplateContext {
-  const now = new Date()
+/** Build a TemplateContext for the current moment (or a provided Date). Uses local time. */
+export function buildTemplateContext(title: string, date: Date = new Date()): TemplateContext {
+  const pad = (n: number): string => String(n).padStart(2, '0')
   return {
     title,
-    date: now.toISOString().slice(0, 10),
-    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+    _moment: date
   }
 }
 
-/** Generate default frontmatter for a new note. */
+/** Generate default frontmatter for a new note. Uses local date for 'created'. */
 export function defaultNoteFrontmatter(title: string, tags: readonly string[] = []): string {
-  const now = new Date().toISOString().slice(0, 10)
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const d = new Date()
+  const created = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const tagList = tags.length > 0 ? `[${tags.join(', ')}]` : '[]'
-  return `---\ntitle: ${title}\ncreated: ${now}\ntags: ${tagList}\n---\n\n`
+  return `---\ntitle: ${title}\ncreated: ${created}\ntags: ${tagList}\n---\n\n`
 }

@@ -11,15 +11,26 @@ import {
   defaultNoteFrontmatter
 } from './template-engine'
 
-/** Compute the file path for a daily note. */
-export function dailyNotePath(vaultPath: string, folder: string, date: Date): string {
-  const dateStr = date.toISOString().slice(0, 10)
+const pad = (n: number): string => String(n).padStart(2, '0')
+
+/** Format a Date as YYYY-MM-DD in local time. Never use toISOString() for dates the user sees. */
+export function localDateStr(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/** Format a Date as HH:mm in local time. */
+export function localTimeStr(date: Date = new Date()): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/** Compute the file path for a daily note from a YYYY-MM-DD string. */
+export function dailyNotePath(vaultPath: string, folder: string, dateStr: string): string {
   return `${vaultPath}/${folder}/${dateStr}.md`
 }
 
 /** Get today's daily note path. */
 export function todayNotePath(vaultPath: string, folder: string): string {
-  return dailyNotePath(vaultPath, folder, new Date())
+  return dailyNotePath(vaultPath, folder, localDateStr())
 }
 
 /**
@@ -27,15 +38,16 @@ export function todayNotePath(vaultPath: string, folder: string): string {
  *
  * If a template path is provided and the file exists, its content is used
  * with template variable substitution. Otherwise, default frontmatter is generated.
+ *
+ * @param dateStr YYYY-MM-DD string (local time). Use localDateStr() for "today".
  */
 export async function createOrOpenDailyNote(
   vaultPath: string,
   folder: string,
+  dateStr: string,
   templatePath?: string
 ): Promise<{ path: string; title: string }> {
-  const now = new Date()
-  const dateStr = now.toISOString().slice(0, 10)
-  const path = dailyNotePath(vaultPath, folder, now)
+  const path = dailyNotePath(vaultPath, folder, dateStr)
   const title = dateStr
 
   const exists = await window.api.fs.fileExists(path)
@@ -85,7 +97,7 @@ export function findAdjacentDailyNotes(
   for (let i = 1; i <= searchDays; i++) {
     const d = new Date(currentDate)
     d.setDate(d.getDate() - i)
-    const p = dailyNotePath(vaultPath, folder, d)
+    const p = dailyNotePath(vaultPath, folder, localDateStr(d))
     if (existingPaths.has(p)) {
       prev = p
       break
@@ -96,7 +108,7 @@ export function findAdjacentDailyNotes(
   for (let i = 1; i <= searchDays; i++) {
     const d = new Date(currentDate)
     d.setDate(d.getDate() + i)
-    const p = dailyNotePath(vaultPath, folder, d)
+    const p = dailyNotePath(vaultPath, folder, localDateStr(d))
     if (existingPaths.has(p)) {
       next = p
       break

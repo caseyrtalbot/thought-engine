@@ -137,6 +137,7 @@ export interface VaultConfig {
 export interface UiPersistedState {
   backlinkCollapsed: Record<string, boolean>
   dismissedGhosts: readonly string[]
+  outlineVisible: boolean
 }
 
 export interface VaultState {

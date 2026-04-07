@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { colors } from '../../design/tokens'
 import { useSettingsStore } from '../../store/settings-store'
 import { useVaultStore } from '../../store/vault-store'
-import { extractDailyNoteDates } from '../../utils/daily-notes'
+import { extractDailyNoteDates, localDateStr } from '../../utils/daily-notes'
 
 interface DailyNoteSectionProps {
   onOpenDate: (dateStr: string) => void
@@ -46,8 +46,7 @@ export function DailyNoteSection({ onOpenDate }: DailyNoteSectionProps) {
     [files, vaultPath, dailyNoteFolder]
   )
 
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
+  const todayStr = localDateStr()
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()

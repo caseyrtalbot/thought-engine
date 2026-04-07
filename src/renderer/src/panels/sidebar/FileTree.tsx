@@ -262,72 +262,18 @@ function Chevron({ isExpanded }: { isExpanded: boolean }) {
 // Imperative drag system — zero React state changes during drag = smooth
 // ---------------------------------------------------------------------------
 
-/** Shared 1x1 invisible ghost to suppress the browser's default drag image. */
-let ghostEl: HTMLDivElement | null = null
-function getGhost(): HTMLDivElement {
-  if (!ghostEl) {
-    ghostEl = document.createElement('div')
-    ghostEl.style.cssText = 'width:1px;height:1px;position:fixed;top:-9999px;opacity:0;'
-    document.body.appendChild(ghostEl)
-  }
-  return ghostEl
-}
-
-/** Shared tooltip element — created once, positioned imperatively. */
-let tooltipEl: HTMLDivElement | null = null
-function getTooltip(): HTMLDivElement {
-  if (!tooltipEl) {
-    tooltipEl = document.createElement('div')
-    tooltipEl.className = 'te-drag-tooltip'
-    tooltipEl.innerHTML =
-      '<span class="te-drag-tooltip__icon"></span>' +
-      '<span class="te-drag-tooltip__copy">' +
-      '<span class="te-drag-tooltip__name"></span>' +
-      '<span class="te-drag-tooltip__action"></span>' +
-      '</span>'
-    document.body.appendChild(tooltipEl)
-  }
-  return tooltipEl
-}
-
 interface DragState {
   active: boolean
   sourcePath: string
-  sourceName: string
   sourceIsDir: boolean
   targetPath: string | null
-  targetName: string | null
 }
 
 const EMPTY_DRAG: DragState = {
   active: false,
   sourcePath: '',
-  sourceName: '',
   sourceIsDir: false,
-  targetPath: null,
-  targetName: null
-}
-
-function showTooltip(name: string, isDir: boolean) {
-  const tip = getTooltip()
-  tip.querySelector('.te-drag-tooltip__icon')!.textContent = isDir ? '📁' : '📄'
-  tip.querySelector('.te-drag-tooltip__name')!.textContent = name
-  tip.querySelector('.te-drag-tooltip__action')!.textContent = ''
-  tip.style.display = 'flex'
-}
-
-function updateTooltipTarget(targetName: string | null) {
-  const action = getTooltip().querySelector('.te-drag-tooltip__action')!
-  action.textContent = targetName ? `Move into \u201c${targetName}\u201d` : ''
-}
-
-/** Position via translate3d — stays on GPU compositor, no layout thrash. */
-function positionTooltip(x: number, y: number) {
-  getTooltip().style.transform = `translate3d(${x}px, calc(${y}px - 100%), 0)`
-}
-
-function hideTooltip() {
-  getTooltip().style.display = 'none'
+  targetPath: null
 }
 
 function clearHighlights(treeEl: HTMLElement) {
@@ -389,24 +335,7 @@ export const FileTree = memo(function FileTree({
     onExtDropRef.current = onExternalFileDrop
   }, [onExternalFileDrop])
 
-  // Clean up tooltip on unmount
-  useEffect(() => {
-    return () => hideTooltip()
-  }, [])
-
-  // Document-level tooltip positioning — follows the cursor everywhere, even outside the sidebar.
-  // Attaches on mount, but only does work when a drag is active (cheap guard).
-  useEffect(() => {
-    const handleGlobalDragOver = (e: DragEvent) => {
-      if (!drag.current.active) return
-      positionTooltip(e.clientX, e.clientY)
-    }
-    document.addEventListener('dragover', handleGlobalDragOver)
-    return () => document.removeEventListener('dragover', handleGlobalDragOver)
-  }, [])
-
-  // Tree-level listeners: folder target detection + drop acceptance.
-  // Separate from tooltip so the tooltip stays visible outside the tree.
+  // Tree-level listeners: folder target highlighting + drop acceptance.
   useEffect(() => {
     const tree = treeRef.current
     if (!tree) return
@@ -417,16 +346,11 @@ export const FileTree = memo(function FileTree({
         e.preventDefault()
         e.dataTransfer!.dropEffect = 'move'
 
-        // Find the row under the cursor
         const rowEl = (e.target as HTMLElement).closest('[data-node-path]') as HTMLElement | null
         if (!rowEl) return
 
-        // Determine target folder: if hovering a directory use it, otherwise use the file's parent
         const isDir = rowEl.dataset.nodeDir === 'true'
         const targetPath = isDir ? rowEl.dataset.nodePath! : rowEl.dataset.nodeParent!
-        const targetName = isDir
-          ? rowEl.dataset.nodeName!
-          : (rowEl.dataset.nodeParentName ?? targetPath.split('/').pop() ?? '')
 
         if (targetPath !== drag.current.targetPath) {
           // Clear previous highlight
@@ -436,16 +360,10 @@ export const FileTree = memo(function FileTree({
             ) as HTMLElement | null
             if (prev) prev.dataset.dropTarget = 'false'
           }
-          // Only highlight the folder row when the cursor is directly over it.
-          // Hovering over child files updates the tooltip but does not highlight
-          // a distant folder row — the tooltip is the real-time feedback.
           if (isDir) {
             rowEl.dataset.dropTarget = 'true'
           }
-
           drag.current.targetPath = targetPath
-          drag.current.targetName = targetName
-          updateTooltipTarget(targetName)
         }
         return
       }
@@ -462,16 +380,12 @@ export const FileTree = memo(function FileTree({
       if (tree.contains(e.relatedTarget as Node)) return
       tree.dataset.dropActive = 'false'
 
-      // Cursor left the tree — clear folder highlight but keep tooltip visible.
-      // The tooltip hides on dragend, not on leave.
       if (drag.current.active && drag.current.targetPath) {
         const prev = tree.querySelector(
           `[data-node-path="${CSS.escape(drag.current.targetPath)}"]`
         ) as HTMLElement | null
         if (prev) prev.dataset.dropTarget = 'false'
         drag.current.targetPath = null
-        drag.current.targetName = null
-        updateTooltipTarget(null)
       }
     }
 
@@ -518,34 +432,26 @@ export const FileTree = memo(function FileTree({
 
   // Called by individual rows on dragStart
   const handleRowDragStart = useCallback((e: React.DragEvent, node: FlatTreeNode) => {
-    // Set MIME data
     const moveData: DragMoveData = { path: node.path, isDirectory: node.isDirectory }
     e.dataTransfer.setData(TE_MOVE_MIME, JSON.stringify(moveData))
     if (!node.isDirectory) {
       const fileData: DragFileData = { path: node.path, type: inferCardType(node.path) }
       e.dataTransfer.setData(TE_FILE_MIME, JSON.stringify(fileData))
     }
-    e.dataTransfer.effectAllowed = node.isDirectory ? 'move' : 'copyMove'
-    e.dataTransfer.setDragImage(getGhost(), 0, 0)
-
-    // Mark source
+    e.dataTransfer.effectAllowed = 'move'
     ;(e.currentTarget as HTMLElement).dataset.dragging = 'true'
     drag.current = {
       active: true,
       sourcePath: node.path,
-      sourceName: node.name,
       sourceIsDir: node.isDirectory,
-      targetPath: null,
-      targetName: null
+      targetPath: null
     }
-    showTooltip(node.name, node.isDirectory)
   }, [])
 
   const handleRowDragEnd = useCallback((e: React.DragEvent) => {
     ;(e.currentTarget as HTMLElement).dataset.dragging = 'false'
     e.currentTarget.removeAttribute('draggable')
     if (treeRef.current) clearHighlights(treeRef.current)
-    hideTooltip()
     drag.current = { ...EMPTY_DRAG }
   }, [])
 

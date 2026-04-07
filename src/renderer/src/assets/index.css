@@ -672,57 +672,6 @@ body {
 
 /* ─── Vault Drag & Drop ─── */
 
-/* Floating tooltip that follows the cursor during drag.
-   GPU-composited via translate3d — no layout thrash on every frame. */
-.te-drag-tooltip {
-  position: fixed;
-  left: 0;
-  top: 0;
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(20, 20, 24, 0.92);
-  backdrop-filter: blur(12px) saturate(1.2);
-  -webkit-backdrop-filter: blur(12px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-  z-index: 9999;
-  max-width: 240px;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-}
-.te-drag-tooltip__icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-.te-drag-tooltip__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.te-drag-tooltip__name {
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.te-drag-tooltip__action {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Source file highlight — golden outline while being dragged */
 .file-row-hover[data-dragging='true'],
 .tree-directory-row[data-dragging='true'] {

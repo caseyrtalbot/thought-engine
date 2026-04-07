@@ -29,15 +29,31 @@ describe('useUiStore', () => {
   })
 
   test('rehydrate restores persisted state', () => {
-    useUiStore.getState().rehydrate({ '/notes/a.md': false, '/notes/b.md': true }, [])
+    useUiStore.getState().rehydrate({ '/notes/a.md': false, '/notes/b.md': true }, [], false)
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/a.md')).toBe(false)
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/b.md')).toBe(true)
   })
 
   test('rehydrate with empty object resets to defaults', () => {
     useUiStore.getState().toggleBacklinkCollapsed('/notes/a.md')
-    useUiStore.getState().rehydrate({}, [])
+    useUiStore.getState().rehydrate({}, [], false)
     expect(useUiStore.getState().getBacklinkCollapsed('/notes/a.md')).toBe(true)
+  })
+
+  test('outlineVisible defaults to false', () => {
+    expect(useUiStore.getState().outlineVisible).toBe(false)
+  })
+
+  test('toggleOutline flips visibility', () => {
+    useUiStore.getState().toggleOutline()
+    expect(useUiStore.getState().outlineVisible).toBe(true)
+    useUiStore.getState().toggleOutline()
+    expect(useUiStore.getState().outlineVisible).toBe(false)
+  })
+
+  test('rehydrate restores outlineVisible', () => {
+    useUiStore.getState().rehydrate({}, [], true)
+    expect(useUiStore.getState().outlineVisible).toBe(true)
   })
 })
 
@@ -47,7 +63,11 @@ describe('rehydrateUiStore', () => {
   })
 
   test('reads ui state from vault-persist and applies to store', () => {
-    const mockState = { backlinkCollapsed: { '/x.md': false } }
+    const mockState = {
+      backlinkCollapsed: { '/x.md': false },
+      dismissedGhosts: [],
+      outlineVisible: false
+    }
     const spy = vi.spyOn(vaultPersist, 'getUiState').mockReturnValue(mockState)
 
     rehydrateUiStore()
@@ -57,7 +77,11 @@ describe('rehydrateUiStore', () => {
   })
 
   test('handles missing backlinkCollapsed gracefully', () => {
-    const spy = vi.spyOn(vaultPersist, 'getUiState').mockReturnValue({ backlinkCollapsed: {} })
+    const spy = vi.spyOn(vaultPersist, 'getUiState').mockReturnValue({
+      backlinkCollapsed: {},
+      dismissedGhosts: [],
+      outlineVisible: false
+    })
 
     rehydrateUiStore()
 
