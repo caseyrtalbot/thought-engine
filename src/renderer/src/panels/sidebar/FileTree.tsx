@@ -153,19 +153,19 @@ type FileIconKind =
   | 'generic'
 
 const ICON_COLORS: Record<FileIconKind, string> = {
-  markdown: '#9badc0',
-  typescript: '#4a90e2',
-  javascript: '#e8cc44',
-  json: '#e0a828',
-  yaml: '#e25f42',
-  css: '#b07ae8',
-  html: '#e06030',
-  pdf: '#e04848',
-  svg: '#e09838',
-  image: '#38d0e8',
-  canvas: '#44d4b0',
-  config: '#7a8a9a',
-  generic: '#7a8a9a'
+  markdown: '#56b6c2', // teal — primary content type, cool and recognizable
+  typescript: '#4a90e2', // blue — traditional TS
+  javascript: '#e8cc44', // yellow — traditional JS
+  json: '#8bc46a', // leaf green — data format, clearly distinct from JS yellow
+  yaml: '#d4768c', // dusty rose — config markup, distinct from html orange
+  css: '#b07ae8', // purple — traditional CSS
+  html: '#e87040', // orange — traditional HTML
+  pdf: '#e04848', // red — documents
+  svg: '#e09838', // amber — vector graphics
+  image: '#38d0e8', // cyan — raster images
+  canvas: '#44d4b0', // mint — graph/canvas
+  config: '#7a8a9a', // gray — infrastructure
+  generic: '#7a8a9a' // gray — fallback
 }
 
 const ICON_COMPONENT: Record<
@@ -756,7 +756,7 @@ function FileRow({
                 ? '#4ade80'
                 : isActive
                   ? colors.text.primary
-                  : colors.text.secondary
+                  : colors.text.primary
           }}
         >
           {base}
