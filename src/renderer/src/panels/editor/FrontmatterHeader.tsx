@@ -1,7 +1,18 @@
-import { useState, useRef, useCallback, type KeyboardEvent } from 'react'
+import { useState, useRef } from 'react'
 import type { Artifact } from '@shared/types'
 import { colors, getArtifactColor } from '../../design/tokens'
-import { serializeFrontmatter } from './markdown-utils'
+import { serializeFrontmatter, type PropertyValue } from './markdown-utils'
+import {
+  inferPropertyType,
+  convertValue,
+  BooleanInput,
+  NumberInput,
+  DateInput,
+  ListInput,
+  TextInput,
+  TypeBadge,
+  type PropertyType
+} from './PropertyInputs'
 
 // ── Types ──
 
@@ -29,7 +40,7 @@ export function buildMetadataEntries(artifact: Artifact): readonly MetadataEntry
   return entries
 }
 
-// ── Pill style shared with type badge ──
+// ── Shared styles ──
 
 const pillStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -56,7 +67,10 @@ const sectionLabelStyle: React.CSSProperties = {
 
 const rowLabelStyle: React.CSSProperties = {
   ...sectionLabelStyle,
-  paddingTop: '0.2rem'
+  paddingTop: '0.2rem',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.35rem'
 }
 
 const rowValueStyle: React.CSSProperties = {
@@ -68,178 +82,11 @@ const rowValueStyle: React.CSSProperties = {
   gap: '0.4rem'
 }
 
-// ── Tag Pills Editor ──
-
-interface TagEditorProps {
-  tags: string[]
-  onChange: (tags: string[]) => void
-}
-
-function TagEditor({ tags, onChange }: TagEditorProps) {
-  const [inputValue, setInputValue] = useState('')
-  const [adding, setAdding] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const addTag = useCallback(
-    (raw: string) => {
-      const tag = raw.trim().replace(/^#/, '')
-      if (tag && !tags.includes(tag)) {
-        onChange([...tags, tag])
-      }
-      setInputValue('')
-    },
-    [tags, onChange]
-  )
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      if (inputValue.trim()) {
-        addTag(inputValue)
-      } else {
-        setAdding(false)
-      }
-    }
-    if (e.key === 'Escape') {
-      setInputValue('')
-      setAdding(false)
-    }
-    if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
-      onChange(tags.slice(0, -1))
-    }
-  }
-
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1" style={{ verticalAlign: 'middle' }}>
-      {tags.map((tag) => (
-        <span key={tag} style={pillStyle} className="group">
-          {tag}
-          <button
-            type="button"
-            onClick={() => onChange(tags.filter((t) => t !== tag))}
-            className="ml-1 focus:outline-none"
-            style={{
-              color: colors.text.muted,
-              fontSize: '9px',
-              lineHeight: 1,
-              opacity: 0.6
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '1'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.6'
-            }}
-            aria-label={`Remove tag ${tag}`}
-          >
-            {'\u00D7'}
-          </button>
-        </span>
-      ))}
-      {adding ? (
-        <input
-          ref={inputRef}
-          autoFocus
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={() => {
-            if (inputValue.trim()) addTag(inputValue)
-            setAdding(false)
-          }}
-          className="bg-transparent border-0 outline-none"
-          style={{
-            color: colors.text.secondary,
-            fontFamily: 'var(--font-mono)',
-            fontSize: '10px',
-            width: `${Math.max((inputValue.length || 4) + 1, 5)}ch`
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            setAdding(true)
-            setTimeout(() => inputRef.current?.focus(), 30)
-          }}
-          style={{
-            ...pillStyle,
-            color: colors.text.muted,
-            cursor: 'pointer',
-            border: `1px dashed ${colors.text.muted}40`
-          }}
-          className="hover:opacity-80 transition-opacity"
-        >
-          +
-        </button>
-      )}
-    </span>
-  )
-}
-
 // ── Wikilink display helper ──
 
 /** Strip [[brackets]] from display text while preserving raw value for editing */
 function stripWikilinks(text: string): string {
   return text.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1')
-}
-
-// ── Editable Property Value ──
-
-interface EditableValueProps {
-  value: string
-  displayValue?: string
-  onChange: (value: string) => void
-}
-
-function EditableValue({ value, displayValue, onChange }: EditableValueProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const commit = () => {
-    setEditing(false)
-    if (draft !== value) onChange(draft)
-  }
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        autoFocus
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') {
-            setDraft(value)
-            setEditing(false)
-          }
-        }}
-        className="bg-transparent border-0 outline-none"
-        style={{
-          color: colors.text.secondary,
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px'
-        }}
-      />
-    )
-  }
-
-  return (
-    <span
-      onClick={() => {
-        setDraft(value)
-        setEditing(true)
-      }}
-      style={{ ...rowValueStyle, cursor: 'text' }}
-    >
-      {(displayValue ?? value) || '\u00A0'}
-    </span>
-  )
 }
 
 // ── Add Property ──
@@ -341,11 +188,115 @@ function AddPropertyButton({ existingKeys, onAdd }: AddPropertyButtonProps) {
   )
 }
 
+// ── Typed Property Row ──
+
+interface PropertyRowProps {
+  propKey: string
+  value: PropertyValue
+  editable: boolean
+  onChange: (value: PropertyValue) => void
+  onDelete: () => void
+  onTypeChange: (type: PropertyType) => void
+  isFirst: boolean
+}
+
+function PropertyRow({
+  propKey,
+  value,
+  editable,
+  onChange,
+  onDelete,
+  onTypeChange,
+  isFirst
+}: PropertyRowProps) {
+  const [hovered, setHovered] = useState(false)
+  const pType = inferPropertyType(propKey, value)
+
+  const renderInput = () => {
+    switch (pType) {
+      case 'boolean':
+        return <BooleanInput value={value as boolean} onChange={(v) => onChange(v)} />
+      case 'number':
+        return <NumberInput value={value as number} onChange={(v) => onChange(v)} />
+      case 'date':
+        return <DateInput value={String(value)} onChange={(v) => onChange(v)} />
+      case 'list': {
+        const arr = Array.isArray(value)
+          ? value.map(String)
+          : typeof value === 'string'
+            ? value
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : []
+        return <ListInput value={arr} onChange={(v) => onChange(v)} />
+      }
+      case 'text':
+      default: {
+        const raw = Array.isArray(value) ? value.join(', ') : String(value)
+        return (
+          <TextInput value={raw} displayValue={stripWikilinks(raw)} onChange={(v) => onChange(v)} />
+        )
+      }
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(110px, 150px) minmax(0, 1fr)',
+        columnGap: '1rem',
+        alignItems: 'start',
+        paddingTop: isFirst ? 0 : '0.1rem'
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={rowLabelStyle}>
+        {editable && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="focus:outline-none transition-opacity"
+            style={{
+              color: colors.text.muted,
+              fontSize: '9px',
+              lineHeight: 1,
+              opacity: hovered ? 0.7 : 0,
+              cursor: 'pointer',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              flexShrink: 0
+            }}
+            aria-label={`Delete property ${propKey}`}
+          >
+            {'\u00D7'}
+          </button>
+        )}
+        <span style={{ flex: 1 }}>{formatPropertyLabel(propKey)}</span>
+        {editable && (
+          <TypeBadge
+            type={pType}
+            onTypeChange={(newType) => {
+              const converted = convertValue(value, newType)
+              onTypeChange(newType)
+              onChange(converted)
+            }}
+          />
+        )}
+      </div>
+      <div style={rowValueStyle}>{renderInput()}</div>
+    </div>
+  )
+}
+
 // ── Main FrontmatterHeader ──
 
 interface FrontmatterHeaderProps {
   artifact: Artifact | null
-  frontmatter: Readonly<Record<string, string | readonly string[]>> | null
+  frontmatter: Readonly<Record<string, PropertyValue>> | null
   mode: 'rich' | 'source'
   onNavigate?: (id: string) => void
   onFrontmatterChange?: (newRaw: string) => void
@@ -361,31 +312,41 @@ export function FrontmatterHeader({
   if (mode === 'source') return null
 
   // Build a mutable property map from available data
-  const properties: Record<string, string | string[]> = {}
+  const properties: Record<string, PropertyValue> = {}
   if (frontmatter) {
     for (const [k, v] of Object.entries(frontmatter)) {
-      properties[k] = Array.isArray(v) ? [...v] : String(v)
+      properties[k] = Array.isArray(v) ? [...v] : v
     }
   }
 
-  const dispatchChange = (updated: Record<string, string | string[]>) => {
+  const editable = !!onFrontmatterChange
+
+  const dispatchChange = (updated: Record<string, PropertyValue>) => {
     if (!onFrontmatterChange) return
     const raw = serializeFrontmatter(updated)
     onFrontmatterChange(raw)
   }
 
-  const handlePropertyChange = (key: string, value: string | string[]) => {
-    const updated = { ...properties, [key]: value }
+  const handlePropertyChange = (key: string, value: PropertyValue) => {
+    dispatchChange({ ...properties, [key]: value })
+  }
+
+  const handleDeleteProperty = (key: string) => {
+    const updated = { ...properties }
+    delete updated[key]
     dispatchChange(updated)
   }
 
   const handleAddProperty = (key: string) => {
-    const updated = { ...properties, [key]: key.toLowerCase() === 'tags' ? [] : '' }
-    dispatchChange(updated)
+    const lower = key.toLowerCase()
+    const defaultValue: PropertyValue =
+      lower === 'tags' ? [] : lower === 'draft' ? false : lower === 'order' ? 0 : ''
+    dispatchChange({ ...properties, [key]: defaultValue })
   }
 
   // Determine the artifact type for display
-  const artifactType = (properties['type'] as string) ?? artifact?.type ?? 'note'
+  const artifactType =
+    typeof properties['type'] === 'string' ? properties['type'] : (artifact?.type ?? 'note')
   const typeColor = getArtifactColor(artifactType)
 
   // Skip title and relationship fields from generic display (handled by RelationshipSection)
@@ -397,7 +358,9 @@ export function FrontmatterHeader({
     'appears_in',
     'related'
   ])
-  const displayKeys = Object.keys(properties).filter((k) => !RELATIONSHIP_KEYS.has(k.toLowerCase()))
+  const displayKeys = Object.keys(properties).filter(
+    (k) => !RELATIONSHIP_KEYS.has(k.toLowerCase()) && k.toLowerCase() !== 'type'
+  )
 
   return (
     <div
@@ -477,7 +440,7 @@ export function FrontmatterHeader({
         </div>
       )}
 
-      {/* Key-value lines: editable */}
+      {/* Key-value lines: typed editing */}
       <div
         style={{
           display: 'grid',
@@ -486,68 +449,27 @@ export function FrontmatterHeader({
           paddingTop: '0.9rem'
         }}
       >
-        {displayKeys.map((key, index) => {
-          const value = properties[key]
-          if (key.toLowerCase() === 'type') return null
-
-          const isTagField = key.toLowerCase() === 'tags'
-
-          if (isTagField) {
-            const tagArray = Array.isArray(value)
-              ? value.map(String)
-              : typeof value === 'string'
-                ? value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                : []
-            return (
-              <div
-                key={key}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
-                  columnGap: '1rem',
-                  alignItems: 'start',
-                  paddingTop: index === 0 ? 0 : '0.1rem'
-                }}
-              >
-                <div style={rowLabelStyle}>{formatPropertyLabel(key)}</div>
-                <div style={rowValueStyle}>
-                  <TagEditor tags={tagArray} onChange={(tags) => handlePropertyChange(key, tags)} />
-                </div>
-              </div>
-            )
-          }
-
-          const rawValue = Array.isArray(value) ? value.join(', ') : String(value)
-          return (
-            <div
-              key={key}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
-                columnGap: '1rem',
-                alignItems: 'start',
-                paddingTop: index === 0 ? 0 : '0.1rem'
-              }}
-            >
-              <span style={rowLabelStyle}>{formatPropertyLabel(key)}</span>
-              <EditableValue
-                value={rawValue}
-                displayValue={stripWikilinks(rawValue)}
-                onChange={(v) => handlePropertyChange(key, v)}
-              />
-            </div>
-          )
-        })}
+        {displayKeys.map((key, index) => (
+          <PropertyRow
+            key={key}
+            propKey={key}
+            value={properties[key]}
+            editable={editable}
+            onChange={(v) => handlePropertyChange(key, v)}
+            onDelete={() => handleDeleteProperty(key)}
+            onTypeChange={() => {
+              /* type change handled via convertValue in PropertyRow */
+            }}
+            isFirst={index === 0}
+          />
+        ))}
       </div>
 
       {/* Relationship section */}
       {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
 
       {/* Add property */}
-      {onFrontmatterChange && (
+      {editable && (
         <AddPropertyButton existingKeys={Object.keys(properties)} onAdd={handleAddProperty} />
       )}
     </div>

@@ -3,11 +3,26 @@
  * Handles frontmatter extraction and legacy wikilink migration.
  */
 
+export type PropertyValue = string | number | boolean | readonly string[]
+
+/** Parse a YAML scalar value, preserving booleans and numbers. Quoted values stay strings. */
+function parseScalarValue(raw: string): string | number | boolean {
+  const isQuoted =
+    (raw.startsWith("'") && raw.endsWith("'")) || (raw.startsWith('"') && raw.endsWith('"'))
+  if (isQuoted) return raw.slice(1, -1)
+
+  if (raw === 'true') return true
+  if (raw === 'false') return false
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
+
+  return raw
+}
+
 interface ParsedFrontmatter {
   /** Raw YAML block including delimiters, for lossless round-tripping */
   readonly raw: string
-  /** Parsed key-value pairs for display in properties panel */
-  readonly data: Readonly<Record<string, string | readonly string[]>>
+  /** Parsed key-value pairs for display in properties panel (type-preserving) */
+  readonly data: Readonly<Record<string, PropertyValue>>
   /** Document body with frontmatter stripped */
   readonly body: string
 }
@@ -33,7 +48,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
   const yamlContent = content.slice(4, endIdx)
   const body = content.slice(afterClosing + leadingLen)
 
-  const data: Record<string, string | string[]> = {}
+  const data: Record<string, PropertyValue> = {}
   let currentKey: string | null = null
   let currentList: string[] | null = null
 
@@ -73,7 +88,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
         .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
         .filter(Boolean)
     } else {
-      data[k] = value.replace(/^['"]|['"]$/g, '')
+      data[k] = parseScalarValue(value)
     }
   }
 
@@ -101,7 +116,7 @@ export function migrateLegacyWikilinks(markdown: string): string {
  * Serialize frontmatter data back to a raw YAML block.
  * Only used if the original raw block is unavailable.
  */
-export function serializeFrontmatter(data: Record<string, string | readonly string[]>): string {
+export function serializeFrontmatter(data: Record<string, PropertyValue>): string {
   const entries = Object.entries(data)
   if (entries.length === 0) return ''
 

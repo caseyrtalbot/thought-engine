@@ -12,7 +12,7 @@ import { BacklinksPanel } from './BacklinksPanel'
 import { RichEditor } from './RichEditor'
 import { SourceEditor } from './SourceEditor'
 import { CodeFileEditor } from './CodeFileEditor'
-import { parseFrontmatter } from './markdown-utils'
+import { parseFrontmatter, type PropertyValue } from './markdown-utils'
 import { ConceptNodeMark } from './extensions/concept-node-mark'
 import { MermaidCodeBlock } from './extensions/mermaid-code-block'
 import { SlashCommand } from './extensions/slash-command'
@@ -68,9 +68,9 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
   // Frontmatter: raw string preserved for lossless round-tripping (ref),
   // parsed data stored as state so changes trigger re-render for the properties panel
   const frontmatterRawRef = useRef('')
-  const [frontmatterData, setFrontmatterData] = useState<
-    Readonly<Record<string, string | readonly string[]>>
-  >({})
+  const [frontmatterData, setFrontmatterData] = useState<Readonly<Record<string, PropertyValue>>>(
+    {}
+  )
 
   // Context menu state for concept node linking
   const [contextMenu, setContextMenu] = useState<{
@@ -253,7 +253,7 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
     // Parse frontmatter and sync to Tiptap immediately (same synchronous block)
     const parsed = parseFrontmatter(doc.content)
     frontmatterRawRef.current = parsed.raw
-    setFrontmatterData(parsed.data as Record<string, string | readonly string[]>)
+    setFrontmatterData(parsed.data)
 
     const manager = editor.storage.markdown?.manager
     if (manager) {
@@ -376,7 +376,7 @@ export function EditorPanel({ onNavigate, filePath }: EditorPanelProps) {
             onFrontmatterChange={(newRaw) => {
               frontmatterRawRef.current = newRaw
               const parsed = parseFrontmatter(newRaw)
-              setFrontmatterData(parsed.data as Record<string, string | readonly string[]>)
+              setFrontmatterData(parsed.data)
               const currentParsed = parseFrontmatter(content ?? '')
               const fullContent = newRaw + currentParsed.body
               if (!isSplitPane) setContent(fullContent)

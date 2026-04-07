@@ -114,6 +114,74 @@ describe('migrateLegacyWikilinks', () => {
   })
 })
 
+// --- Type-preserving parse ---
+
+describe('parseFrontmatter type preservation', () => {
+  it('preserves boolean true', () => {
+    const md = '---\ndraft: true\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.draft).toBe(true)
+    expect(typeof result.data.draft).toBe('boolean')
+  })
+
+  it('preserves boolean false', () => {
+    const md = '---\npublished: false\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.published).toBe(false)
+    expect(typeof result.data.published).toBe('boolean')
+  })
+
+  it('preserves integer numbers', () => {
+    const md = '---\norder: 42\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.order).toBe(42)
+    expect(typeof result.data.order).toBe('number')
+  })
+
+  it('preserves float numbers', () => {
+    const md = '---\nweight: 3.14\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.weight).toBe(3.14)
+    expect(typeof result.data.weight).toBe('number')
+  })
+
+  it('preserves negative numbers', () => {
+    const md = '---\noffset: -7\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.offset).toBe(-7)
+  })
+
+  it('keeps quoted "true" as string', () => {
+    const md = '---\nlabel: "true"\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.label).toBe('true')
+    expect(typeof result.data.label).toBe('string')
+  })
+
+  it('keeps quoted number as string', () => {
+    const md = "---\nzip: '90210'\n---\n\nBody"
+    const result = parseFrontmatter(md)
+    expect(result.data.zip).toBe('90210')
+    expect(typeof result.data.zip).toBe('string')
+  })
+
+  it('preserves date strings as strings', () => {
+    const md = '---\ncreated: 2026-04-06\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.created).toBe('2026-04-06')
+    expect(typeof result.data.created).toBe('string')
+  })
+
+  it('preserves mixed types in same frontmatter', () => {
+    const md = '---\ntitle: My Note\ndraft: true\norder: 3\ntags:\n  - a\n  - b\n---\n\nBody'
+    const result = parseFrontmatter(md)
+    expect(result.data.title).toBe('My Note')
+    expect(result.data.draft).toBe(true)
+    expect(result.data.order).toBe(3)
+    expect(result.data.tags).toEqual(['a', 'b'])
+  })
+})
+
 // --- serializeFrontmatter ---
 
 describe('serializeFrontmatter', () => {
@@ -129,5 +197,30 @@ describe('serializeFrontmatter', () => {
 
   it('returns empty string for empty data', () => {
     expect(serializeFrontmatter({})).toBe('')
+  })
+
+  it('serializes boolean values', () => {
+    const result = serializeFrontmatter({ draft: true, published: false })
+    expect(result).toContain('draft: true')
+    expect(result).toContain('published: false')
+  })
+
+  it('serializes number values', () => {
+    const result = serializeFrontmatter({ order: 42, weight: 3.14 })
+    expect(result).toContain('order: 42')
+    expect(result).toContain('weight: 3.14')
+  })
+
+  it('round-trips typed values through parse → serialize → parse', () => {
+    const original = '---\ntitle: Test\ndraft: true\norder: 5\ntags:\n  - x\n  - y\n---\n'
+    const parsed = parseFrontmatter(original + '\nBody')
+    const reserialized = serializeFrontmatter(
+      parsed.data as Record<string, string | number | boolean | readonly string[]>
+    )
+    const reparsed = parseFrontmatter(reserialized + '\nBody')
+    expect(reparsed.data.title).toBe('Test')
+    expect(reparsed.data.draft).toBe(true)
+    expect(reparsed.data.order).toBe(5)
+    expect(reparsed.data.tags).toEqual(['x', 'y'])
   })
 })
