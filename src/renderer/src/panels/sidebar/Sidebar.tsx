@@ -441,6 +441,7 @@ export function Sidebar({
           onOpenDate={onOpenDailyNote}
           activeFilePath={activeFilePath}
           onFileSelect={onFileSelect}
+          onContextMenu={handleContextMenu}
         />
       )}
       <BookmarksList activeFilePath={activeFilePath} onFileSelect={onFileSelect} />
