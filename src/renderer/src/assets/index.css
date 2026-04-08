@@ -397,7 +397,7 @@ body {
   font-size: var(--env-sidebar-tertiary-font-size);
   line-height: 1;
   letter-spacing: 0.02em;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .sidebar-popover {

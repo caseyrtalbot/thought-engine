@@ -9,6 +9,7 @@ interface DailyNoteSectionProps {
   onOpenDate: (dateStr: string) => void
   activeFilePath: string | null
   onFileSelect: (path: string) => void
+  onContextMenu?: (e: React.MouseEvent, path: string, isDirectory: boolean) => void
 }
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
@@ -38,7 +39,8 @@ function formatMonthYear(year: number, month: number): string {
 export function DailyNoteSection({
   onOpenDate,
   activeFilePath,
-  onFileSelect
+  onFileSelect,
+  onContextMenu
 }: DailyNoteSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [viewDate, setViewDate] = useState(() => new Date())
@@ -165,7 +167,7 @@ export function DailyNoteSection({
               <div
                 key={i}
                 className="text-center"
-                style={{ color: colors.text.muted, fontSize: '9px', lineHeight: '16px' }}
+                style={{ color: colors.text.secondary, fontSize: '9px', lineHeight: '16px' }}
               >
                 {label}
               </div>
@@ -255,6 +257,7 @@ export function DailyNoteSection({
                     className="file-row-hover flex items-center gap-1.5 w-full text-left py-[2px]"
                     data-active={isActive || undefined}
                     onClick={() => onFileSelect(path)}
+                    onContextMenu={(e) => onContextMenu?.(e, path, false)}
                     style={{
                       background: 'none',
                       border: 'none',

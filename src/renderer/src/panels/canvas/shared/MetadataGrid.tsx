@@ -69,7 +69,7 @@ export function MetadataGrid({ entries }: MetadataGridProps) {
             style={{
               fontFamily: typography.fontFamily.mono,
               fontSize: 11,
-              color: 'var(--color-text-muted)',
+              color: 'var(--color-text-secondary)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
               lineHeight: 1.8,

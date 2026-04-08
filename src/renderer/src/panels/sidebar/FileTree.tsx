@@ -602,7 +602,7 @@ function DirectoryRow({
         <span
           className="ml-auto"
           style={{
-            color: 'color-mix(in srgb, var(--color-text-muted) 72%, transparent)',
+            color: 'var(--color-text-secondary)',
             fontSize: 'var(--env-sidebar-tertiary-font-size)',
             fontVariantNumeric: 'tabular-nums'
           }}
