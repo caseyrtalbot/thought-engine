@@ -31,14 +31,14 @@ h6 {
 .workspace-activity-rail::after {
   content: '';
   position: absolute;
-  top: var(--window-top-chrome-height);
+  top: 0;
   right: 0;
   bottom: 0;
   width: 1px;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, white 10%, transparent),
-    var(--chrome-panel-border) 18px,
+    transparent,
+    var(--chrome-panel-border) var(--window-top-chrome-height),
     var(--chrome-panel-border)
   );
   pointer-events: none;
@@ -268,22 +268,6 @@ body {
   border-right: none;
 }
 
-.workspace-sidebar-panel::after {
-  content: '';
-  position: absolute;
-  top: var(--window-top-chrome-height);
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, white 10%, transparent),
-    var(--chrome-panel-border) 18px,
-    var(--chrome-panel-border)
-  );
-  pointer-events: none;
-  z-index: 1;
-}
 
 .workspace-sidebar-shell {
   position: relative;
@@ -1045,7 +1029,8 @@ body {
   width: 1px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.12),
+    transparent,
+    var(--chrome-panel-border) var(--window-top-chrome-height),
     var(--chrome-panel-border)
   );
   cursor: col-resize;
