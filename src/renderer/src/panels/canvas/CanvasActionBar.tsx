@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useVaultStore } from '../../store/vault-store'
 import { useCanvasStore } from '../../store/canvas-store'
-import { colors } from '../../design/tokens'
+import { colors, floatingPanel } from '../../design/tokens'
 import type { AgentActionName } from '@shared/agent-action-types'
 import type { AgentPhase } from '../../hooks/use-agent-orchestrator'
 
@@ -10,6 +10,7 @@ interface CanvasActionBarProps {
   readonly onStop: () => void
   readonly activeAction: AgentActionName | null
   readonly phase: AgentPhase
+  readonly onAskPrompt: () => void
 }
 
 const actionLabelStyle: React.CSSProperties = {
@@ -30,7 +31,8 @@ export function CanvasActionBar({
   onTriggerAction,
   onStop,
   activeAction,
-  phase
+  phase,
+  onAskPrompt
 }: CanvasActionBarProps): React.ReactElement | null {
   const artifacts = useVaultStore((s) => s.artifacts)
   const graph = useVaultStore((s) => s.graph)
@@ -62,6 +64,17 @@ export function CanvasActionBar({
 
   if (!hasAnyContent && !showCompile) return null
 
+  const divider = (
+    <div
+      style={{
+        width: 1,
+        height: 16,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        margin: '0 10px'
+      }}
+    />
+  )
+
   return (
     <div
       style={{
@@ -69,9 +82,14 @@ export function CanvasActionBar({
         top: 12,
         right: 12,
         zIndex: 30,
+        backgroundColor: floatingPanel.glass.bg,
+        backdropFilter: floatingPanel.glass.blur,
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.06)',
+        padding: '4px 8px',
         display: 'flex',
         alignItems: 'center',
-        gap: '1.25rem'
+        gap: 0
       }}
     >
       {showCompile && (
@@ -86,6 +104,8 @@ export function CanvasActionBar({
         />
       )}
 
+      {showCompile && hasAnyContent && divider}
+
       {hasAnyContent && (
         <ActionButton
           label="Think"
@@ -95,6 +115,33 @@ export function CanvasActionBar({
           onTrigger={onTriggerAction}
           onStop={onStop}
         />
+      )}
+
+      {hasAnyContent && (
+        <>
+          {divider}
+          <button
+            type="button"
+            style={{
+              ...actionLabelStyle,
+              borderLeft: '2px solid',
+              borderLeftColor: colors.accent.muted,
+              paddingLeft: '8px',
+              ...(isComputing ? { opacity: 0.4, cursor: 'default' } : {})
+            }}
+            onClick={() => {
+              if (!isComputing) onAskPrompt()
+            }}
+            onMouseEnter={(e) => {
+              if (!isComputing) e.currentTarget.style.color = colors.text.primary
+            }}
+            onMouseLeave={(e) => {
+              if (!isComputing) e.currentTarget.style.color = colors.text.muted
+            }}
+          >
+            /ask
+          </button>
+        </>
       )}
     </div>
   )
