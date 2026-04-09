@@ -34,6 +34,15 @@ const FOLDER_ACTIONS: readonly ContextMenuAction[] = [
   { id: 'delete', label: 'Delete', danger: true }
 ]
 
+/** Returns multi-select action list with count baked into labels. */
+function multiFileActions(count: number): readonly ContextMenuAction[] {
+  return [
+    { id: 'multi-add-to-canvas', label: `Add ${count} files to Canvas`, separator: true },
+    { id: 'multi-copy-paths', label: `Copy ${count} paths`, separator: true },
+    { id: 'multi-delete', label: `Delete ${count} files`, danger: true }
+  ]
+}
+
 export interface FileContextMenuState {
   readonly x: number
   readonly y: number
@@ -53,8 +62,14 @@ export function FileContextMenu({ state, onClose, onAction }: FileContextMenuPro
   const agentModifiedPaths = useSidebarSelectionStore((s) => s.agentModifiedPaths)
 
   const isBookmarked = useUiStore((s) => (state ? s.bookmarkedPaths.includes(state.path) : false))
+  const selectedPaths = useSidebarSelectionStore((s) => s.selectedPaths)
+
+  // Multi-select: if right-clicked path is in a selection of 2+, show bulk menu
+  const isMultiSelect =
+    state !== null && !state.isDirectory && selectedPaths.size >= 2 && selectedPaths.has(state.path)
 
   const actions = useMemo(() => {
+    if (isMultiSelect) return multiFileActions(selectedPaths.size)
     if (state?.isDirectory) return FOLDER_ACTIONS
     const bookmarkAction: ContextMenuAction = {
       id: 'toggle-bookmark',
@@ -69,7 +84,7 @@ export function FileContextMenu({ state, onClose, onAction }: FileContextMenuPro
       { id: 'mark-reviewed', label: 'Mark as Reviewed', separator: true },
       base[base.length - 1]
     ]
-  }, [state, agentModifiedPaths, isBookmarked])
+  }, [state, agentModifiedPaths, isBookmarked, isMultiSelect, selectedPaths.size])
 
   // Close on click outside or Escape
   useEffect(() => {

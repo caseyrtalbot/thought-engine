@@ -55,7 +55,8 @@ import type { ArtifactType } from '@shared/types'
 import { isSystemArtifactKind } from '@shared/system-artifacts'
 import { useCanvasStore } from './store/canvas-store'
 import { useSettingsStore } from './store/settings-store'
-import { createCanvasFile, createCanvasNode } from '@shared/canvas-types'
+import { createCanvasFile, createCanvasNode, getDefaultSize } from '@shared/canvas-types'
+import { inferCardType } from './panels/canvas/file-drop-utils'
 import { getCanvasNodeTitle } from './panels/canvas/card-title'
 
 const LazyCanvasView = lazy(() =>
@@ -553,6 +554,54 @@ function ConnectedSidebar({
         case 'map-to-canvas': {
           useViewStore.getState().setContentView('canvas')
           useCanvasStore.getState().setPendingFolderMap(action.path)
+          break
+        }
+        case 'multi-add-to-canvas': {
+          const paths = [...useSidebarSelectionStore.getState().selectedPaths]
+          if (paths.length === 0) break
+          useViewStore.getState().setContentView('canvas')
+          // Grid layout: 3 columns, spaced by default card size + gap
+          const GAP = 24
+          const COLS = Math.min(paths.length, 3)
+          const { viewport } = useCanvasStore.getState()
+          // Place cards near center of current viewport
+          const startX = -viewport.x / viewport.zoom + 80
+          const startY = -viewport.y / viewport.zoom + 80
+          const newNodes = paths.map((filePath, i) => {
+            const cardType = inferCardType(filePath)
+            const size = getDefaultSize(cardType)
+            const col = i % COLS
+            const row = Math.floor(i / COLS)
+            return createCanvasNode(
+              cardType,
+              {
+                x: startX + col * (size.width + GAP),
+                y: startY + row * (size.height + GAP)
+              },
+              { content: filePath }
+            )
+          })
+          useCanvasStore.getState().addNodesAndEdges(newNodes, [])
+          useSidebarSelectionStore.getState().clear()
+          break
+        }
+        case 'multi-copy-paths': {
+          const paths = [...useSidebarSelectionStore.getState().selectedPaths]
+          await navigator.clipboard.writeText(paths.join('\n'))
+          useSidebarSelectionStore.getState().clear()
+          break
+        }
+        case 'multi-delete': {
+          const paths = [...useSidebarSelectionStore.getState().selectedPaths]
+          const { closeTab: storeCloseTab } = useEditorStore.getState()
+          for (const filePath of paths) {
+            await window.api.shell.trashItem(filePath)
+            storeCloseTab(filePath)
+          }
+          const current = useVaultStore.getState().files
+          const deleted = new Set(paths)
+          useVaultStore.getState().setFiles(current.filter((f) => !deleted.has(f.path)))
+          useSidebarSelectionStore.getState().clear()
           break
         }
       }
