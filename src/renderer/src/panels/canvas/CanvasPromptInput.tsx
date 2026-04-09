@@ -28,12 +28,12 @@ export function CanvasPromptInput({
   return (
     <div
       style={{
-        position: 'fixed',
+        position: 'absolute',
         bottom: 48,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1000,
-        width: 'min(640px, 80vw)',
+        width: 'min(640px, calc(100% - 80px))',
         backdropFilter: 'blur(12px)',
         backgroundColor: 'rgba(255,255,255,0.06)',
         border: '1px solid rgba(255,255,255,0.1)',

@@ -53,6 +53,7 @@ vi.mock('../../../store/settings-store', () => ({
 vi.mock('../../../design/tokens', () => ({
   colors: {
     text: { primary: '#fff', secondary: '#aaa', muted: '#555' },
+    accent: { default: '#7c3aed', hover: '#8b5cf6', muted: 'rgba(124,58,237,0.1)' },
     claude: { warning: '#f00' }
   }
 }))
@@ -115,6 +116,8 @@ const baseProps = {
   onOpenImport: vi.fn(),
   onOrganize: vi.fn(),
   organizePhase: 'idle',
+  onThink: vi.fn(),
+  thinkBusy: false,
   onActionSelect: vi.fn()
 }
 

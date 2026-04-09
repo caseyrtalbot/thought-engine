@@ -732,6 +732,8 @@ export function CanvasView(): React.ReactElement {
           onOpenImport={() => setImportOpen(true)}
           onOrganize={ontology.startOrganize}
           organizePhase={ontology.phase}
+          onThink={() => agent.trigger('challenge')}
+          thinkBusy={agent.phase !== 'idle'}
           onActionSelect={handleAction}
         />
         <CanvasActionBar

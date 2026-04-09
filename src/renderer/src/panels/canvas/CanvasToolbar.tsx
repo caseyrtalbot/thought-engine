@@ -20,6 +20,8 @@ interface CanvasToolbarProps {
   readonly onOpenImport: () => void
   readonly onOrganize: () => void
   readonly organizePhase: string
+  readonly onThink: () => void
+  readonly thinkBusy: boolean
   readonly onActionSelect: (actionId: string) => void
 }
 
@@ -47,6 +49,8 @@ export function CanvasToolbar({
   onOpenImport,
   onOrganize,
   organizePhase,
+  onThink,
+  thinkBusy,
   onActionSelect
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
@@ -339,6 +343,41 @@ export function CanvasToolbar({
           </svg>
         </button>
         <Tip label={organizePhase === 'processing' ? 'Organizing\u2026' : 'Organize'} />
+      </div>
+
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={() => {
+            if (!thinkBusy) onThink()
+          }}
+          className="canvas-toolbtn"
+          disabled={thinkBusy}
+          data-testid="canvas-think"
+          style={{
+            color: thinkBusy ? colors.text.muted : colors.accent.default,
+            cursor: thinkBusy ? 'wait' : undefined
+          }}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {/* Brain: two lobes + center stem */}
+            <path d="M8 12v2" />
+            <path d="M5 4a3 3 0 0 1 6 0" />
+            <path d="M5 4C3.5 4 2 5.5 2 7.5S3.5 10 5 10" />
+            <path d="M11 4c1.5 0 3 1.5 3 3.5S12.5 10 11 10" />
+            <path d="M5 10c0 1 1 2 3 2s3-1 3-2" />
+            <line x1="8" y1="4" x2="8" y2="12" />
+          </svg>
+        </button>
+        <Tip label={thinkBusy ? 'Thinking\u2026' : 'Think'} />
       </div>
 
       <div className="canvas-toolrail__divider" />

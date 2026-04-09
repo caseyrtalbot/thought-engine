@@ -15,9 +15,9 @@ interface CanvasActionBarProps {
 
 const actionLabelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
-  fontSize: '11px',
+  fontSize: '12px',
   letterSpacing: '0.06em',
-  color: colors.text.muted,
+  color: colors.text.secondary,
   cursor: 'pointer',
   padding: '4px 0',
   transition: 'color 150ms ease-out',
@@ -85,7 +85,7 @@ export function CanvasActionBar({
         backgroundColor: floatingPanel.glass.bg,
         backdropFilter: floatingPanel.glass.blur,
         borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid rgba(255,255,255,0.12)',
         padding: '4px 8px',
         display: 'flex',
         alignItems: 'center',
@@ -107,41 +107,24 @@ export function CanvasActionBar({
       {showCompile && hasAnyContent && divider}
 
       {hasAnyContent && (
-        <ActionButton
-          label="Think"
-          action="challenge"
-          isRunning={isComputing && activeAction === 'challenge'}
-          isBusy={isComputing && activeAction !== 'challenge'}
-          onTrigger={onTriggerAction}
-          onStop={onStop}
-        />
-      )}
-
-      {hasAnyContent && (
-        <>
-          {divider}
-          <button
-            type="button"
-            style={{
-              ...actionLabelStyle,
-              borderLeft: '2px solid',
-              borderLeftColor: colors.accent.muted,
-              paddingLeft: '8px',
-              ...(isComputing ? { opacity: 0.4, cursor: 'default' } : {})
-            }}
-            onClick={() => {
-              if (!isComputing) onAskPrompt()
-            }}
-            onMouseEnter={(e) => {
-              if (!isComputing) e.currentTarget.style.color = colors.text.primary
-            }}
-            onMouseLeave={(e) => {
-              if (!isComputing) e.currentTarget.style.color = colors.text.muted
-            }}
-          >
-            /ask
-          </button>
-        </>
+        <button
+          type="button"
+          style={{
+            ...actionLabelStyle,
+            ...(isComputing ? { opacity: 0.4, cursor: 'default' } : {})
+          }}
+          onClick={() => {
+            if (!isComputing) onAskPrompt()
+          }}
+          onMouseEnter={(e) => {
+            if (!isComputing) e.currentTarget.style.color = colors.text.primary
+          }}
+          onMouseLeave={(e) => {
+            if (!isComputing) e.currentTarget.style.color = colors.text.secondary
+          }}
+        >
+          /ask
+        </button>
       )}
     </div>
   )
@@ -192,7 +175,7 @@ function ActionButton({
         if (isRunning) {
           e.currentTarget.style.color = '#f87171'
         } else if (!isBusy) {
-          e.currentTarget.style.color = colors.text.muted
+          e.currentTarget.style.color = colors.text.secondary
         }
       }}
     >

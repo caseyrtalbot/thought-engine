@@ -130,6 +130,29 @@ export function EmptyCanvasHint({ rawFileCount }: { readonly rawFileCount: numbe
             Cmd+G
           </span>
         </h2>
+        <p
+          style={{
+            margin: '16px 0 0',
+            fontSize: 13,
+            fontFamily: plexSans,
+            color: colors.text.secondary,
+            lineHeight: 1.5,
+            letterSpacing: '0.01em'
+          }}
+        >
+          Press{' '}
+          <span
+            style={{
+              fontFamily: plexMono,
+              fontSize: 12,
+              color: colors.text.muted,
+              letterSpacing: '0.04em'
+            }}
+          >
+            /
+          </span>{' '}
+          to ask a question about the canvas
+        </p>
         {rawFileCount > 0 && (
           <p
             style={{
