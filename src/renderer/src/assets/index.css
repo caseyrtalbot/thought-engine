@@ -1342,9 +1342,10 @@ body {
   padding-bottom: 0.5em;
 }
 
-.mermaid-diagram svg {
+.mermaid-diagram svg,
+.mermaid-rendered svg {
   display: block;
-  min-width: min-content;
+  width: 100%;
   height: auto;
 }
 

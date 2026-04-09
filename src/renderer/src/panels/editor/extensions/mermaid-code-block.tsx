@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import CodeBlock from '@tiptap/extension-code-block'
 import type { ReactNodeViewProps } from '@tiptap/react'
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react'
@@ -37,15 +37,16 @@ function initMermaid(m: (typeof import('mermaid'))['default']): void {
 let renderCounter = 0
 
 function MermaidDiagram({ code }: { code: string }): React.ReactElement {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [svgHtml, setSvgHtml] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!code.trim() || !containerRef.current) return
+    if (!code.trim()) return
     let cancelled = false
 
     setLoading(true)
+    setSvgHtml(null)
 
     loadMermaid()
       .then((m) => {
@@ -55,24 +56,14 @@ function MermaidDiagram({ code }: { code: string }): React.ReactElement {
         return m.render(id, code.trim())
       })
       .then((result) => {
-        if (cancelled || !result || !containerRef.current) return
-        containerRef.current.innerHTML = result.svg
-        const svgEl = containerRef.current.querySelector('svg')
-        if (svgEl) {
-          // Extract natural dimensions from the viewBox and set them
-          // explicitly so the diagram isn't squashed into the container.
-          const vb = svgEl.getAttribute('viewBox')
-          if (vb) {
-            const parts = vb.split(/[\s,]+/)
-            const vbWidth = parseFloat(parts[2])
-            const vbHeight = parseFloat(parts[3])
-            if (vbWidth && vbHeight) {
-              svgEl.setAttribute('width', `${vbWidth}px`)
-              svgEl.setAttribute('height', `${vbHeight}px`)
-            }
-          }
-          svgEl.style.maxWidth = 'none'
-        }
+        if (cancelled || !result) return
+        // Strip mermaid's inline max-width and fixed dimensions so the
+        // SVG scales responsively via CSS (viewBox handles aspect ratio).
+        let svg = result.svg
+        svg = svg.replace(/(<svg[^>]*?)\s+width="[^"]*"/i, '$1')
+        svg = svg.replace(/(<svg[^>]*?)\s+height="[^"]*"/i, '$1')
+        svg = svg.replace(/(<svg[^>]*?)\s+style="[^"]*"/i, '$1')
+        setSvgHtml(svg)
         setError(null)
         setLoading(false)
       })
@@ -97,13 +88,15 @@ function MermaidDiagram({ code }: { code: string }): React.ReactElement {
     )
   }
 
-  return (
-    <div ref={containerRef} className="mermaid-diagram">
-      {loading && (
+  if (loading || !svgHtml) {
+    return (
+      <div className="mermaid-diagram">
         <div style={{ padding: '12px', opacity: 0.4, fontSize: '12px' }}>Loading diagram…</div>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
+
+  return <div className="mermaid-diagram" dangerouslySetInnerHTML={{ __html: svgHtml }} />
 }
 
 function MermaidCodeBlockView({ node }: ReactNodeViewProps): React.ReactElement {

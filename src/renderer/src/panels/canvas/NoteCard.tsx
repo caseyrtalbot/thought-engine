@@ -145,7 +145,12 @@ export function NoteCard({ node }: NoteCardProps) {
         if (!source.trim()) continue
         try {
           const id = `mermaid-notecard-${node.id}-${i}`
-          const { svg } = await mermaid.render(id, source)
+          const { svg: rawSvg } = await mermaid.render(id, source)
+          // Strip fixed dimensions so SVG scales via CSS viewBox
+          const svg = rawSvg
+            .replace(/(<svg[^>]*?)\s+width="[^"]*"/i, '$1')
+            .replace(/(<svg[^>]*?)\s+height="[^"]*"/i, '$1')
+            .replace(/(<svg[^>]*?)\s+style="[^"]*"/i, '$1')
           svgs[i] = svg
         } catch {
           // Leave as source code
