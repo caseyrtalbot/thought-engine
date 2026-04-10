@@ -64,9 +64,9 @@ export function AgentPreview({
   onApply,
   onCancel
 }: AgentPreviewProps) {
-  // Keyboard: Enter to apply, Escape to cancel
+  // Keyboard: Enter to apply, Escape to cancel (any active phase)
   useEffect(() => {
-    if (phase !== 'preview' && phase !== 'error') return
+    if (phase === 'idle') return
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && phase === 'preview') {
@@ -92,8 +92,20 @@ export function AgentPreview({
           backdropFilter: 'blur(12px)'
         }}
       >
-        <span style={{ opacity: 0.6 }}>{actionName ?? 'Agent'}</span>
-        <span style={{ opacity: 0.4 }}>Computing&hellip;</span>
+        <span style={{ opacity: 0.8 }}>{actionName ?? 'Agent'}</span>
+        <span style={{ opacity: 0.5 }}>Computing&hellip;</span>
+        <button
+          onClick={onCancel}
+          style={{
+            ...btnBase,
+            backgroundColor: 'rgba(239,83,80,0.12)',
+            border: '1px solid rgba(239,83,80,0.35)',
+            color: '#f87171'
+          }}
+          title="Stop (Esc)"
+        >
+          Stop
+        </button>
       </div>
     )
   }

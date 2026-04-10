@@ -8,6 +8,8 @@ vi.mock('../../../store/canvas-store', () => ({
       viewport: { x: 0, y: 0, zoom: 1 },
       setViewport: vi.fn(),
       focusFrames: {},
+      selectedNodeIds: new Set<string>(),
+      nodes: [{ id: 'n1' }],
       showAllEdges: false,
       toggleShowAllEdges: vi.fn(),
       jumpToFocusFrame: vi.fn()
@@ -19,11 +21,21 @@ vi.mock('../../../store/canvas-store', () => ({
 vi.mock('../../../store/vault-store', () => ({
   useVaultStore: Object.assign(
     vi.fn((selector) => {
-      const state = { vaultPath: '/test', rawFileCount: 42 }
+      const state = {
+        vaultPath: '/test',
+        rawFileCount: 42,
+        artifacts: [],
+        graph: null
+      }
       return selector(state)
     }),
     {
-      getState: vi.fn(() => ({ vaultPath: '/test', rawFileCount: 42 }))
+      getState: vi.fn(() => ({
+        vaultPath: '/test',
+        rawFileCount: 42,
+        artifacts: [],
+        graph: null
+      }))
     }
   )
 }))
@@ -54,7 +66,8 @@ vi.mock('../../../design/tokens', () => ({
   colors: {
     text: { primary: '#fff', secondary: '#aaa', muted: '#555' },
     accent: { default: '#7c3aed', hover: '#8b5cf6', muted: 'rgba(124,58,237,0.1)' },
-    claude: { warning: '#f00' }
+    claude: { warning: '#f00' },
+    semantic: { tension: '#ecaa0b' }
   }
 }))
 
@@ -116,8 +129,11 @@ const baseProps = {
   onOpenImport: vi.fn(),
   onOrganize: vi.fn(),
   organizePhase: 'idle',
-  onThink: vi.fn(),
-  thinkBusy: false,
+  onAgentAction: vi.fn(),
+  onStopAgent: vi.fn(),
+  agentPhase: 'idle' as const,
+  activeAction: null,
+  onClear: vi.fn(),
   onActionSelect: vi.fn()
 }
 
@@ -193,5 +209,38 @@ describe('CanvasToolbar actions button', () => {
 
     fireEvent.click(btn)
     expect(screen.queryByTestId('action-menu')).toBeNull()
+  })
+})
+
+describe('CanvasToolbar clear button', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('renders a clear button with data-testid="canvas-clear"', () => {
+    render(<CanvasToolbar {...baseProps} />)
+    expect(screen.getByTestId('canvas-clear')).toBeTruthy()
+  })
+
+  it('calls onClear when clear button is clicked and canvas has nodes', () => {
+    const onClear = vi.fn()
+    render(<CanvasToolbar {...baseProps} onClear={onClear} />)
+    fireEvent.click(screen.getByTestId('canvas-clear'))
+    expect(onClear).toHaveBeenCalledOnce()
+  })
+
+  it('does not call onClear when agent is computing', () => {
+    const onClear = vi.fn()
+    render(
+      <CanvasToolbar
+        {...baseProps}
+        onClear={onClear}
+        agentPhase="computing"
+        activeAction="compile"
+      />
+    )
+    fireEvent.click(screen.getByTestId('canvas-clear'))
+    expect(onClear).not.toHaveBeenCalled()
   })
 })

@@ -21,7 +21,6 @@ import { CommandStack } from './canvas-commands'
 import { saveCanvas } from './canvas-io'
 import { TE_DIR } from '@shared/constants'
 import { CanvasToolbar } from './CanvasToolbar'
-import { CanvasActionBar } from './CanvasActionBar'
 import { CanvasPromptInput } from './CanvasPromptInput'
 import { CanvasMinimap } from './CanvasMinimap'
 import { ZoomIndicator } from './ZoomIndicator'
@@ -73,6 +72,12 @@ const folderMapProgressStyle: React.CSSProperties = {
   fontSize: '13px',
   color: 'var(--color-text-secondary)',
   zIndex: 10
+}
+
+function agentActionDisplayName(action: string | null): string | null {
+  if (!action) return null
+  if (action === 'challenge') return 'Think'
+  return action.charAt(0).toUpperCase() + action.slice(1)
 }
 
 export function CanvasView(): React.ReactElement {
@@ -732,16 +737,11 @@ export function CanvasView(): React.ReactElement {
           onOpenImport={() => setImportOpen(true)}
           onOrganize={ontology.startOrganize}
           organizePhase={ontology.phase}
-          onThink={() => agent.trigger('challenge')}
-          thinkBusy={agent.phase !== 'idle'}
-          onActionSelect={handleAction}
-        />
-        <CanvasActionBar
-          onTriggerAction={agent.trigger}
-          onStop={agent.cancel}
+          onAgentAction={agent.trigger}
+          onStopAgent={agent.cancel}
+          agentPhase={agent.phase}
           activeAction={agent.activeAction}
-          phase={agent.phase}
-          onClearCanvas={() => {
+          onClear={() => {
             useCanvasStore.setState({
               nodes: [],
               edges: [],
@@ -755,6 +755,7 @@ export function CanvasView(): React.ReactElement {
               isDirty: true
             })
           }}
+          onActionSelect={handleAction}
         />
         {showPromptInput && agent.phase === 'idle' && (
           <CanvasPromptInput
@@ -832,7 +833,7 @@ export function CanvasView(): React.ReactElement {
         {(agent.phase === 'computing' || agent.phase === 'preview' || agent.phase === 'error') && (
           <AgentPreview
             phase={agent.phase}
-            actionName={agent.activeAction ? `/${agent.activeAction}` : null}
+            actionName={agentActionDisplayName(agent.activeAction)}
             plan={agent.pendingPlan}
             errorMessage={agent.errorMessage}
             onApply={agent.apply}

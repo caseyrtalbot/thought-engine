@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useSettingsStore } from '../../store/settings-store'
@@ -9,6 +9,8 @@ import { colors } from '../../design/tokens'
 import { useClaudeStatus } from '../../hooks/use-claude-status'
 import { ActionMenu } from './ActionMenu'
 import type { ActionDefinition } from '@shared/action-types'
+import type { AgentActionName } from '@shared/agent-action-types'
+import type { AgentPhase } from '../../hooks/use-agent-orchestrator'
 import { useSidebarSelectionStore } from '../../store/sidebar-selection-store'
 
 interface CanvasToolbarProps {
@@ -20,8 +22,11 @@ interface CanvasToolbarProps {
   readonly onOpenImport: () => void
   readonly onOrganize: () => void
   readonly organizePhase: string
-  readonly onThink: () => void
-  readonly thinkBusy: boolean
+  readonly onAgentAction: (action: AgentActionName) => void
+  readonly onStopAgent: () => void
+  readonly agentPhase: AgentPhase
+  readonly activeAction: AgentActionName | null
+  readonly onClear: () => void
   readonly onActionSelect: (actionId: string) => void
 }
 
@@ -49,18 +54,25 @@ export function CanvasToolbar({
   onOpenImport,
   onOrganize,
   organizePhase,
-  onThink,
-  thinkBusy,
+  onAgentAction,
+  onStopAgent,
+  agentPhase,
+  activeAction,
+  onClear,
   onActionSelect
 }: CanvasToolbarProps): React.ReactElement {
   const viewport = useCanvasStore((s) => s.viewport)
   const setViewport = useCanvasStore((s) => s.setViewport)
   const focusFrames = useCanvasStore((s) => s.focusFrames)
+  const selectedNodeIds = useCanvasStore((s) => s.selectedNodeIds)
+  const hasNodes = useCanvasStore((s) => s.nodes.length > 0)
   const showAllEdges = useCanvasStore((s) => s.showAllEdges)
   const toggleShowAllEdges = useCanvasStore((s) => s.toggleShowAllEdges)
   const gridDotVisibility = useSettingsStore((s) => s.env.gridDotVisibility)
   const cardBlur = useSettingsStore((s) => s.env.cardBlur)
   const setEnv = useSettingsStore((s) => s.setEnv)
+  const artifacts = useVaultStore((s) => s.artifacts)
+  const graph = useVaultStore((s) => s.graph)
   const [tileMenuOpen, setTileMenuOpen] = useState(false)
   const [envMenuOpen, setEnvMenuOpen] = useState(false)
   const [agentFlyoutOpen, setAgentFlyoutOpen] = useState(false)
@@ -77,6 +89,30 @@ export function CanvasToolbar({
     sidebarSelectedCount > 0
       ? `${sidebarSelectedCount} file${sidebarSelectedCount !== 1 ? 's' : ''} selected`
       : `Entire vault (${rawFileCount} notes)`
+
+  const thinkBusy = agentPhase !== 'idle'
+  const isComputing = agentPhase === 'computing'
+  const isCompileRunning = isComputing && activeAction === 'compile'
+  const isCompileBusy = isComputing && activeAction !== 'compile'
+
+  const unprocessedSourceCount = useMemo(() => {
+    if (!graph) return 0
+    const sourceArtifactIds = new Set<string>()
+    for (const artifact of artifacts) {
+      if (artifact.origin === 'source') sourceArtifactIds.add(artifact.id)
+    }
+    const compiledSourceIds = new Set<string>()
+    for (const edge of graph.edges) {
+      if (edge.kind === 'derived_from' && sourceArtifactIds.has(edge.target)) {
+        compiledSourceIds.add(edge.target)
+      }
+    }
+    return sourceArtifactIds.size - compiledSourceIds.size
+  }, [artifacts, graph])
+
+  const hasSelection = selectedNodeIds.size > 0
+  const compileEnabled = unprocessedSourceCount > 0 || hasSelection
+  const clearEnabled = hasNodes && !isComputing
 
   useEffect(() => {
     if (!tileMenuOpen && !envMenuOpen && !agentFlyoutOpen) return
@@ -117,6 +153,7 @@ export function CanvasToolbar({
 
   return (
     <div className="canvas-toolrail absolute top-3 left-3 z-30">
+      {/* INPUT: get stuff onto the canvas */}
       <div className="canvas-toolbtn-wrap">
         <button
           onClick={onAddCard}
@@ -163,289 +200,6 @@ export function CanvasToolbar({
         </button>
         <Tip label="Import notes" shortcut="⌘G" />
       </div>
-
-      <div className="canvas-toolrail__divider" />
-
-      <div className="canvas-toolbtn-wrap">
-        <button onClick={zoomIn} className="canvas-toolbtn">
-          +
-        </button>
-        <Tip label="Zoom in" />
-      </div>
-      <button
-        onClick={resetZoom}
-        className="canvas-toolbtn canvas-zoom-badge"
-        title={`${zoomPercent}% (click to reset)`}
-      >
-        {zoomPercent}%
-      </button>
-      <div className="canvas-toolbtn-wrap">
-        <button onClick={zoomOut} className="canvas-toolbtn">
-          -
-        </button>
-        <Tip label="Zoom out" />
-      </div>
-
-      <div className="canvas-toolrail__divider" />
-
-      <div className="canvas-toolbtn-wrap">
-        <button
-          onClick={onUndo}
-          className="canvas-toolbtn"
-          disabled={!canUndo}
-          data-testid="canvas-undo"
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <polyline points="3 7 6 4" />
-            <polyline points="3 7 6 10" />
-            <path d="M6 7h4a2 2 0 0 1 0 4H8" />
-          </svg>
-        </button>
-        <Tip label="Undo" shortcut="⌘Z" />
-      </div>
-      <div className="canvas-toolbtn-wrap">
-        <button
-          onClick={onRedo}
-          className="canvas-toolbtn"
-          disabled={!canRedo}
-          data-testid="canvas-redo"
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          >
-            <polyline points="11 7 8 4" />
-            <polyline points="11 7 8 10" />
-            <path d="M8 7H4a2 2 0 0 0 0 4h2" />
-          </svg>
-        </button>
-        <Tip label="Redo" shortcut="⇧⌘Z" />
-      </div>
-
-      <div className="canvas-toolrail__divider" />
-
-      <div ref={tileMenuRef} style={{ position: 'relative' }}>
-        <div className="canvas-toolbtn-wrap">
-          <button
-            onClick={() => setTileMenuOpen((prev) => !prev)}
-            className="canvas-toolbtn"
-            data-testid="canvas-tile"
-          >
-            <svg
-              width={14}
-              height={14}
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <rect x="1" y="1" width="5" height="5" rx="0.5" />
-              <rect x="8" y="1" width="5" height="5" rx="0.5" />
-              <rect x="1" y="8" width="5" height="5" rx="0.5" />
-              <rect x="8" y="8" width="5" height="5" rx="0.5" />
-            </svg>
-          </button>
-          <Tip label="Tile layout" shortcut="⌘L" />
-        </div>
-        {tileMenuOpen && (
-          <div
-            className="sidebar-popover absolute flex flex-col py-1"
-            style={{
-              top: 0,
-              left: '100%',
-              marginLeft: 6,
-              minWidth: 150,
-              zIndex: 50
-            }}
-          >
-            <button
-              className="sidebar-popover-item"
-              style={{ color: colors.text.primary }}
-              onClick={() => {
-                const vp = useCanvasStore.getState().viewport
-                const el = document.querySelector('[data-canvas-surface]')
-                const w = el?.clientWidth ?? 1920
-                const h = el?.clientHeight ?? 1080
-                const centerX = (-vp.x + w / 2) / vp.zoom
-                const centerY = (-vp.y + h / 2) / vp.zoom
-                const { artifacts, graph, fileToId } = useVaultStore.getState()
-                const fileToIdMap = new Map(Object.entries(fileToId))
-                const artMap = new Map(artifacts.map((a) => [a.id, { id: a.id, tags: a.tags }]))
-                useCanvasStore
-                  .getState()
-                  .applySemanticLayout({ x: centerX, y: centerY }, fileToIdMap, artMap, graph.edges)
-                setTileMenuOpen(false)
-              }}
-            >
-              Organize by topic
-            </button>
-            <div className="sidebar-popover-divider mx-3 my-1" />
-            {TILE_PATTERNS.map((p) => (
-              <button
-                key={p.id}
-                className="sidebar-popover-item"
-                style={{ color: colors.text.secondary }}
-                onClick={() => {
-                  const vp = useCanvasStore.getState().viewport
-                  const el = document.querySelector('[data-canvas-surface]')
-                  const w = el?.clientWidth ?? 1920
-                  const h = el?.clientHeight ?? 1080
-                  const centerX = (-vp.x + w / 2) / vp.zoom
-                  const centerY = (-vp.y + h / 2) / vp.zoom
-                  useCanvasStore.getState().applyTileLayout(p.id as TilePattern, {
-                    x: centerX,
-                    y: centerY
-                  })
-                  setTileMenuOpen(false)
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="canvas-toolbtn-wrap">
-        <button
-          onClick={onOrganize}
-          disabled={organizePhase === 'processing'}
-          className={`canvas-toolbtn${organizePhase === 'processing' ? '' : ''}`}
-          data-testid="canvas-organize"
-          style={{ cursor: organizePhase === 'processing' ? 'wait' : undefined }}
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Nested regions / ontology grouping icon */}
-            <rect x="1" y="1" width="12" height="12" rx="2" />
-            <rect x="3" y="3" width="4" height="3.5" rx="0.8" />
-            <rect x="3" y="8" width="3" height="3" rx="0.8" />
-            <rect x="8" y="5" width="3.5" height="3.5" rx="0.8" />
-          </svg>
-        </button>
-        <Tip label={organizePhase === 'processing' ? 'Organizing\u2026' : 'Organize'} />
-      </div>
-
-      <div className="canvas-toolbtn-wrap">
-        <button
-          onClick={() => {
-            if (!thinkBusy) onThink()
-          }}
-          className="canvas-toolbtn"
-          disabled={thinkBusy}
-          data-testid="canvas-think"
-          style={{
-            color: thinkBusy ? colors.text.muted : colors.semantic.tension,
-            cursor: thinkBusy ? 'wait' : undefined
-          }}
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Sparkle: 4-point star — challenge surfaces insights/tensions */}
-            <path d="M8 2 L9.5 6.5 L14 8 L9.5 9.5 L8 14 L6.5 9.5 L2 8 L6.5 6.5 Z" />
-          </svg>
-        </button>
-        <Tip label={thinkBusy ? 'Thinking\u2026' : 'Think'} />
-      </div>
-
-      <div className="canvas-toolrail__divider" />
-
-      <div className="canvas-toolbtn-wrap">
-        <button
-          onClick={toggleShowAllEdges}
-          className={`canvas-toolbtn${showAllEdges ? ' canvas-toolbtn--active' : ''}`}
-        >
-          <svg
-            width={14}
-            height={14}
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
-            <circle cx="4" cy="4" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <line x1="5.5" y1="5.5" x2="10.5" y2="10.5" />
-          </svg>
-        </button>
-        <Tip label={showAllEdges ? 'Hide edges' : 'Show edges'} />
-      </div>
-
-      <div ref={agentFlyoutRef} style={{ position: 'relative' }}>
-        <div className="canvas-toolbtn-wrap">
-          <button
-            onClick={async () => {
-              if (agentFlyoutOpen) {
-                setAgentFlyoutOpen(false)
-                return
-              }
-              const listed = await window.api.actions.list()
-              setLoadedActions(listed as ActionDefinition[])
-              setAgentFlyoutOpen(true)
-            }}
-            className="canvas-toolbtn"
-            data-testid="canvas-actions"
-          >
-            <svg
-              width={14}
-              height={14}
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="8" cy="8" r="6" />
-              <path d="M8 5v6M5 8h6" />
-            </svg>
-          </button>
-          <Tip label="Actions" />
-        </div>
-        {agentFlyoutOpen && (
-          <ActionMenu
-            actions={loadedActions}
-            selectedCount={sidebarSelectedCount}
-            scopeLabel={scopeLabel}
-            onSelect={(id) => {
-              setAgentFlyoutOpen(false)
-              onActionSelect(id)
-            }}
-            onClose={() => setAgentFlyoutOpen(false)}
-          />
-        )}
-      </div>
-
-      <div className="canvas-toolrail__divider" />
-
       <div className="canvas-toolbtn-wrap" style={{ position: 'relative' }}>
         <button
           onClick={async () => {
@@ -453,7 +207,6 @@ export function CanvasToolbar({
             const vaultPath = useVaultStore.getState().vaultPath
             if (!vaultPath) return
 
-            // Ensure CLAUDE.md exists
             const claudeMdPath = `${vaultPath}/CLAUDE.md`
             const exists = await window.api.fs.fileExists(claudeMdPath)
             if (!exists) {
@@ -461,7 +214,6 @@ export function CanvasToolbar({
               await window.api.fs.writeFile(claudeMdPath, generateClaudeMd(vaultName))
             }
 
-            // Add a terminal card to the canvas with claude as initial command
             const vp = useCanvasStore.getState().viewport
             const node = createCanvasNode(
               'terminal',
@@ -511,6 +263,47 @@ export function CanvasToolbar({
 
       <div className="canvas-toolrail__divider" />
 
+      {/* VIEW: how am I seeing it */}
+      <div className="canvas-toolbtn-wrap">
+        <button onClick={zoomIn} className="canvas-toolbtn">
+          +
+        </button>
+        <Tip label="Zoom in" />
+      </div>
+      <button
+        onClick={resetZoom}
+        className="canvas-toolbtn canvas-zoom-badge"
+        title={`${zoomPercent}% (click to reset)`}
+      >
+        {zoomPercent}%
+      </button>
+      <div className="canvas-toolbtn-wrap">
+        <button onClick={zoomOut} className="canvas-toolbtn">
+          -
+        </button>
+        <Tip label="Zoom out" />
+      </div>
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={toggleShowAllEdges}
+          className={`canvas-toolbtn${showAllEdges ? ' canvas-toolbtn--active' : ''}`}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <circle cx="4" cy="4" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <line x1="5.5" y1="5.5" x2="10.5" y2="10.5" />
+          </svg>
+        </button>
+        <Tip label={showAllEdges ? 'Hide edges' : 'Show edges'} />
+      </div>
       <div ref={envMenuRef} style={{ position: 'relative' }}>
         <div className="canvas-toolbtn-wrap">
           <button
@@ -596,6 +389,318 @@ export function CanvasToolbar({
 
       <div className="canvas-toolrail__divider" />
 
+      {/* HISTORY: take it back */}
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={onUndo}
+          className="canvas-toolbtn"
+          disabled={!canUndo}
+          data-testid="canvas-undo"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <polyline points="3 7 6 4" />
+            <polyline points="3 7 6 10" />
+            <path d="M6 7h4a2 2 0 0 1 0 4H8" />
+          </svg>
+        </button>
+        <Tip label="Undo" shortcut="⌘Z" />
+      </div>
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={onRedo}
+          className="canvas-toolbtn"
+          disabled={!canRedo}
+          data-testid="canvas-redo"
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <polyline points="11 7 8 4" />
+            <polyline points="11 7 8 10" />
+            <path d="M8 7H4a2 2 0 0 0 0 4h2" />
+          </svg>
+        </button>
+        <Tip label="Redo" shortcut="⇧⌘Z" />
+      </div>
+
+      <div className="canvas-toolrail__divider" />
+
+      {/* ARRANGE: move things around */}
+      <div ref={tileMenuRef} style={{ position: 'relative' }}>
+        <div className="canvas-toolbtn-wrap">
+          <button
+            onClick={() => setTileMenuOpen((prev) => !prev)}
+            className="canvas-toolbtn"
+            data-testid="canvas-tile"
+          >
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="1" y="1" width="5" height="5" rx="0.5" />
+              <rect x="8" y="1" width="5" height="5" rx="0.5" />
+              <rect x="1" y="8" width="5" height="5" rx="0.5" />
+              <rect x="8" y="8" width="5" height="5" rx="0.5" />
+            </svg>
+          </button>
+          <Tip label="Tile layout" shortcut="⌘L" />
+        </div>
+        {tileMenuOpen && (
+          <div
+            className="sidebar-popover absolute flex flex-col py-1"
+            style={{
+              top: 0,
+              left: '100%',
+              marginLeft: 6,
+              minWidth: 150,
+              zIndex: 50
+            }}
+          >
+            <button
+              className="sidebar-popover-item"
+              style={{ color: colors.text.primary }}
+              onClick={() => {
+                const vp = useCanvasStore.getState().viewport
+                const el = document.querySelector('[data-canvas-surface]')
+                const w = el?.clientWidth ?? 1920
+                const h = el?.clientHeight ?? 1080
+                const centerX = (-vp.x + w / 2) / vp.zoom
+                const centerY = (-vp.y + h / 2) / vp.zoom
+                const { artifacts, graph, fileToId } = useVaultStore.getState()
+                const fileToIdMap = new Map(Object.entries(fileToId))
+                const artMap = new Map(artifacts.map((a) => [a.id, { id: a.id, tags: a.tags }]))
+                useCanvasStore
+                  .getState()
+                  .applySemanticLayout({ x: centerX, y: centerY }, fileToIdMap, artMap, graph.edges)
+                setTileMenuOpen(false)
+              }}
+            >
+              Organize by topic
+            </button>
+            <div className="sidebar-popover-divider mx-3 my-1" />
+            {TILE_PATTERNS.map((p) => (
+              <button
+                key={p.id}
+                className="sidebar-popover-item"
+                style={{ color: colors.text.secondary }}
+                onClick={() => {
+                  const vp = useCanvasStore.getState().viewport
+                  const el = document.querySelector('[data-canvas-surface]')
+                  const w = el?.clientWidth ?? 1920
+                  const h = el?.clientHeight ?? 1080
+                  const centerX = (-vp.x + w / 2) / vp.zoom
+                  const centerY = (-vp.y + h / 2) / vp.zoom
+                  useCanvasStore.getState().applyTileLayout(p.id as TilePattern, {
+                    x: centerX,
+                    y: centerY
+                  })
+                  setTileMenuOpen(false)
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={onOrganize}
+          disabled={organizePhase === 'processing'}
+          className="canvas-toolbtn"
+          data-testid="canvas-organize"
+          style={{ cursor: organizePhase === 'processing' ? 'wait' : undefined }}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="1" y="1" width="12" height="12" rx="2" />
+            <rect x="3" y="3" width="4" height="3.5" rx="0.8" />
+            <rect x="3" y="8" width="3" height="3" rx="0.8" />
+            <rect x="8" y="5" width="3.5" height="3.5" rx="0.8" />
+          </svg>
+        </button>
+        <Tip label={organizePhase === 'processing' ? 'Organizing\u2026' : 'Organize'} />
+      </div>
+
+      <div className="canvas-toolrail__divider" />
+
+      {/* THINK: have the agent do something */}
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={() => {
+            if (hasNodes && !thinkBusy) onAgentAction('challenge')
+          }}
+          className="canvas-toolbtn"
+          disabled={thinkBusy || !hasNodes}
+          data-testid="canvas-think"
+          style={{
+            color: thinkBusy || !hasNodes ? colors.text.muted : colors.semantic.tension,
+            cursor: thinkBusy ? 'wait' : undefined,
+            opacity: !hasNodes ? 0.4 : 1
+          }}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {/* Sparkle: 4-point star — challenge surfaces insights/tensions */}
+            <path d="M8 2 L9.5 6.5 L14 8 L9.5 9.5 L8 14 L6.5 9.5 L2 8 L6.5 6.5 Z" />
+          </svg>
+        </button>
+        <Tip
+          label={
+            thinkBusy
+              ? 'Thinking\u2026'
+              : !hasNodes
+                ? 'Think \u2014 add cards first'
+                : 'Think \u2014 challenge for insights'
+          }
+        />
+      </div>
+      <div className="canvas-toolbtn-wrap" style={{ position: 'relative' }}>
+        <button
+          onClick={() => {
+            if (isCompileRunning) {
+              onStopAgent()
+            } else if (!isCompileBusy && compileEnabled) {
+              onAgentAction('compile')
+            }
+          }}
+          className="canvas-toolbtn"
+          disabled={(!compileEnabled && !isCompileRunning) || isCompileBusy}
+          data-testid="canvas-compile"
+          style={{
+            color: isCompileRunning
+              ? '#f87171'
+              : compileEnabled
+                ? colors.text.secondary
+                : colors.text.muted,
+            cursor: isCompileBusy ? 'not-allowed' : undefined,
+            opacity: (!compileEnabled && !isCompileRunning) || isCompileBusy ? 0.4 : 1
+          }}
+        >
+          {isCompileRunning ? (
+            <svg width={14} height={14} viewBox="0 0 14 14" fill="currentColor">
+              <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
+            </svg>
+          ) : (
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {/* Arrow into base: sources converging into structure */}
+              <path d="M7 2 L7 9" />
+              <path d="M4 6 L7 9 L10 6" />
+              <path d="M3 12 L11 12" />
+            </svg>
+          )}
+        </button>
+        {unprocessedSourceCount > 0 && !isCompileRunning && (
+          <span
+            className="absolute rounded-full"
+            style={{
+              top: 2,
+              right: 2,
+              width: 6,
+              height: 6,
+              backgroundColor: colors.accent.default
+            }}
+          />
+        )}
+        <Tip
+          label={
+            isCompileRunning
+              ? 'Stop compile'
+              : unprocessedSourceCount > 0
+                ? `Compile \u2014 ${unprocessedSourceCount} unprocessed source${unprocessedSourceCount === 1 ? '' : 's'}`
+                : 'Compile \u2014 process sources'
+          }
+        />
+      </div>
+      <div ref={agentFlyoutRef} style={{ position: 'relative' }}>
+        <div className="canvas-toolbtn-wrap">
+          <button
+            onClick={async () => {
+              if (agentFlyoutOpen) {
+                setAgentFlyoutOpen(false)
+                return
+              }
+              const listed = await window.api.actions.list()
+              setLoadedActions(listed as ActionDefinition[])
+              setAgentFlyoutOpen(true)
+            }}
+            className="canvas-toolbtn"
+            data-testid="canvas-actions"
+          >
+            <svg
+              width={14}
+              height={14}
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="8" cy="8" r="6" />
+              <path d="M8 5v6M5 8h6" />
+            </svg>
+          </button>
+          <Tip label="Actions" />
+        </div>
+        {agentFlyoutOpen && (
+          <ActionMenu
+            actions={loadedActions}
+            selectedCount={sidebarSelectedCount}
+            scopeLabel={scopeLabel}
+            onSelect={(id) => {
+              setAgentFlyoutOpen(false)
+              onActionSelect(id)
+            }}
+            onClose={() => setAgentFlyoutOpen(false)}
+          />
+        )}
+      </div>
+
+      <div className="canvas-toolrail__divider" />
+
+      {/* FRAMES: spatial bookmarks */}
       <div className="flex w-full flex-col items-center gap-1" style={{ padding: '2px 0' }}>
         {[1, 2, 3, 4, 5].map((slot) => {
           const filled = String(slot) in focusFrames
@@ -616,6 +721,49 @@ export function CanvasToolbar({
             />
           )
         })}
+      </div>
+
+      <div className="canvas-toolrail__divider" />
+
+      {/* DESTRUCTIVE: burn it down */}
+      <div className="canvas-toolbtn-wrap">
+        <button
+          onClick={() => {
+            if (clearEnabled) onClear()
+          }}
+          className="canvas-toolbtn"
+          disabled={!clearEnabled}
+          data-testid="canvas-clear"
+          style={{
+            color: colors.text.secondary,
+            opacity: clearEnabled ? 1 : 0.4,
+            cursor: clearEnabled ? 'pointer' : 'not-allowed'
+          }}
+          onMouseEnter={(e) => {
+            if (clearEnabled) e.currentTarget.style.color = '#ef4444'
+          }}
+          onMouseLeave={(e) => {
+            if (clearEnabled) e.currentTarget.style.color = colors.text.secondary
+          }}
+        >
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 4 L11.5 4" />
+            <path d="M5.5 4 L5.5 2.5 L8.5 2.5 L8.5 4" />
+            <path d="M4 4 L4.5 12 L9.5 12 L10 4" />
+            <path d="M6 6.5 L6 10" />
+            <path d="M8 6.5 L8 10" />
+          </svg>
+        </button>
+        <Tip label="Clear canvas" />
       </div>
     </div>
   )
