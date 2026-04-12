@@ -1,5 +1,6 @@
 import matter from 'gray-matter'
 import type { Artifact, Signal } from '@shared/types'
+import type { AgentArtifactDraft } from '@shared/agent-artifact-types'
 
 // Disable gray-matter's JavaScript engine (uses eval) to prevent code injection
 const SAFE_MATTER_OPTIONS = {
@@ -155,4 +156,27 @@ export function serializeArtifact(artifact: Artifact): string {
   }
 
   return matter.stringify(artifact.body, frontmatter)
+}
+
+export function serializeDraft(draft: AgentArtifactDraft, id: string): string {
+  const now = new Date().toISOString()
+  const frontmatter: Record<string, unknown> = {
+    id,
+    title: draft.title,
+    type: draft.kind === 'compiled-article' ? 'output' : draft.kind,
+    created: now,
+    modified: now
+  }
+
+  if (draft.origin !== 'human') frontmatter.origin = draft.origin
+  if (draft.sources.length > 0) frontmatter.sources = [...draft.sources]
+  if (draft.tags && draft.tags.length > 0) frontmatter.tags = [...draft.tags]
+
+  if (draft.frontmatterExtras) {
+    for (const [key, value] of Object.entries(draft.frontmatterExtras)) {
+      frontmatter[key] = value
+    }
+  }
+
+  return matter.stringify(draft.body, frontmatter)
 }
