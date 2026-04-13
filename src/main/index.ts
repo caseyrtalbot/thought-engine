@@ -14,6 +14,7 @@ import { registerAgentIpc, setAgentServices, stopAgentServices } from './ipc/age
 import { registerActionsIpc, setActionsVaultRoot } from './ipc/actions'
 import { registerCanvasIpc } from './ipc/canvas'
 import { registerAgentActionIpc } from './ipc/agent-actions'
+import { registerArtifactIpc } from './ipc/artifact'
 import { registerGhostEmergeIpc } from './ipc/ghost-emerge'
 import { registerClaudeStatusIpc } from './ipc/claude-status'
 import { McpLifecycle } from './services/mcp-lifecycle'
@@ -56,7 +57,10 @@ function shouldIgnoreProcessError(error: Error): boolean {
   return error.message === 'write EPIPE'
 }
 
-function reportProcessError(kind: 'uncaughtException' | 'unhandledRejection', error: unknown): void {
+function reportProcessError(
+  kind: 'uncaughtException' | 'unhandledRejection',
+  error: unknown
+): void {
   const normalized = normalizeProcessError(error)
   if (kind === 'uncaughtException' && shouldIgnoreProcessError(normalized)) {
     return
@@ -254,6 +258,7 @@ app.whenReady().then(() => {
   registerActionsIpc()
   registerCanvasIpc()
   registerAgentActionIpc()
+  registerArtifactIpc()
   registerGhostEmergeIpc()
 
   app.on('activate', function () {
