@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { colors } from '../../design/tokens'
+import { useVaultHealthStore } from '../../store/vault-health-store'
+import { useTabStore } from '../../store/tab-store'
 
 interface ContextMenuState {
   readonly x: number
@@ -18,6 +20,55 @@ interface VaultSelectorProps {
 
 function vaultDisplayName(path: string): string {
   return path.split('/').pop() ?? path
+}
+
+function HealthDot() {
+  const status = useVaultHealthStore((s) => s.status)
+  const runs = useVaultHealthStore((s) => s.runs)
+  const issues = useVaultHealthStore((s) => s.issues)
+  const openTab = useTabStore((s) => s.openTab)
+
+  const fill =
+    status === 'green'
+      ? colors.accent.default
+      : status === 'degraded'
+        ? colors.claude.warning
+        : colors.text.muted
+
+  const passingCount = runs.filter((r) => r.passed).length
+  const totalCount = runs.length
+
+  const title =
+    status === 'green'
+      ? `Vault healthy \u2022 ${passingCount}/${totalCount} checks passing`
+      : status === 'degraded'
+        ? `${issues.length} issues, click for details`
+        : 'Checking\u2026'
+
+  const handleClick = () => {
+    if (status !== 'green') {
+      openTab({ id: 'health', type: 'health', label: 'Health', closeable: true })
+    }
+  }
+
+  return (
+    <svg
+      width={6}
+      height={6}
+      viewBox="0 0 6 6"
+      data-testid="health-dot"
+      onClick={handleClick}
+      style={{
+        marginLeft: 6,
+        cursor: status !== 'green' ? 'pointer' : 'default',
+        flexShrink: 0
+      }}
+      role="status"
+    >
+      <title>{title}</title>
+      <circle cx={3} cy={3} r={3} fill={fill} />
+    </svg>
+  )
 }
 
 export function VaultSelector({
@@ -81,54 +132,57 @@ export function VaultSelector({
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        onClick={toggle}
-        onContextMenu={(e) => {
-          if (currentPath) {
-            e.preventDefault()
-            e.stopPropagation()
-            setCtxMenu({ x: e.clientX, y: e.clientY, path: currentPath })
-          }
-        }}
-        className="sidebar-vault-button"
-        data-open={open ? 'true' : 'false'}
-        style={{ color: colors.text.primary }}
-      >
-        <svg
-          width={14}
-          height={14}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ color: colors.text.muted, flexShrink: 0 }}
-        >
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-        </svg>
-        <span className="sidebar-vault-copy">
-          <span className="sidebar-vault-name truncate">{currentName}</span>
-          {currentPath && (
-            <span className="sidebar-vault-path truncate" title={currentPath}>
-              {currentPath}
-            </span>
-          )}
-        </span>
-        <svg
-          width={10}
-          height={10}
-          viewBox="0 0 10 10"
-          style={{
-            color: colors.text.muted,
-            flexShrink: 0,
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: '150ms ease-out'
+      <div className="flex items-center">
+        <button
+          onClick={toggle}
+          onContextMenu={(e) => {
+            if (currentPath) {
+              e.preventDefault()
+              e.stopPropagation()
+              setCtxMenu({ x: e.clientX, y: e.clientY, path: currentPath })
+            }
           }}
+          className="sidebar-vault-button"
+          data-open={open ? 'true' : 'false'}
+          style={{ color: colors.text.primary }}
         >
-          <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </button>
+          <svg
+            width={14}
+            height={14}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ color: colors.text.muted, flexShrink: 0 }}
+          >
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="sidebar-vault-copy">
+            <span className="sidebar-vault-name truncate">{currentName}</span>
+            {currentPath && (
+              <span className="sidebar-vault-path truncate" title={currentPath}>
+                {currentPath}
+              </span>
+            )}
+          </span>
+          <svg
+            width={10}
+            height={10}
+            viewBox="0 0 10 10"
+            style={{
+              color: colors.text.muted,
+              flexShrink: 0,
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: '150ms ease-out'
+            }}
+          >
+            <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </button>
+        {currentPath && <HealthDot />}
+      </div>
 
       {open && (
         <div
