@@ -137,9 +137,13 @@ export function useAgentOrchestrator(
     [containerSize, setPhase]
   )
 
-  const apply = useCallback(() => {
+  const apply = useCallback(async () => {
     if (!state.pendingPlan || !commandStack.current) return
-    applyAgentResult(state.pendingPlan, commandStack.current)
+    try {
+      await applyAgentResult(state.pendingPlan, commandStack.current)
+    } catch (err) {
+      console.error('[agent-orchestrator] apply failed:', err)
+    }
     setPhase(IDLE_STATE)
   }, [state.pendingPlan, commandStack, setPhase])
 
