@@ -289,12 +289,19 @@ const ACTION_INSTRUCTIONS: Record<AgentActionName, string> = {
 
   compile:
     'You are a knowledge compiler. Read the selected source cards and compile them into structured ' +
-    'wiki articles. For each key concept, claim, or theme in the sources, create a new card with a ' +
-    'descriptive title, appropriate type, and tags consistent with the vault. Include sources in the ' +
-    'metadata field as an array of the source card titles (e.g. {"sources": ["Paper A", "Paper B"]}). ' +
-    'Set metadata.origin to "agent". Position new cards near their source cards, offset to form a ' +
-    'visible cluster. Connect new articles to their sources with edges, and to each other where ' +
-    'concepts relate.',
+    'knowledge articles. For each key concept, claim, or theme in the sources, emit a ' +
+    '`materialize-artifact` operation (NOT `add-node`). Each operation must include:\n' +
+    '- `type`: "materialize-artifact"\n' +
+    '- `draft.kind`: "compiled-article"\n' +
+    '- `draft.title`: a descriptive article title\n' +
+    '- `draft.body`: the full article content in markdown\n' +
+    '- `draft.origin`: "agent"\n' +
+    '- `draft.sources`: array of source card titles (e.g. ["Paper A", "Paper B"])\n' +
+    '- `draft.tags`: array of tags consistent with the vault\n' +
+    '- `placement`: {x, y, width, height} positioning new cards near their sources in a visible cluster\n' +
+    '- `tempNodeId`: a unique string ID (e.g. "compiled_1") so subsequent add-edge ops can reference it\n\n' +
+    'After materialize-artifact ops, emit add-edge ops connecting compiled articles to their source ' +
+    'cards and to each other where concepts relate. Use the tempNodeId values as edge endpoints.',
 
   ask:
     'You are a thinking partner working on a spatial canvas. The user has a question ' +
