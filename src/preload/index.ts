@@ -14,6 +14,7 @@ import type { AgentSidecarState, AgentSpawnRequest } from '../shared/agent-types
 import type { AgentActionRequest, AgentActionResponse } from '../shared/agent-action-types'
 import type { CanvasMutationPlan } from '../shared/canvas-mutation-types'
 import type { ClaudeStatus } from '../shared/claude-status-types'
+import type { AgentArtifactDraft, MaterializeResult } from '../shared/agent-artifact-types'
 
 const api = {
   window: {
@@ -128,6 +129,12 @@ const api = {
     getSnapshot: (canvasPath: string) => typedInvoke('canvas:get-snapshot', { canvasPath }),
     applyPlan: (canvasPath: string, expectedMtime: string, plan: CanvasMutationPlan) =>
       typedInvoke('canvas:apply-plan', { canvasPath, expectedMtime, plan })
+  },
+  artifact: {
+    materialize: (draft: AgentArtifactDraft, vaultPath: string): Promise<MaterializeResult> =>
+      typedInvoke('artifact:materialize', { draft, vaultPath }),
+    unmaterialize: (paths: readonly string[], vaultPath: string): Promise<void> =>
+      typedInvoke('artifact:unmaterialize', { paths, vaultPath })
   },
   document: {
     open: (path: string) => typedInvoke('doc:open', { path }),
