@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, act } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ---------------------------------------------------------------------------
@@ -76,13 +76,13 @@ vi.mock('../../../store/editor-store', () => ({
     vi.fn((selector) =>
       selector({
         activeNotePath: null,
-        openFile: vi.fn()
+        setActiveNote: vi.fn()
       })
     ),
     {
       getState: vi.fn(() => ({
         activeNotePath: null,
-        openFile: vi.fn()
+        setActiveNote: vi.fn()
       }))
     }
   )
@@ -234,10 +234,10 @@ describe('HealthPanel', () => {
     expect(screen.getByText('Stale worker index')).toBeDefined()
   })
 
-  it('clicking file link calls openTab and openFile', async () => {
+  it('clicking file link calls openTab and setActiveNote', async () => {
     const now = Date.now()
     const mockOpenTab = vi.fn()
-    const mockOpenFile = vi.fn()
+    const mockSetActiveNote = vi.fn()
 
     // Re-wire tab-store mock for this test
     const { useTabStore } = await import('../../../store/tab-store')
@@ -251,7 +251,7 @@ describe('HealthPanel', () => {
     const { useEditorStore } = await import('../../../store/editor-store')
     ;(useEditorStore.getState as ReturnType<typeof vi.fn>).mockReturnValue({
       activeNotePath: null,
-      openFile: mockOpenFile
+      setActiveNote: mockSetActiveNote
     })
 
     mockHealthState.status = 'degraded'
@@ -275,7 +275,7 @@ describe('HealthPanel', () => {
     fireEvent.click(fileLink)
 
     expect(mockOpenTab).toHaveBeenCalled()
-    expect(mockOpenFile).toHaveBeenCalledWith('/vault/broken.md')
+    expect(mockSetActiveNote).toHaveBeenCalledWith('/vault/broken.md')
   })
 
   it('refresh button disables for 500ms after click', async () => {

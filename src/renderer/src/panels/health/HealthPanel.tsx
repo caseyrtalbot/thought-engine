@@ -203,7 +203,7 @@ function IssueRow({ issue }: { readonly issue: HealthIssue }) {
       label: 'Editor',
       closeable: false
     })
-    useEditorStore.getState().openFile(issue.filePath)
+    useEditorStore.getState().setActiveNote(issue.filePath)
   }, [issue.filePath])
 
   const fileName = issue.filePath?.split('/').pop() ?? null

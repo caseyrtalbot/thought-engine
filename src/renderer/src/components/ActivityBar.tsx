@@ -3,6 +3,7 @@ import { useTabStore, TAB_DEFINITIONS } from '../store/tab-store'
 import type { TabType } from '../store/tab-store'
 import { useVaultStore } from '../store/vault-store'
 import { useUiStore } from '../store/ui-store'
+import { useVaultHealthStore } from '../store/vault-health-store'
 import { buildGhostIndex } from '../engine/ghost-index'
 import { colors } from '../design/tokens'
 import { Atom } from '@phosphor-icons/react'
@@ -69,6 +70,21 @@ const GraphIcon = (
 
 const GhostsIcon = <Atom size={ICON_SIZE} weight="regular" />
 
+const HealthIcon = (
+  <svg
+    width={ICON_SIZE}
+    height={ICON_SIZE}
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M2 10 L6 10 L8 4 L10 16 L12 8 L14 10 L18 10" />
+  </svg>
+)
+
 interface ActivityItem {
   view: TabType
   label: string
@@ -79,7 +95,8 @@ const ITEMS: ActivityItem[] = [
   { view: 'editor', label: 'Editor', icon: EditorIcon },
   { view: 'canvas', label: 'Canvas', icon: CanvasIcon },
   { view: 'graph', label: 'Graph', icon: GraphIcon },
-  { view: 'ghosts', label: 'Ghosts', icon: GhostsIcon }
+  { view: 'ghosts', label: 'Ghosts', icon: GhostsIcon },
+  { view: 'health', label: 'Health', icon: HealthIcon }
 ]
 
 function useGhostCount(): number {
@@ -123,6 +140,7 @@ export function ActivityBar({
   const activeTabId = useTabStore((s) => s.activeTabId)
   const openTab = useTabStore((s) => s.openTab)
   const ghostCount = useGhostCount()
+  const healthStatus = useVaultHealthStore((s) => s.status)
 
   return (
     <div
@@ -139,7 +157,11 @@ export function ActivityBar({
           const isActive = activeTabId === view
           const def = TAB_DEFINITIONS[view]
           const isGhostTab = view === 'ghosts'
+          const isHealthTab = view === 'health'
           const ghostTint = isGhostTab && ghostCount > 0 ? colors.text.primary : undefined
+          const healthTint =
+            isHealthTab && healthStatus === 'degraded' ? colors.text.primary : undefined
+          const hasTint = !!(ghostTint || healthTint)
           return (
             <button
               key={view}
@@ -154,9 +176,9 @@ export function ActivityBar({
                 {
                   width: 34,
                   height: 36,
-                  '--base-opacity': isActive ? 0.94 : isGhostTab && ghostTint ? 0.74 : 0.46,
+                  '--base-opacity': isActive ? 0.94 : hasTint ? 0.74 : 0.46,
                   '--base-bg': isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                  color: ghostTint ?? colors.text.primary,
+                  color: ghostTint ?? healthTint ?? colors.text.primary,
                   borderRadius: 10,
                   transition:
                     'opacity 150ms ease-out, background-color 150ms ease-out, color 300ms ease-out'
