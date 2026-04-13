@@ -38,6 +38,10 @@ export class DocumentManager {
   private readonly _pendingWriteTimers = new Map<string, ReturnType<typeof setTimeout>>()
   private _eventCallback: DocumentEventCallback | null = null
 
+  hasPendingWrite(path: string): boolean {
+    return this._pendingWrites.has(path)
+  }
+
   constructor(private readonly fs: FileService) {}
 
   onEvent(callback: DocumentEventCallback): void {

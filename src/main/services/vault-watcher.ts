@@ -23,6 +23,9 @@ const BATCH_INTERVAL_MS = 50
 export class VaultWatcher {
   private watcher: FSWatcher | null = null
   private batcher: EventBatcher | null = null
+  private ready = false
+  private lastEventAt = 0
+  private lastError: { error: string; at: number } | null = null
 
   async start(
     vaultPath: string,
@@ -44,7 +47,12 @@ export class VaultWatcher {
       awaitWriteFinish: { stabilityThreshold: 300, pollInterval: 100 }
     })
 
+    this.watcher.on('ready', () => {
+      this.ready = true
+    })
+
     const enqueue = (event: FileEvent) => (path: string) => {
+      this.lastEventAt = Date.now()
       this.batcher?.enqueue(path, event)
     }
 
@@ -52,7 +60,9 @@ export class VaultWatcher {
       .on('add', enqueue('add'))
       .on('change', enqueue('change'))
       .on('unlink', enqueue('unlink'))
-      .on('error', (err) => console.error('Vault watcher error:', err))
+      .on('error', (err) => {
+        this.lastError = { error: String(err), at: Date.now() }
+      })
   }
 
   async stop(): Promise<void> {
@@ -64,6 +74,17 @@ export class VaultWatcher {
       await this.watcher.close()
       this.watcher = null
     }
+    this.ready = false
+    this.lastEventAt = 0
+    this.lastError = null
+  }
+
+  getHealthSnapshot(): {
+    ready: boolean
+    lastEventAt: number
+    lastError: { error: string; at: number } | null
+  } {
+    return { ready: this.ready, lastEventAt: this.lastEventAt, lastError: this.lastError }
   }
 }
 

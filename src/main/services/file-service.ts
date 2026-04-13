@@ -12,6 +12,7 @@ import {
   teArtifactPath
 } from '../utils/paths'
 import { shouldIgnore } from './gitignore-filter'
+import type { FsErrorLog } from './fs-error-log'
 import type { Ignore } from 'ignore'
 import type { FilesystemFileEntry, VaultConfig, VaultState } from '../../shared/types'
 import {
@@ -42,24 +43,35 @@ const BUNDLED_ACTIONS: ReadonlyArray<{
 const IGNORED_PROJECT_DIRS = new Set(['node_modules', 'out', 'dist', 'build'])
 
 export class FileService {
+  private errorLog: FsErrorLog | null = null
+
+  setErrorLog(log: FsErrorLog): void {
+    this.errorLog = log
+  }
+
   async readFile(path: string): Promise<string> {
     return readFile(path, 'utf-8')
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const tmpPath = join(tmpdir(), `te-write-${randomUUID()}.tmp`)
     try {
-      await writeFile(tmpPath, content, 'utf-8')
-      await rename(tmpPath, path)
-    } catch (err: unknown) {
-      // Cross-device rename: fall back to same-directory atomic write
-      if ((err as NodeJS.ErrnoException).code === 'EXDEV') {
-        const localTmp = path + '.tmp'
-        await writeFile(localTmp, content, 'utf-8')
-        await rename(localTmp, path)
-      } else {
-        throw err
+      const tmpPath = join(tmpdir(), `te-write-${randomUUID()}.tmp`)
+      try {
+        await writeFile(tmpPath, content, 'utf-8')
+        await rename(tmpPath, path)
+      } catch (err: unknown) {
+        // Cross-device rename: fall back to same-directory atomic write
+        if ((err as NodeJS.ErrnoException).code === 'EXDEV') {
+          const localTmp = path + '.tmp'
+          await writeFile(localTmp, content, 'utf-8')
+          await rename(localTmp, path)
+        } else {
+          throw err
+        }
       }
+    } catch (err: unknown) {
+      this.errorLog?.push(path, String(err))
+      throw err
     }
   }
 
