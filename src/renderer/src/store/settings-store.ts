@@ -17,6 +17,8 @@ interface SettingsState {
   // Daily notes
   readonly dailyNoteFolder: string
   readonly dailyNoteTemplate: string
+  // Canvas text-card save destination
+  readonly canvasTextSaveFolder: string
 }
 
 interface SettingsActions {
@@ -33,6 +35,7 @@ interface SettingsActions {
   setTemplateFolder: (value: string) => void
   setDailyNoteFolder: (value: string) => void
   setDailyNoteTemplate: (value: string) => void
+  setCanvasTextSaveFolder: (value: string) => void
 }
 
 type SettingsStore = SettingsState & SettingsActions
@@ -52,6 +55,7 @@ export const useSettingsStore = create<SettingsStore>()(
       templateFolder: 'templates',
       dailyNoteFolder: 'daily',
       dailyNoteTemplate: '',
+      canvasTextSaveFolder: 'Inbox',
 
       setEnv: (key, value) => set((state) => ({ env: { ...state.env, [key]: value } })),
       resetEnv: () => set({ env: { ...ENV_DEFAULTS } }),
@@ -65,7 +69,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setNodeBrightness: (value) => set({ nodeBrightness: value }),
       setTemplateFolder: (value) => set({ templateFolder: value }),
       setDailyNoteFolder: (value) => set({ dailyNoteFolder: value }),
-      setDailyNoteTemplate: (value) => set({ dailyNoteTemplate: value })
+      setDailyNoteTemplate: (value) => set({ dailyNoteTemplate: value }),
+      setCanvasTextSaveFolder: (value) => set({ canvasTextSaveFolder: value })
     }),
     {
       name: 'machina-settings',
