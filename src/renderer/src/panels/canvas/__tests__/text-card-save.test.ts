@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  slugifyFilename,
-  resolveNewPath,
-  appendToExisting,
-  hashContent
-} from '../text-card-save'
+import { slugifyFilename, resolveNewPath, appendToExisting, hashContent } from '../text-card-save'
 
 describe('slugifyFilename', () => {
   const fixedNow = new Date('2026-04-15T13:42:00Z')

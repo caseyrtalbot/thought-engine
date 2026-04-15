@@ -34,6 +34,9 @@ import { getLodLevel } from './use-canvas-lod'
 import { findOpenPosition } from './canvas-layout'
 import { SplitDividerAndPanel } from './SplitDividerAndPanel'
 import { CanvasWelcomeCard, EmptyCanvasHint } from './CanvasEmptyStates'
+import { useSaveTextCard } from './useSaveTextCard'
+import { SaveTextCardDialog } from './SaveTextCardDialog'
+import { slugifyFilename } from './text-card-save'
 import { useTabStore } from '../../store/tab-store'
 import {
   mapFolderToCanvas,
@@ -111,6 +114,34 @@ export function CanvasView(): React.ReactElement {
   const vaultPath = useVaultStore((s) => s.vaultPath)
   const artifacts = useVaultStore((s) => s.artifacts)
   const graph = useVaultStore((s) => s.graph)
+  const { saveQuick, saveAsNew, saveAppend } = useSaveTextCard()
+  const [saveDialogNodeId, setSaveDialogNodeId] = useState<string | null>(null)
+  const [vaultFolders, setVaultFolders] = useState<readonly string[]>([])
+  const [vaultFiles, setVaultFiles] = useState<readonly string[]>([])
+
+  const openSaveDialog = useCallback(
+    async (nodeId: string) => {
+      if (!vaultPath) return
+      const all = await window.api.fs.listAllFiles(vaultPath)
+      const stripPrefix = (p: string) =>
+        p.startsWith(`${vaultPath}/`) ? p.slice(vaultPath.length + 1) : p
+      const relPaths = all.map((entry) => stripPrefix(entry.path))
+      const folderSet = new Set<string>()
+      for (const rel of relPaths) {
+        const parts = rel.split('/')
+        for (let i = 1; i < parts.length; i += 1) {
+          folderSet.add(parts.slice(0, i).join('/'))
+        }
+      }
+      folderSet.add('Inbox')
+      const folders = Array.from(folderSet).sort()
+      const files = relPaths.filter((p) => p.endsWith('.md')).sort()
+      setVaultFolders(folders)
+      setVaultFiles(files)
+      setSaveDialogNodeId(nodeId)
+    },
+    [vaultPath]
+  )
   const fileToId = useVaultStore((s) => s.fileToId)
   const artifactPathById = useVaultStore((s) => s.artifactPathById)
   const loadCanvas = useCanvasStore((s) => s.loadCanvas)
@@ -954,11 +985,48 @@ export function CanvasView(): React.ReactElement {
                   setCardContextMenu(null)
                 }}
                 onClose={() => setCardContextMenu(null)}
+                onQuickSaveText={
+                  menuNode.type === 'text'
+                    ? async () => {
+                        await saveQuick(menuNode.id)
+                      }
+                    : undefined
+                }
+                onSaveTextAs={
+                  menuNode.type === 'text'
+                    ? () => {
+                        void openSaveDialog(menuNode.id)
+                      }
+                    : undefined
+                }
               />
             )
           })()}
       </div>
       {splitFilePath && <SplitDividerAndPanel filePath={splitFilePath} />}
+      {saveDialogNodeId &&
+        (() => {
+          const node = nodes.find((n) => n.id === saveDialogNodeId)
+          const initialFilename = node ? slugifyFilename(node.content, new Date()) : 'note'
+          return (
+            <SaveTextCardDialog
+              initialFilename={initialFilename}
+              folders={vaultFolders}
+              files={vaultFiles}
+              onClose={() => setSaveDialogNodeId(null)}
+              onSaveNew={async (params) => {
+                const id = saveDialogNodeId
+                setSaveDialogNodeId(null)
+                if (id) await saveAsNew(id, params)
+              }}
+              onSaveAppend={async (path) => {
+                const id = saveDialogNodeId
+                setSaveDialogNodeId(null)
+                if (id) await saveAppend(id, path)
+              }}
+            />
+          )
+        })()}
     </div>
   )
 }

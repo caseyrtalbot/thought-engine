@@ -81,7 +81,10 @@ function TextCardImpl({ node }: TextCardProps) {
   )
 
   const title =
-    node.content.split('\n').find((l) => l.trim().length > 0)?.slice(0, 30) || 'Text'
+    node.content
+      .split('\n')
+      .find((l) => l.trim().length > 0)
+      ?.slice(0, 30) || 'Text'
 
   return (
     <CardShell

@@ -14,6 +14,8 @@ interface CardContextMenuProps {
   readonly onAgentAction?: (action: AgentActionName) => void
   readonly onAskPrompt?: (placeholder?: string) => void
   readonly agentBusy?: boolean
+  readonly onQuickSaveText?: () => void
+  readonly onSaveTextAs?: () => void
 }
 
 interface MenuItemProps {
@@ -58,7 +60,9 @@ export function CardContextMenu({
   selectedCount,
   onAgentAction,
   onAskPrompt,
-  agentBusy
+  agentBusy,
+  onQuickSaveText,
+  onSaveTextAs
 }: CardContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -90,6 +94,33 @@ export function CardContextMenu({
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {onQuickSaveText && (
+        <MenuItem
+          label="Save as new note"
+          onClick={() => {
+            onQuickSaveText()
+            onClose()
+          }}
+        />
+      )}
+      {onSaveTextAs && (
+        <MenuItem
+          label="Save to..."
+          onClick={() => {
+            onSaveTextAs()
+            onClose()
+          }}
+        />
+      )}
+      {(onQuickSaveText || onSaveTextAs) && (
+        <div
+          style={{
+            height: 1,
+            backgroundColor: colors.border.subtle,
+            margin: '4px 8px'
+          }}
+        />
+      )}
       <MenuItem
         label="Show Connections"
         onClick={() => {

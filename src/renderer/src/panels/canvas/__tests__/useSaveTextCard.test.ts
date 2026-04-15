@@ -48,7 +48,10 @@ describe('useSaveTextCard.saveQuick', () => {
 
     expect(mockFs.mkdir).toHaveBeenCalledWith('/vault/Inbox')
     expect(mockFs.listFiles).toHaveBeenCalledWith('/vault/Inbox', '*.md')
-    expect(mockFs.writeFile).toHaveBeenCalledWith('/vault/Inbox/hello-world.md', '# Hello World\nbody')
+    expect(mockFs.writeFile).toHaveBeenCalledWith(
+      '/vault/Inbox/hello-world.md',
+      '# Hello World\nbody'
+    )
 
     const node = useCanvasStore.getState().nodes[0]
     expect(node.metadata.savedToPath).toBe('Inbox/hello-world.md')

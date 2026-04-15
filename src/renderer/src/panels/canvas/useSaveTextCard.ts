@@ -2,12 +2,7 @@ import { useCallback } from 'react'
 import { useSettingsStore } from '../../store/settings-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useCanvasStore } from '../../store/canvas-store'
-import {
-  slugifyFilename,
-  resolveNewPath,
-  appendToExisting,
-  hashContent
-} from './text-card-save'
+import { slugifyFilename, resolveNewPath, appendToExisting, hashContent } from './text-card-save'
 
 export type SaveResult =
   | { readonly ok: true; readonly relativePath: string }
