@@ -10,6 +10,7 @@ out
 e2e/screenshots/
 playwright-report/
 test-results/
+output/
 
 # Tool caches
 .worktrees/
