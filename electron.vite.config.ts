@@ -68,7 +68,6 @@ export default defineConfig({
         '@tiptap/markdown',
         '@tiptap/extension-task-list',
         '@tiptap/extension-task-item',
-        '@tiptap/extension-link',
         '@codemirror/state',
         '@codemirror/view',
         '@codemirror/lang-markdown',
