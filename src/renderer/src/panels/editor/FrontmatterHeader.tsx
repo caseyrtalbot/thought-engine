@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Artifact } from '@shared/types'
 import { colors, getArtifactColor } from '../../design/tokens'
 import { useVaultStore } from '../../store/vault-store'
@@ -510,6 +510,7 @@ function RelationshipSection({
 }: RelationshipSectionProps) {
   const editable = !!onFrontmatterChange
   const connectionsEditable = editable
+  const artifacts = useVaultStore((s) => s.artifacts)
 
   // Rows with content always render. When editable, always render the Connections row
   // (even when empty) so users have an entry point to add the first connection.
@@ -544,6 +545,7 @@ function RelationshipSection({
             onNavigate={onNavigate}
             onChange={editableRow ? handleConnectionsChange : undefined}
             currentArtifactId={artifact.id}
+            artifacts={artifacts}
           />
         )
       })}
@@ -559,6 +561,7 @@ interface RelationshipRowProps {
   onNavigate?: (id: string) => void
   onChange?: (next: readonly string[]) => void
   currentArtifactId: string
+  artifacts: readonly Artifact[]
 }
 
 function RelationshipRow({
@@ -566,11 +569,23 @@ function RelationshipRow({
   ids,
   onNavigate,
   onChange,
-  currentArtifactId
+  currentArtifactId,
+  artifacts
 }: RelationshipRowProps) {
   const editable = !!onChange
   const [addOpen, setAddOpen] = useState(false)
-  const artifacts = useVaultStore((s) => s.artifacts)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!addOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setAddOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [addOpen])
 
   const handleRemove = (id: string) => {
     if (!onChange) return
@@ -608,7 +623,7 @@ function RelationshipRow({
           />
         ))}
         {editable && (
-          <div className="relative" style={{ display: 'inline-block' }}>
+          <div ref={wrapperRef} className="relative" style={{ display: 'inline-block' }}>
             <button
               type="button"
               onClick={() => setAddOpen((v) => !v)}
