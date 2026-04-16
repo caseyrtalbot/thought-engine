@@ -608,7 +608,7 @@ function RelationshipRow({
         display: 'grid',
         gridTemplateColumns: 'minmax(110px, 136px) minmax(0, 1fr)',
         columnGap: '1rem',
-        alignItems: 'start',
+        alignItems: 'center',
         marginBottom: '0.55rem'
       }}
     >

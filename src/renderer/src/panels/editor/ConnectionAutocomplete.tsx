@@ -132,7 +132,12 @@ export function ConnectionAutocomplete({
       <div
         id="connection-autocomplete-listbox"
         className="border-t"
-        style={{ borderColor: colors.border.default }}
+        style={{
+          borderColor: colors.border.default,
+          maxHeight: '240px',
+          overflowY: 'auto',
+          scrollbarGutter: 'stable'
+        }}
         role="listbox"
       >
         {suggestions.length === 0 ? (
