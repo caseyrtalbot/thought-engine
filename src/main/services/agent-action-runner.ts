@@ -1,4 +1,4 @@
-import { spawn } from 'child_process'
+import { spawn, type ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import type { CanvasNodeType, CanvasSide } from '@shared/canvas-types'
@@ -7,7 +7,9 @@ import type {
   AgentActionName,
   AgentActionRequest,
   AgentActionResponse,
-  AgentContext
+  AgentContext,
+  AgentErrorTag,
+  AgentStreamEvent
 } from '@shared/agent-action-types'
 import type { Result } from '@shared/engine/types'
 
@@ -34,7 +36,8 @@ const VALID_SIDES = new Set<CanvasSide>(['top', 'right', 'bottom', 'left'])
 
 const DEFAULT_SIZE = { width: 200, height: 100 }
 
-const CLI_TIMEOUT_MS = 60_000
+const SILENCE_WATCHDOG_MS = 30_000
+const TOTAL_CAP_MS = 180_000
 
 /** Resolve the claude CLI binary, checking common install locations if not on PATH. */
 function resolveClaudeBin(): string {
@@ -403,10 +406,13 @@ Wrap your JSON in a \`\`\`json code fence.`
 // Claude CLI Caller (injectable for testing)
 // ---------------------------------------------------------------------------
 
-export type CallClaudeFn = (prompt: string) => Promise<string>
+export type OnStreamEvent = (ev: AgentStreamEvent) => void
+export type CallClaudeFn = (prompt: string, onEvent?: OnStreamEvent) => Promise<string>
+
+type SpawnFn = typeof spawn
 
 /** The currently running Claude subprocess, if any. Allows cancellation. */
-let _activeProc: ReturnType<typeof spawn> | null = null
+let _activeProc: ChildProcess | null = null
 
 /** Kill the active Claude subprocess, if one is running. */
 export function cancelAgentAction(): void {
@@ -416,45 +422,248 @@ export function cancelAgentAction(): void {
   }
 }
 
-export async function callClaude(prompt: string): Promise<string> {
+/** Error with a tag for the renderer to map to copy. */
+class TaggedError extends Error {
+  readonly tag: AgentErrorTag
+  constructor(message: string, tag: AgentErrorTag) {
+    super(message)
+    this.tag = tag
+  }
+}
+
+/**
+ * Split a growing buffer into complete JSONL lines and a trailing partial.
+ * Returns the parsed objects and the new buffer state.
+ */
+function takeCompleteLines(buf: string): { lines: unknown[]; rest: string } {
+  const parts = buf.split('\n')
+  const rest = parts.pop() ?? ''
+  const lines: unknown[] = []
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+    try {
+      lines.push(JSON.parse(trimmed))
+    } catch {
+      // Skip non-JSON lines (e.g. blank, partial)
+    }
+  }
+  return { lines, rest }
+}
+
+/**
+ * Internal streaming caller — spawn is injected for testing.
+ * Resolves with the full text buffer (joined text_deltas + any result.result fallback).
+ */
+export function callClaudeWith(
+  spawnFn: SpawnFn,
+  prompt: string,
+  onEvent: OnStreamEvent = () => {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(CLAUDE_BIN, ['--print'], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
+    const proc = spawnFn(
+      CLAUDE_BIN,
+      ['--print', '--output-format', 'stream-json', '--verbose', '--include-partial-messages'],
+      { stdio: ['pipe', 'pipe', 'pipe'] }
+    )
 
     _activeProc = proc
 
-    let stdout = ''
     let stderr = ''
+    let textBuf = ''
+    let resultFallback: string | null = null
+    let sawFirstTextDelta = false
+    let sawThinking = false
+    let stdoutBuf = ''
+    let settled = false
 
-    proc.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
+    let silenceTimer: ReturnType<typeof setTimeout> | null = null
+    let totalTimer: ReturnType<typeof setTimeout> | null = null
 
-    proc.on('error', (err) => reject(new Error(`Failed to spawn claude: ${err.message}`)))
+    const clearTimers = () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer)
+        silenceTimer = null
+      }
+      if (totalTimer) {
+        clearTimeout(totalTimer)
+        totalTimer = null
+      }
+    }
+
+    const settle = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimers()
+      if (_activeProc === proc) _activeProc = null
+      fn()
+    }
+
+    const resetSilence = () => {
+      if (silenceTimer) clearTimeout(silenceTimer)
+      silenceTimer = setTimeout(() => {
+        settle(() => {
+          reject(new TaggedError('Agent stalled: no activity for 30s', 'stalled'))
+          proc.kill('SIGTERM')
+        })
+      }, SILENCE_WATCHDOG_MS)
+    }
+
+    totalTimer = setTimeout(() => {
+      settle(() => {
+        reject(new TaggedError('Agent exceeded 3-minute total cap', 'cap'))
+        proc.kill('SIGTERM')
+      })
+    }, TOTAL_CAP_MS)
+
+    resetSilence()
+
+    const handleJsonEvent = (obj: unknown) => {
+      if (typeof obj !== 'object' || obj === null) return
+      const o = obj as Record<string, unknown>
+
+      if (o.type === 'result' && typeof o.result === 'string') {
+        resultFallback = o.result
+        return
+      }
+      if (o.type !== 'stream_event') return
+
+      const event = o.event as Record<string, unknown> | undefined
+      if (!event || typeof event.type !== 'string') return
+
+      if (event.type === 'message_start') {
+        if (!sawThinking) {
+          sawThinking = true
+          onEvent({ kind: 'phase', phase: 'thinking' })
+        }
+        return
+      }
+
+      if (event.type === 'content_block_delta') {
+        const delta = event.delta as Record<string, unknown> | undefined
+        if (!delta || typeof delta.type !== 'string') return
+
+        if (delta.type === 'thinking_delta' && typeof delta.thinking === 'string') {
+          if (!sawThinking) {
+            sawThinking = true
+            onEvent({ kind: 'phase', phase: 'thinking' })
+          }
+          onEvent({ kind: 'thinking-delta', text: delta.thinking })
+          return
+        }
+
+        if (delta.type === 'text_delta' && typeof delta.text === 'string') {
+          if (!sawFirstTextDelta) {
+            sawFirstTextDelta = true
+            onEvent({ kind: 'phase', phase: 'drafting' })
+          }
+          textBuf += delta.text
+          onEvent({ kind: 'text-delta', text: delta.text })
+          return
+        }
+        // Ignore signature_delta and other delta types
+      }
+    }
+
+    const onStdoutChunk = (text: string) => {
+      if (!text) return
+      resetSilence()
+      stdoutBuf += text
+      const { lines, rest } = takeCompleteLines(stdoutBuf)
+      stdoutBuf = rest
+      for (const line of lines) handleJsonEvent(line)
+    }
+
+    const onStderrChunk = (text: string) => {
+      if (!text) return
+      resetSilence()
+      stderr += text
+    }
+
+    const extractChunkText = (chunk: unknown): string => {
+      if (chunk === null || chunk === undefined) return ''
+      if (Buffer.isBuffer(chunk)) return chunk.toString()
+      if (typeof chunk === 'string') return chunk
+      return ''
+    }
+
+    // Intercept push() on the stream so we observe data synchronously. Real
+    // child_process stdout delivers data via async 'data' events (next tick),
+    // which works in production but prevents silence-reset from being observable
+    // during synchronous test drivers that push + advanceTimers in a tight loop.
+    // The push-intercept fires for both real pipe writes and test fake writes.
+    if (proc.stdout && typeof proc.stdout.push === 'function') {
+      const origPush = proc.stdout.push.bind(proc.stdout)
+      proc.stdout.push = (chunk: unknown, encoding?: BufferEncoding) => {
+        const text = extractChunkText(chunk)
+        if (text) onStdoutChunk(text)
+        // Forward to the underlying Readable so back-pressure + 'end' semantics
+        // continue to work naturally. Our handler is idempotent-by-dedupe: we
+        // don't also listen for 'data', so the chunk is processed exactly once.
+        return origPush(chunk as Buffer | string | null, encoding)
+      }
+    }
+
+    if (proc.stderr && typeof proc.stderr.push === 'function') {
+      const origPush = proc.stderr.push.bind(proc.stderr)
+      proc.stderr.push = (chunk: unknown, encoding?: BufferEncoding) => {
+        const text = extractChunkText(chunk)
+        if (text) onStderrChunk(text)
+        return origPush(chunk as Buffer | string | null, encoding)
+      }
+    }
+
+    // Resume stdout/stderr so data is drained (prevents pipe backpressure from
+    // stalling the child). We intercepted push above, so chunks are already
+    // accounted for — resuming just keeps the stream machinery flowing.
+    proc.stdout?.resume()
+    proc.stderr?.resume()
+
+    proc.on('error', (err: NodeJS.ErrnoException) => {
+      settle(() => {
+        if (err.code === 'ENOENT') {
+          reject(new TaggedError(`Claude CLI not found: ${err.message}`, 'not-found'))
+        } else {
+          reject(new TaggedError(`Failed to spawn claude: ${err.message}`, 'cli-error'))
+        }
+      })
+    })
 
     proc.on('close', (code) => {
-      if (_activeProc === proc) _activeProc = null
-      if (code !== 0) {
-        reject(new Error(`claude exited with code ${code}: ${stderr}`))
-      } else {
-        resolve(stdout)
-      }
+      // Defer to nextTick so any stdout/stderr data events queued by the stream
+      // have a chance to fire before we finalize the result. Without this, tests
+      // that push synchronously then emit 'close' would resolve before data is
+      // delivered to listeners.
+      process.nextTick(() => {
+        settle(() => {
+          // Flush any trailing JSON in the buffer
+          if (stdoutBuf.trim()) {
+            const { lines } = takeCompleteLines(stdoutBuf + '\n')
+            for (const line of lines) handleJsonEvent(line)
+          }
+
+          if (code !== 0 && code !== null) {
+            reject(new TaggedError(`claude exited with code ${code}: ${stderr}`, 'cli-error'))
+            return
+          }
+
+          // Prefer the full result.result if present (authoritative, includes the JSON fence);
+          // otherwise fall back to the assembled text_delta buffer.
+          resolve(resultFallback ?? textBuf)
+        })
+      })
     })
 
-    const timeout = setTimeout(() => {
-      proc.kill('SIGTERM')
-      reject(new Error(`claude timed out after ${CLI_TIMEOUT_MS}ms`))
-    }, CLI_TIMEOUT_MS)
-
-    proc.on('close', () => clearTimeout(timeout))
-
-    proc.stdin.write(prompt)
-    proc.stdin.end()
+    proc.stdin?.write(prompt)
+    proc.stdin?.end()
   })
+}
+
+export async function callClaude(
+  prompt: string,
+  onEvent: OnStreamEvent = () => {}
+): Promise<string> {
+  return callClaudeWith(spawn, prompt, onEvent)
 }
 
 // ---------------------------------------------------------------------------
@@ -463,26 +672,40 @@ export async function callClaude(prompt: string): Promise<string> {
 
 export async function runAgentAction(
   request: AgentActionRequest,
-  callClaudeFn: CallClaudeFn = callClaude
+  callClaudeFn: CallClaudeFn = callClaude,
+  onStream: OnStreamEvent = () => {}
 ): Promise<AgentActionResponse> {
   try {
+    onStream({ kind: 'phase', phase: 'starting' })
+
     const prompt = buildPrompt(request.action, request.context, request.userPrompt)
-    const response = await callClaudeFn(prompt)
-    const parsed = extractJsonFromResponse(response)
+    const response = await callClaudeFn(prompt, onStream)
+
+    let parsed: unknown
+    try {
+      parsed = extractJsonFromResponse(response)
+    } catch {
+      return { error: 'Agent returned invalid output. Try again.', tag: 'invalid-output' }
+    }
 
     if (!isObj(parsed) || !Array.isArray((parsed as Record<string, unknown>).ops)) {
-      return { error: 'Response JSON must contain an "ops" array' }
+      return {
+        error: 'Response JSON must contain an "ops" array',
+        tag: 'invalid-output'
+      }
     }
 
     const validation = validateAgentOps((parsed as Record<string, unknown>).ops)
     if (!validation.ok) {
-      return { error: `Validation failed: ${validation.error}` }
+      return { error: `Validation failed: ${validation.error}`, tag: 'invalid-output' }
     }
 
     const plan = buildPlanFromOps(validation.value)
+    onStream({ kind: 'phase', phase: 'materializing', count: plan.ops.length })
     return { plan }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return { error: message }
+    const tag = err instanceof TaggedError ? err.tag : ('cli-error' as AgentErrorTag)
+    return { error: message, tag }
   }
 }

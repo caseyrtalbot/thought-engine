@@ -336,6 +336,248 @@ describe('runAgentAction with ask', () => {
       { action: 'ask', context: askContext, userPrompt: 'explain this' },
       mockClaude
     )
-    expect(mockClaude).toHaveBeenCalledWith(expect.stringContaining('explain this'))
+    const callArg = mockClaude.mock.calls[0][0] as string
+    expect(callArg).toContain('explain this')
+  })
+})
+
+import { EventEmitter } from 'events'
+import { Readable, Writable } from 'stream'
+import type { AgentStreamEvent } from '@shared/agent-action-types'
+
+// ---------------------------------------------------------------------------
+// callClaude streaming tests — use a fake ChildProcess-like shape
+// ---------------------------------------------------------------------------
+
+// Minimal ChildProcess shim: stdin writable, stdout readable, kill(), close emitter
+function makeFakeProc() {
+  const noop = () => {}
+  const stdout = new Readable({ read: noop })
+  const stderr = new Readable({ read: noop })
+  const stdin = new Writable({
+    write(_c, _e, cb) {
+      cb()
+    }
+  })
+  const ee = new EventEmitter()
+  const proc = {
+    stdout,
+    stderr,
+    stdin,
+    kill: vi.fn((_sig?: string) => {
+      ee.emit('close', 0)
+    }),
+    on: (event: string, cb: (...args: unknown[]) => void) => ee.on(event, cb),
+    emit: (event: string, ...args: unknown[]) => ee.emit(event, ...args)
+  }
+  return proc
+}
+
+// Helper to write a JSONL line into the fake stdout
+function emitLine(proc: ReturnType<typeof makeFakeProc>, obj: unknown) {
+  proc.stdout.push(JSON.stringify(obj) + '\n')
+}
+
+describe('callClaude streaming transport', () => {
+  it('parses stream events and forwards typed deltas via onEvent', async () => {
+    vi.useFakeTimers()
+    const proc = makeFakeProc()
+    const spawned: Array<{ bin: string; args: string[] }> = []
+    const spawnFn = (bin: string, args: string[]) => {
+      spawned.push({ bin, args })
+      return proc as unknown as ReturnType<typeof import('child_process').spawn>
+    }
+
+    const { callClaudeWith } = await import('../../../src/main/services/agent-action-runner')
+    const events: AgentStreamEvent[] = []
+    const pending = callClaudeWith(spawnFn, 'prompt text', (ev) => events.push(ev))
+
+    // Allow event loop to wire stdout listeners before we push data
+    await Promise.resolve()
+
+    emitLine(proc, { type: 'system', subtype: 'init' })
+    emitLine(proc, { type: 'stream_event', event: { type: 'message_start' } })
+    emitLine(proc, {
+      type: 'stream_event',
+      event: { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'Hmm...' } }
+    })
+    emitLine(proc, {
+      type: 'stream_event',
+      event: {
+        type: 'content_block_delta',
+        delta: { type: 'text_delta', text: 'Here is the plan.' }
+      }
+    })
+    emitLine(proc, { type: 'result', result: '```json\n{"ops":[]}\n```' })
+    proc.emit('close', 0)
+
+    const output = await pending
+    expect(output).toContain('"ops"')
+    expect(spawned[0].args).toEqual([
+      '--print',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--include-partial-messages'
+    ])
+    expect(events.map((e) => e.kind)).toEqual([
+      'phase', // thinking (on message_start)
+      'thinking-delta',
+      'phase', // drafting (on first text delta)
+      'text-delta'
+    ])
+    const phases = events.filter((e) => e.kind === 'phase') as Extract<
+      AgentStreamEvent,
+      { kind: 'phase' }
+    >[]
+    expect(phases.map((p) => p.phase)).toEqual(['thinking', 'drafting'])
+    vi.useRealTimers()
+  })
+
+  it('throws stalled error with tag after 30s silence', async () => {
+    vi.useFakeTimers()
+    const proc = makeFakeProc()
+    const { callClaudeWith } = await import('../../../src/main/services/agent-action-runner')
+    const pending = callClaudeWith(
+      () => proc as unknown as ReturnType<typeof import('child_process').spawn>,
+      'prompt',
+      () => {}
+    ).catch((e) => e)
+
+    await Promise.resolve()
+    vi.advanceTimersByTime(30_001)
+    const err = await pending
+    expect(err).toBeInstanceOf(Error)
+    expect((err as Error & { tag?: string }).tag).toBe('stalled')
+    vi.useRealTimers()
+  })
+
+  it('throws cap error with tag after 180s even with activity', async () => {
+    vi.useFakeTimers()
+    const proc = makeFakeProc()
+    const { callClaudeWith } = await import('../../../src/main/services/agent-action-runner')
+    const pending = callClaudeWith(
+      () => proc as unknown as ReturnType<typeof import('child_process').spawn>,
+      'prompt',
+      () => {}
+    ).catch((e) => e)
+
+    await Promise.resolve()
+    for (let t = 0; t < 180_000; t += 10_000) {
+      emitLine(proc, { type: 'system' })
+      vi.advanceTimersByTime(10_000)
+    }
+    vi.advanceTimersByTime(1)
+    const err = await pending
+    expect(err).toBeInstanceOf(Error)
+    expect((err as Error & { tag?: string }).tag).toBe('cap')
+    vi.useRealTimers()
+  })
+
+  it('throws cli-error tag on non-zero exit', async () => {
+    const proc = makeFakeProc()
+    const { callClaudeWith } = await import('../../../src/main/services/agent-action-runner')
+    const pending = callClaudeWith(
+      () => proc as unknown as ReturnType<typeof import('child_process').spawn>,
+      'prompt',
+      () => {}
+    ).catch((e) => e)
+
+    await Promise.resolve()
+    proc.stderr.push('some error text\n')
+    proc.emit('close', 1)
+    const err = await pending
+    expect((err as Error & { tag?: string }).tag).toBe('cli-error')
+    expect((err as Error).message).toContain('some error text')
+  })
+
+  it('throws not-found tag when spawn fires ENOENT error', async () => {
+    const proc = makeFakeProc()
+    const { callClaudeWith } = await import('../../../src/main/services/agent-action-runner')
+    const pending = callClaudeWith(
+      () => proc as unknown as ReturnType<typeof import('child_process').spawn>,
+      'prompt',
+      () => {}
+    ).catch((e) => e)
+
+    await Promise.resolve()
+    const enoent = Object.assign(new Error('spawn ENOENT'), { code: 'ENOENT' })
+    proc.emit('error', enoent)
+    const err = await pending
+    expect((err as Error & { tag?: string }).tag).toBe('not-found')
+  })
+})
+
+describe('runAgentAction streaming integration', () => {
+  it('emits starting and materializing phases via onStream', async () => {
+    const events: AgentStreamEvent[] = []
+    const request: AgentActionRequest = {
+      action: 'challenge',
+      context: {
+        action: 'challenge',
+        selectedCards: [
+          {
+            id: 'a',
+            type: 'text',
+            title: 't',
+            body: 'b',
+            tags: [],
+            position: { x: 0, y: 0 },
+            size: { width: 200, height: 100 }
+          }
+        ],
+        neighbors: [],
+        edges: [],
+        canvasMeta: {
+          viewportBounds: { x: 0, y: 0, width: 1200, height: 800 },
+          totalCardCount: 1
+        }
+      }
+    }
+    const mockClaude = async () =>
+      '```json\n{"ops": [{"type": "add-node", "node": {"id": "n1", "type": "text", "position": {"x":0,"y":0}, "size": {"width":200,"height":100}, "content": "x", "metadata": {}}}]}\n```'
+
+    const result = await runAgentAction(request, mockClaude, (ev) => events.push(ev))
+
+    expect('plan' in result).toBe(true)
+    const phases = events
+      .filter((e): e is Extract<AgentStreamEvent, { kind: 'phase' }> => e.kind === 'phase')
+      .map((e) => e.phase)
+    expect(phases[0]).toBe('starting')
+    expect(phases[phases.length - 1]).toBe('materializing')
+    const mat = events[events.length - 1] as Extract<AgentStreamEvent, { kind: 'phase' }>
+    expect(mat.count).toBe(1)
+  })
+
+  it('tags invalid-output errors', async () => {
+    const mockClaude = async () => 'sorry, cannot help'
+    const request: AgentActionRequest = {
+      action: 'challenge',
+      context: {
+        action: 'challenge',
+        selectedCards: [
+          {
+            id: 'a',
+            type: 'text',
+            title: 't',
+            body: 'b',
+            tags: [],
+            position: { x: 0, y: 0 },
+            size: { width: 200, height: 100 }
+          }
+        ],
+        neighbors: [],
+        edges: [],
+        canvasMeta: {
+          viewportBounds: { x: 0, y: 0, width: 1200, height: 800 },
+          totalCardCount: 1
+        }
+      }
+    }
+    const result = await runAgentAction(request, mockClaude)
+    expect('error' in result).toBe(true)
+    if ('error' in result) {
+      expect(result.tag).toBe('invalid-output')
+    }
   })
 })
