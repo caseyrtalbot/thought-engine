@@ -9,7 +9,11 @@ import type {
 import type { SystemArtifactKind } from './system-artifacts'
 import type { AgentSidecarState, AgentSpawnRequest } from './agent-types'
 import type { ActionDefinition } from './action-types'
-import type { AgentActionRequest, AgentActionResponse } from './agent-action-types'
+import type {
+  AgentActionRequest,
+  AgentActionResponse,
+  AgentStreamEvent
+} from './agent-action-types'
 import type { CanvasMutationPlan } from './canvas-mutation-types'
 import type { ClaudeStatus } from './claude-status-types'
 import type { InfraHealth } from './engine/vault-health'
@@ -241,6 +245,9 @@ export interface IpcEvents {
 
   // Agent observation events (main -> renderer)
   'agent:states-changed': { states: readonly AgentSidecarState[] }
+
+  // Agent action streaming (main -> renderer, per-invocation deltas)
+  'agent-action:stream': AgentStreamEvent
 
   // Canvas agent plan dispatch (main -> renderer)
   'canvas:agent-plan-accepted': { plan: CanvasMutationPlan }
