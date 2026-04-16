@@ -466,7 +466,14 @@ export function FrontmatterHeader({
       </div>
 
       {/* Relationship section */}
-      {artifact && <RelationshipSection artifact={artifact} onNavigate={onNavigate} />}
+      {artifact && (
+        <RelationshipSection
+          artifact={artifact}
+          onNavigate={onNavigate}
+          onFrontmatterChange={onFrontmatterChange}
+          currentProperties={properties}
+        />
+      )}
 
       {/* Add property */}
       {editable && (
@@ -489,11 +496,32 @@ const RELATIONSHIP_FIELDS = [
 interface RelationshipSectionProps {
   artifact: Artifact
   onNavigate?: (id: string) => void
+  onFrontmatterChange?: (newRaw: string) => void
+  currentProperties: Record<string, PropertyValue>
 }
 
-function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps) {
-  const rows = RELATIONSHIP_FIELDS.filter(({ key }) => artifact[key].length > 0)
+function RelationshipSection({
+  artifact,
+  onNavigate,
+  onFrontmatterChange,
+  currentProperties
+}: RelationshipSectionProps) {
+  const editable = !!onFrontmatterChange
+  const connectionsEditable = editable
+
+  // Rows with content always render. When editable, always render the Connections row
+  // (even when empty) so users have an entry point to add the first connection.
+  const rows = RELATIONSHIP_FIELDS.filter(({ key }) => {
+    if (key === 'connections' && connectionsEditable) return true
+    return artifact[key].length > 0
+  })
   if (rows.length === 0) return null
+
+  const handleConnectionsChange = (next: readonly string[]) => {
+    if (!onFrontmatterChange) return
+    const updated = { ...currentProperties, connections: [...next] }
+    onFrontmatterChange(serializeFrontmatter(updated))
+  }
 
   return (
     <div
@@ -504,9 +532,19 @@ function RelationshipSection({ artifact, onNavigate }: RelationshipSectionProps)
       }}
     >
       <div style={{ ...sectionLabelStyle, marginBottom: '0.7rem' }}>Relationships</div>
-      {rows.map(({ key, label }) => (
-        <RelationshipRow key={key} label={label} ids={artifact[key]} onNavigate={onNavigate} />
-      ))}
+      {rows.map(({ key, label }) => {
+        const editableRow = key === 'connections' && connectionsEditable
+        return (
+          <RelationshipRow
+            key={key}
+            label={label}
+            ids={artifact[key]}
+            onNavigate={onNavigate}
+            onChange={editableRow ? handleConnectionsChange : undefined}
+            currentArtifactId={artifact.id}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -517,9 +555,17 @@ interface RelationshipRowProps {
   label: string
   ids: readonly string[]
   onNavigate?: (id: string) => void
+  onChange?: (next: readonly string[]) => void
+  currentArtifactId: string
 }
 
-function RelationshipRow({ label, ids, onNavigate }: RelationshipRowProps) {
+function RelationshipRow({
+  label,
+  ids,
+  onNavigate,
+  onChange: _onChange,
+  currentArtifactId: _currentArtifactId
+}: RelationshipRowProps) {
   return (
     <div
       style={{
