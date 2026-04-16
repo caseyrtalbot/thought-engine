@@ -100,6 +100,7 @@ interface CanvasStore {
   // Focus Frames
   saveFocusFrame: (slot: string) => void
   jumpToFocusFrame: (slot: string) => void
+  clearFocusFrame: (slot: string) => void
 
   // Interaction blur toggle
   setInteracting: (v: boolean) => void
@@ -334,6 +335,13 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     const frame = get().focusFrames[slot]
     if (frame) set({ viewport: { ...frame } })
     // intentionally does NOT set isDirty
+  },
+
+  clearFocusFrame: (slot) => {
+    const { focusFrames } = get()
+    if (!(slot in focusFrames)) return
+    const { [slot]: _removed, ...rest } = focusFrames
+    set({ focusFrames: rest, isDirty: true })
   },
 
   setInteracting: (v) => set({ isInteracting: v }),

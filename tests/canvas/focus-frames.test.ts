@@ -81,4 +81,31 @@ describe('focus-frames', () => {
     useCanvasStore.getState().closeCanvas()
     expect(useCanvasStore.getState().focusFrames).toEqual({})
   })
+
+  it('clearFocusFrame removes the slot', () => {
+    useCanvasStore.getState().setViewport({ x: 100, y: 200, zoom: 1.5 })
+    useCanvasStore.getState().saveFocusFrame('1')
+    useCanvasStore.getState().saveFocusFrame('2')
+
+    useCanvasStore.getState().clearFocusFrame('1')
+
+    expect(useCanvasStore.getState().focusFrames['1']).toBeUndefined()
+    expect(useCanvasStore.getState().focusFrames['2']).toEqual({ x: 100, y: 200, zoom: 1.5 })
+  })
+
+  it('clearFocusFrame sets isDirty', () => {
+    useCanvasStore.getState().saveFocusFrame('1')
+    useCanvasStore.setState({ isDirty: false })
+
+    useCanvasStore.getState().clearFocusFrame('1')
+
+    expect(useCanvasStore.getState().isDirty).toBe(true)
+  })
+
+  it('clearFocusFrame is a no-op for an empty slot', () => {
+    useCanvasStore.setState({ isDirty: false })
+    useCanvasStore.getState().clearFocusFrame('4')
+    expect(useCanvasStore.getState().isDirty).toBe(false)
+    expect(useCanvasStore.getState().focusFrames['4']).toBeUndefined()
+  })
 })
