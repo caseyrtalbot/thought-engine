@@ -87,18 +87,24 @@ export function useAgentOrchestrator(
   }, [])
 
   const computeDefaultAnchor = useCallback((): AgentAnchor => {
-    // Pin the card's top-left corner to the canvas surface's top-left with
-    // an even pad matching other floating UI. Screen coords (fixed position)
-    // so we read the surface's bounding rect to account for sidebar / tool
-    // rail offsets. Fall back to window offsets if the surface isn't mounted.
+    // Pin the card's top-left corner to the right of the canvas tool rail,
+    // aligned with the top of the canvas surface. We measure the rail's
+    // bounding rect so the gap stays consistent if the rail width changes.
+    // Screen coords (the card is position: fixed).
     const surfaceEl = document.querySelector('[data-canvas-surface]') as HTMLElement | null
-    const rect = surfaceEl?.getBoundingClientRect()
-    const surfaceLeft = rect?.left ?? 0
-    const surfaceTop = rect?.top ?? 0
-    const pad = 16
+    const surfaceRect = surfaceEl?.getBoundingClientRect()
+    const surfaceLeft = surfaceRect?.left ?? 0
+    const surfaceTop = surfaceRect?.top ?? 0
+
+    const railEl = document.querySelector('.canvas-toolrail') as HTMLElement | null
+    const railRect = railEl?.getBoundingClientRect()
+    const railRight = railRect?.right ?? surfaceLeft
+    const railTop = railRect?.top ?? surfaceTop
+
+    const gap = 16
     return {
-      x: surfaceLeft + pad,
-      y: surfaceTop + pad
+      x: railRight + gap,
+      y: railTop
     }
   }, [])
 
