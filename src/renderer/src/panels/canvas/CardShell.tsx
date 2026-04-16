@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useCanvasStore } from '../../store/canvas-store'
 import { useVaultStore } from '../../store/vault-store'
 import { useNodeDrag, useNodeResize } from './use-canvas-drag'
@@ -48,10 +49,12 @@ export const VALID_CONVERSIONS: Record<CanvasNodeType, readonly CanvasNodeType[]
 function ConvertMenu({
   nodeId,
   nodeType,
+  anchorRect,
   onClose
 }: {
   readonly nodeId: string
   readonly nodeType: CanvasNodeType
+  readonly anchorRect: DOMRect
   readonly onClose: () => void
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
@@ -72,14 +75,23 @@ function ConvertMenu({
     }
   }, [onClose])
 
-  return (
+  // Anchor rect is captured on open; close on scroll/resize rather than re-measuring.
+  useEffect(() => {
+    window.addEventListener('scroll', onClose, true)
+    window.addEventListener('resize', onClose)
+    return () => {
+      window.removeEventListener('scroll', onClose, true)
+      window.removeEventListener('resize', onClose)
+    }
+  }, [onClose])
+
+  return createPortal(
     <div
       ref={menuRef}
-      className="absolute flex flex-col py-1"
+      className="fixed flex flex-col py-1"
       style={{
-        top: '100%',
-        right: 0,
-        marginTop: 2,
+        top: anchorRect.bottom + 2,
+        right: window.innerWidth - anchorRect.right,
         minWidth: 120,
         backgroundColor: colors.bg.elevated,
         border: `1px solid ${colors.border.default}`,
@@ -120,7 +132,8 @@ function ConvertMenu({
           </button>
         )
       })}
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -137,14 +150,17 @@ function nearestSide(clientX: number, clientY: number, rect: DOMRect): CanvasSid
 function TitleBarButton({
   onClick,
   label,
-  children
+  children,
+  ref
 }: {
   readonly onClick: (e: React.MouseEvent) => void
   readonly label: string
   readonly children: React.ReactNode
+  readonly ref?: React.Ref<HTMLButtonElement>
 }) {
   return (
     <button
+      ref={ref}
       onClick={onClick}
       className="canvas-card__action-btn flex items-center justify-center rounded hover:opacity-80"
       style={{
@@ -191,7 +207,8 @@ export function CardShell({
   const { onDragStart } = useNodeDrag(node.id)
   const { onResizeStart } = useNodeResize(node.id, node.type)
   const [hovered, setHovered] = useState(false)
-  const [convertMenuOpen, setConvertMenuOpen] = useState(false)
+  const [convertAnchor, setConvertAnchor] = useState<DOMRect | null>(null)
+  const convertButtonRef = useRef<HTMLButtonElement>(null)
 
   const isActive = node.metadata?.isActive === true
   const isTerminalCard = node.type === 'terminal'
@@ -408,9 +425,12 @@ export function CardShell({
           </TitleBarButton>
           {VALID_CONVERSIONS[node.type].length > 0 && (
             <TitleBarButton
+              ref={convertButtonRef}
               onClick={(e) => {
                 e.stopPropagation()
-                setConvertMenuOpen((prev) => !prev)
+                setConvertAnchor((prev) =>
+                  prev ? null : (convertButtonRef.current?.getBoundingClientRect() ?? null)
+                )
               }}
               label="Convert card type"
             >
@@ -449,11 +469,12 @@ export function CardShell({
               </svg>
             </TitleBarButton>
           )}
-          {convertMenuOpen && (
+          {convertAnchor && (
             <ConvertMenu
               nodeId={node.id}
               nodeType={node.type}
-              onClose={() => setConvertMenuOpen(false)}
+              anchorRect={convertAnchor}
+              onClose={() => setConvertAnchor(null)}
             />
           )}
           {headerActions}
