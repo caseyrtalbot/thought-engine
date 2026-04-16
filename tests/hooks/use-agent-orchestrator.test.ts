@@ -16,6 +16,9 @@ vi.stubGlobal('window', {
     agentAction: {
       compute: mockCompute,
       cancel: mockCancel
+    },
+    on: {
+      agentActionStream: vi.fn(() => () => {})
     }
   }
 })
