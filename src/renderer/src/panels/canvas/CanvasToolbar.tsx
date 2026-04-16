@@ -551,14 +551,8 @@ export function CanvasToolbar({
       {/* THINK: have the agent do something */}
       <div className="canvas-toolbtn-wrap">
         <button
-          onClick={(e) => {
-            if (hasNodes && !thinkBusy) {
-              const rect = e.currentTarget.getBoundingClientRect()
-              onAgentAction('challenge', {
-                x: rect.left + rect.width / 2,
-                y: rect.bottom
-              })
-            }
+          onClick={() => {
+            if (hasNodes && !thinkBusy) onAgentAction('challenge')
           }}
           className="canvas-toolbtn"
           disabled={thinkBusy || !hasNodes}
@@ -595,15 +589,11 @@ export function CanvasToolbar({
       </div>
       <div className="canvas-toolbtn-wrap" style={{ position: 'relative' }}>
         <button
-          onClick={(e) => {
+          onClick={() => {
             if (isCompileRunning) {
               onStopAgent()
             } else if (!isCompileBusy && compileEnabled) {
-              const rect = e.currentTarget.getBoundingClientRect()
-              onAgentAction('compile', {
-                x: rect.left + rect.width / 2,
-                y: rect.bottom
-              })
+              onAgentAction('compile')
             }
           }}
           className="canvas-toolbtn"
@@ -713,12 +703,24 @@ export function CanvasToolbar({
       {/* FRAMES: spatial bookmarks */}
       <div className="flex w-full flex-col items-center gap-1" style={{ padding: '2px 0' }}>
         {[1, 2, 3, 4, 5].map((slot) => {
-          const filled = String(slot) in focusFrames
+          const slotKey = String(slot)
+          const filled = slotKey in focusFrames
           return (
             <button
               key={slot}
-              onClick={() => useCanvasStore.getState().jumpToFocusFrame(String(slot))}
-              title={`Focus Frame ${slot} (⌘${slot})`}
+              onClick={(e) => {
+                const store = useCanvasStore.getState()
+                if (e.altKey && filled) {
+                  store.clearFocusFrame(slotKey)
+                } else {
+                  store.jumpToFocusFrame(slotKey)
+                }
+              }}
+              title={
+                filled
+                  ? `Focus Frame ${slot} — ⌘${slot} jump, ⇧⌘${slot} overwrite, ⌥click clear`
+                  : `Focus Frame ${slot} — ⇧⌘${slot} to save`
+              }
               style={{
                 width: 8,
                 height: 8,

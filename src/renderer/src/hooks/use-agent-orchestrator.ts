@@ -87,30 +87,22 @@ export function useAgentOrchestrator(
   }, [])
 
   const computeDefaultAnchor = useCallback((): AgentAnchor => {
-    const { nodes, selectedNodeIds, viewport } = useCanvasStore.getState()
-    if (selectedNodeIds.size > 0) {
-      let minX = Infinity
-      let maxX = -Infinity
-      let minY = Infinity
-      let maxY = -Infinity
-      for (const node of nodes) {
-        if (!selectedNodeIds.has(node.id)) continue
-        minX = Math.min(minX, node.position.x)
-        maxX = Math.max(maxX, node.position.x + node.size.width)
-        minY = Math.min(minY, node.position.y)
-        maxY = Math.max(maxY, node.position.y + node.size.height)
-      }
-      if (Number.isFinite(minX)) {
-        const worldCx = (minX + maxX) / 2
-        const worldCy = (minY + maxY) / 2
-        return {
-          x: worldCx * viewport.zoom + viewport.x,
-          y: worldCy * viewport.zoom + viewport.y
-        }
-      }
+    // Predictable non-intrusive placement: horizontally centered in the
+    // canvas surface, vertically a bit above center so the card stays fully
+    // in view as it grows. Anchor uses screen coords (the card is fixed-
+    // positioned), so we read the surface's bounding rect to account for
+    // sidebar/toolbar offsets. Fall back to containerSize when the surface
+    // element isn't available yet.
+    const surfaceEl = document.querySelector('[data-canvas-surface]') as HTMLElement | null
+    const rect = surfaceEl?.getBoundingClientRect()
+    const left = rect?.left ?? 0
+    const top = rect?.top ?? 0
+    const width = rect?.width ?? containerSize.width
+    const height = rect?.height ?? containerSize.height
+    return {
+      x: left + width / 2,
+      y: top + Math.max(80, height * 0.3)
     }
-    // Vault-scope fallback: viewport center
-    return { x: containerSize.width / 2, y: containerSize.height / 2 }
   }, [containerSize])
 
   const trigger = useCallback(
