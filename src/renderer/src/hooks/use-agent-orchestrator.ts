@@ -87,23 +87,20 @@ export function useAgentOrchestrator(
   }, [])
 
   const computeDefaultAnchor = useCallback((): AgentAnchor => {
-    // Predictable non-intrusive placement: horizontally centered in the
-    // canvas surface, vertically a bit above center so the card stays fully
-    // in view as it grows. Anchor uses screen coords (the card is fixed-
-    // positioned), so we read the surface's bounding rect to account for
-    // sidebar/toolbar offsets. Fall back to containerSize when the surface
-    // element isn't available yet.
+    // Pin the card's top-left corner to the canvas surface's top-left with
+    // an even pad matching other floating UI. Screen coords (fixed position)
+    // so we read the surface's bounding rect to account for sidebar / tool
+    // rail offsets. Fall back to window offsets if the surface isn't mounted.
     const surfaceEl = document.querySelector('[data-canvas-surface]') as HTMLElement | null
     const rect = surfaceEl?.getBoundingClientRect()
-    const left = rect?.left ?? 0
-    const top = rect?.top ?? 0
-    const width = rect?.width ?? containerSize.width
-    const height = rect?.height ?? containerSize.height
+    const surfaceLeft = rect?.left ?? 0
+    const surfaceTop = rect?.top ?? 0
+    const pad = 16
     return {
-      x: left + width / 2,
-      y: top + Math.max(80, height * 0.3)
+      x: surfaceLeft + pad,
+      y: surfaceTop + pad
     }
-  }, [containerSize])
+  }, [])
 
   const trigger = useCallback(
     async (action: AgentActionName, userPrompt?: string, anchor?: AgentAnchor) => {

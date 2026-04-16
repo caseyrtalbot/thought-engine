@@ -12,7 +12,6 @@ interface AgentThoughtCardProps {
 }
 
 const CARD_WIDTH = 440
-const CARD_OFFSET_Y = 12
 const MIN_HEIGHT = 120
 const MAX_HEIGHT_PX = 400
 
@@ -105,9 +104,9 @@ export function AgentThoughtCard({
     Math.floor((typeof window === 'undefined' ? 800 : window.innerHeight) * 0.5)
   )
 
-  // Anchor: centered horizontally on anchor.x, offset below anchor.y by CARD_OFFSET_Y
-  const left = Math.round(anchor.x - width / 2)
-  const top = Math.round(anchor.y + CARD_OFFSET_Y)
+  // Anchor is the card's intended top-left corner in screen coordinates.
+  const left = Math.round(anchor.x)
+  const top = Math.round(anchor.y)
 
   const containerStyle: CSSProperties = {
     position: 'fixed',
