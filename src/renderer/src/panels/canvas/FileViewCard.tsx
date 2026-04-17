@@ -10,24 +10,43 @@ import { colors } from '../../design/tokens'
 import { computeLineDelta, countLines } from './shared/file-view-utils'
 import { createEditorExtensions, detectLanguage } from './shared/codemirror-setup'
 import { extractSection } from '@shared/engine/section-rewriter'
+import { rematchSections } from '@shared/engine/section-rematch'
 import { commitSectionEdit } from './section-projection'
 import type { CanvasNode } from '@shared/canvas-types'
 import { vaultEvents } from '@engine/vault-event-hub'
 
 const SECTION_EDIT_DEBOUNCE_MS = 1000
 
+interface SectionProjection {
+  readonly body: string
+  /** Refreshed map — non-null only when external rename was unambiguous
+   *  and the file's frontmatter should be re-saved. */
+  readonly refreshedMap: Readonly<Record<string, string>> | null
+  readonly unresolved: boolean
+}
+
 /**
  * If `sectionId` is set, returns only the body of the named section from
- * the raw file content. Falls back to the raw content when the card does
- * not project a section, or yields an inline error marker if the section
- * can't be found.
+ * the raw file content. Handles external heading renames via rematch.
  */
-function projectSection(raw: string, sectionId: string | null): string {
-  if (!sectionId) return raw
+function projectSection(raw: string, sectionId: string | null): SectionProjection {
+  if (!sectionId) return { body: raw, refreshedMap: null, unresolved: false }
   const parsed = matter(raw)
   const sectionMap = (parsed.data.sections as Record<string, string> | undefined) ?? {}
-  const extracted = extractSection(parsed.content, sectionId, sectionMap)
-  return extracted.ok ? extracted.value : '[section not found]'
+  const direct = extractSection(parsed.content, sectionId, sectionMap)
+  if (direct.ok) return { body: direct.value, refreshedMap: null, unresolved: false }
+
+  const rematch = rematchSections(parsed.content, sectionMap)
+  if (rematch.unresolved.includes(sectionId)) {
+    return { body: '[section not found]', refreshedMap: null, unresolved: true }
+  }
+  const retry = extractSection(parsed.content, sectionId, rematch.resolved)
+  if (!retry.ok) return { body: '[section not found]', refreshedMap: null, unresolved: true }
+  return {
+    body: retry.value,
+    refreshedMap: rematch.changed ? rematch.resolved : null,
+    unresolved: false
+  }
 }
 
 interface FileViewCardProps {
@@ -65,13 +84,24 @@ export function FileViewCard({ node }: FileViewCardProps) {
 
     window.api.fs
       .readFile(filePath)
-      .then((content: string) => {
-        if (!cancelled) {
-          const projected = projectSection(content, sectionId)
-          setFileContent(projected)
-          previousLineCountRef.current = countLines(projected)
-          setLoading(false)
-          setError(null)
+      .then(async (content: string) => {
+        if (cancelled) return
+        const { body, refreshedMap, unresolved } = projectSection(content, sectionId)
+        setFileContent(body)
+        previousLineCountRef.current = countLines(body)
+        setLoading(false)
+        setError(unresolved ? 'Section missing in file. Detach or re-pick a heading.' : null)
+        if (refreshedMap) {
+          const parsed = matter(content)
+          const next = matter.stringify(parsed.content, {
+            ...parsed.data,
+            sections: refreshedMap
+          })
+          try {
+            await window.api.document.update(filePath, next)
+          } catch {
+            // Non-fatal: the in-memory map is still correct; next save will sync.
+          }
         }
       })
       .catch(() => {
@@ -181,21 +211,21 @@ export function FileViewCard({ node }: FileViewCardProps) {
     window.api.fs
       .readFile(filePath)
       .then((content: string) => {
-        const projected = projectSection(content, sectionId)
+        const { body, unresolved } = projectSection(content, sectionId)
         const view = viewRef.current
         if (view) {
           view.dispatch({
             changes: {
               from: 0,
               to: view.state.doc.length,
-              insert: projected
+              insert: body
             }
           })
         }
-        previousLineCountRef.current = countLines(projected)
+        previousLineCountRef.current = countLines(body)
         setModified(false)
         setLineDelta('')
-        setError(null)
+        setError(unresolved ? 'Section missing in file. Detach or re-pick a heading.' : null)
       })
       .catch(() => {
         setError('Failed to load file')
