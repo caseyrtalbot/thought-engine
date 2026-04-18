@@ -32,9 +32,10 @@ export async function captureClusterFromRoot(
   const draft = buildClusterDraft(rootCardId, [], { nodes, edges, agentSources })
   if (draft.sections.length < 2) return { ok: false, reason: 'too-few-sections' }
 
+  const capId = `cap_${crypto.randomUUID()}`
   const plan: CanvasMutationPlan = {
-    id: `cap_${Date.now()}`,
-    operationId: `cap_${Date.now()}`,
+    id: capId,
+    operationId: capId,
     source: 'agent',
     ops: [
       {
@@ -46,13 +47,8 @@ export async function captureClusterFromRoot(
           width: root.size.width,
           height: root.size.height
         },
-        tempNodeId: `cluster_${Date.now()}`
-      },
-      ...draft.sections.map((s) => ({
-        type: 'update-metadata' as const,
-        nodeId: s.cardId,
-        metadata: { __convertToFileView: true }
-      }))
+        tempNodeId: `cluster_${crypto.randomUUID()}`
+      }
     ],
     summary: { addedNodes: 0, addedEdges: 0, movedNodes: 0, skippedFiles: 0, unresolvedRefs: 0 }
   }
@@ -89,22 +85,18 @@ export async function captureClusterFromSelection(
   })
   if (draft.sections.length < 2) return { ok: false, reason: 'too-few-sections' }
 
+  const capId = `cap_${crypto.randomUUID()}`
   const plan: CanvasMutationPlan = {
-    id: `cap_${Date.now()}`,
-    operationId: `cap_${Date.now()}`,
+    id: capId,
+    operationId: capId,
     source: 'agent',
     ops: [
       {
         type: 'materialize-artifact',
         draft,
         placement,
-        tempNodeId: `cluster_${Date.now()}`
-      },
-      ...draft.sections.map((s) => ({
-        type: 'update-metadata' as const,
-        nodeId: s.cardId,
-        metadata: { __convertToFileView: true }
-      }))
+        tempNodeId: `cluster_${crypto.randomUUID()}`
+      }
     ],
     summary: { addedNodes: 0, addedEdges: 0, movedNodes: 0, skippedFiles: 0, unresolvedRefs: 0 }
   }

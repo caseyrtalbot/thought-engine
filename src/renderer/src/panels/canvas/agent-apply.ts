@@ -87,15 +87,18 @@ function isMaterializeOp(op: CanvasMutationOp): op is MaterializeArtifactOp {
  * Used when persistence is disabled.
  */
 function rewriteAsFallbackAddNode(op: MaterializeArtifactOp): CanvasMutationOp {
-  // Cluster fallback rendering is implemented in a later task; for now only
-  // compiled-article drafts flow through the fallback path.
-  const body = op.draft.kind === 'compiled-article' ? op.draft.body : ''
+  if (op.draft.kind !== 'compiled-article') {
+    throw new Error(
+      `rewriteAsFallbackAddNode called with unsupported kind: ${op.draft.kind}. ` +
+        `applyAgentResult should have rejected this earlier.`
+    )
+  }
   const node: CanvasNode = {
     id: op.tempNodeId,
     type: 'markdown',
     position: { x: op.placement.x, y: op.placement.y },
     size: { width: op.placement.width, height: op.placement.height },
-    content: `# ${op.draft.title}\n\n${body}`,
+    content: `# ${op.draft.title}\n\n${op.draft.body}`,
     metadata: { viewMode: 'rendered', origin: op.draft.origin }
   }
   return { type: 'add-node', node }
@@ -162,13 +165,6 @@ function rewriteClusterOps(
   return swaps
 }
 
-function isConvertSentinel(op: CanvasMutationOp): boolean {
-  return (
-    op.type === 'update-metadata' &&
-    (op.metadata as { __convertToFileView?: boolean }).__convertToFileView === true
-  )
-}
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
@@ -230,7 +226,6 @@ async function applyWithPersistence(
   // Phase B: Rewrite materialize ops. Clusters swap each member card into
   // a section-projected file-view; compiled articles become a new file-view.
   const existingNodes = useCanvasStore.getState().nodes
-  const otherOpsFiltered = otherOps.filter((op) => !isConvertSentinel(op))
 
   const rewrittenOps: CanvasMutationOp[] = []
   for (let i = 0; i < materializeOps.length; i++) {
@@ -245,7 +240,7 @@ async function applyWithPersistence(
 
   const rewrittenPlan: CanvasMutationPlan = {
     ...filteredPlan,
-    ops: [...otherOpsFiltered, ...rewrittenOps]
+    ops: [...otherOps, ...rewrittenOps]
   }
 
   executeAgentPlanCommand(rewrittenPlan, commandStack, async () => {
