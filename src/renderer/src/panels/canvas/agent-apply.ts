@@ -47,6 +47,7 @@ export function filterStaleOps(
       case 'move-node':
       case 'resize-node':
       case 'update-metadata':
+      case 'update-node':
         return willExist.has(op.nodeId)
       case 'remove-node':
         return existingNodeIds.has(op.nodeId)
@@ -142,24 +143,19 @@ function rewriteClusterOps(
 
   const swaps: CanvasMutationOp[] = []
   for (const section of op.draft.sections) {
-    const existing = byId.get(section.cardId)
-    if (!existing) continue
-    swaps.push({ type: 'remove-node', nodeId: section.cardId })
+    if (!byId.has(section.cardId)) continue
     swaps.push({
-      type: 'add-node',
-      node: {
-        ...existing,
-        type: 'file-view',
-        content: result.vaultRelativePath,
-        metadata: {
-          ...existing.metadata,
-          filePath: result.absolutePath,
-          artifactId: result.artifactId,
-          section: section.cardId,
-          sectionMap,
-          origin: op.draft.origin,
-          cluster_id: result.artifactId
-        }
+      type: 'update-node',
+      nodeId: section.cardId,
+      nodeType: 'file-view',
+      content: result.vaultRelativePath,
+      metadata: {
+        filePath: result.absolutePath,
+        artifactId: result.artifactId,
+        section: section.cardId,
+        sectionMap,
+        origin: op.draft.origin,
+        cluster_id: result.artifactId
       }
     })
   }
